@@ -1,0 +1,42 @@
+db_path: data/berkut.db
+listen_addr: "0.0.0.0:8080"
+session_ttl: 24h
+app_env: ""
+deployment_mode: "enterprise"
+csrf_key: ""
+pepper: ""
+tls_enabled: false
+tls_cert: ""
+tls_key: ""
+scheduler:
+  enabled: true
+  interval_seconds: 60
+  max_jobs_per_tick: 20
+docs:
+  storage_path: "data/docs"      # deprecated alias
+  storage_dir: "data/docs"
+  encryption_key: ""
+  encryption_key_id: "local-dev-key"
+  reg_template: "{level}.{year}.{seq}"
+  per_folder_sequence: false
+  version_limit: 10
+  watermark:
+    enabled: true
+    min_level: "CONFIDENTIAL"
+    text_template: "Berkut SCC • {classification} • {username} • {timestamp} • DocNo {reg_no}"
+    placement: "header"
+  converters:
+    enabled: true
+    pandoc_path: "pandoc"
+    soffice_path: "soffice"
+    timeout_sec: 20
+    temp_dir: ""
+incidents:
+  reg_no_format: "INC-{year}-{seq:05}"
+  storage_dir: "data/incidents"
+  timeline_export_limit: 50
+security:
+  tags_subset_enforced: true
+  online_window_sec: 300
+  legacy_import_enabled: false
+  trusted_proxies: []

@@ -1,0 +1,616 @@
+﻿<div class="page" id="docs-page">
+  <div class="tabs browser-tabs docs-tabs" id="docs-tabs"></div>
+  <div class="tab-panels docs-panels" id="docs-panels">
+    <div class="tab-panel docs-panel" id="docs-list-panel" data-tab="list">
+      <div class="docs-layout">
+        <div class="docs-sidebar">
+          <div class="card">
+            <div class="card-header">
+              <div class="btn-group">
+                <button class="btn primary" id="btn-new-doc" data-i18n="docs.newMd">Новый (MD)</button>
+                <button class="btn secondary" id="btn-import-doc" data-i18n="docs.import">Импорт</button>
+                <button class="btn ghost" id="btn-templates" data-i18n="docs.templates">Шаблоны</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="docs-search">
+                <input type="search" id="docs-search" placeholder="Поиск" data-i18n-placeholder="docs.searchPlaceholder">
+                <button class="btn ghost" id="btn-search" data-i18n="docs.search">Поиск</button>
+              </div>
+              <div class="filter-chips" id="quick-filters">
+                <button class="chip" data-filter="mine" data-i18n="docs.filter.mine">Мои</button>
+                <button class="chip" data-filter="review" data-i18n="docs.filter.review">На согласовании</button>
+                <button class="chip" data-filter="secret" data-i18n="docs.filter.secret">Секретные</button>
+              </div>
+              <div class="filters-grid">
+                <div class="form-field">
+                  <label data-i18n="docs.filter.status">Статус</label>
+                  <select id="filter-status">
+                    <option value="" data-i18n="common.all">All</option>
+                    <option value="draft" data-i18n="docs.status.draft">Черновик</option>
+                    <option value="review" data-i18n="docs.status.review">In review</option>
+                    <option value="approved" data-i18n="docs.status.approved">Approved</option>
+                    <option value="returned" data-i18n="docs.status.returned">Returned</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="docs.filter.tags">Теги</label>
+                  <select id="filter-tags" multiple></select>
+                  <div class="selected-hint" data-tag-hint="filter-tags"></div>
+                </div>
+              </div>
+            </div>
+            <div class="alert warning" id="converter-banner" hidden data-i18n="docs.converterWarning"></div>
+          </div>
+        </div>
+
+        <div class="docs-main">
+          <div class="card" id="docs-list-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="docs.listTitle">Список документов</h3>
+                <p class="muted" data-i18n="docs.listSubtitle">Выберите папку или используйте поиск</p>
+              </div>
+              <div class="inline-actions">
+                <span class="muted" id="docs-count"></span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="data-table" id="docs-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="docs.table.number">№</th>
+                      <th data-i18n="docs.table.title">Название</th>
+                      <th data-i18n="docs.table.format">Формат</th>
+                      <th data-i18n="docs.table.status">Статус</th>
+                      <th data-i18n="docs.table.classification">Гриф</th>
+                      <th data-i18n="docs.table.tags">Теги</th>
+                      <th data-i18n="docs.table.owner">Владелец</th>
+                      <th data-i18n="docs.table.updated">Обновлен</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="context-menu" id="doc-context-menu" hidden></div>
+
+  <input type="file" id="import-file-input" accept=".md,.docx,.pdf,.txt" hidden>
+
+  <div class="modal" id="doc-create-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="docs.createTitle">Новый документ</h3>
+        <button class="btn ghost" data-close="#doc-create-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="create-alert" hidden></div>
+        <form id="create-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="docs.field.title">Название</label>
+            <input name="title" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.regNumber">Регистрационный номер</label>
+            <input name="reg_number" data-i18n-placeholder="docs.autoNumber" placeholder="auto">
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.folder">Папка</label>
+            <select name="folder_id" id="create-folder"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.owner">Владелец</label>
+            <select name="owner" id="create-owner"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select name="classification_level" id="create-classification" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="create-tags" name="tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="create-tags"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.aclRoles">ACL (роли)</label>
+            <select name="acl_roles" id="create-acl-roles" multiple></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.aclUsers">ACL (пользователи)</label>
+            <select name="acl_users" id="create-acl-users" multiple></select>
+          </div>
+          <div class="form-field">
+            <label class="checkbox">
+              <input type="checkbox" name="inherit_acl" checked>
+              <span data-i18n="docs.field.inheritAcl">Наследовать ACL из папки</span>
+            </label>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="create-form" data-i18n="common.create">Создать</button>
+          <button class="btn ghost" type="button" data-close="#doc-create-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="doc-import-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="docs.importTitle">Импорт документа</h3>
+        <button class="btn ghost" data-close="#doc-import-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="import-alert" hidden></div>
+        <div class="muted" id="import-file-name"></div>
+        <form id="import-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="docs.field.title">Название</label>
+            <input name="title" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.regNumber">Регистрационный номер</label>
+            <input name="reg_number" data-i18n-placeholder="docs.autoNumber" placeholder="auto">
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.folder">Папка</label>
+            <select name="folder_id" id="import-folder"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.owner">Владелец</label>
+            <select name="owner" id="import-owner"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select name="classification_level" id="import-classification" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="import-tags" name="tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="import-tags"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.aclRoles">ACL (роли)</label>
+            <select name="acl_roles" id="import-acl-roles" multiple></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.aclUsers">ACL (пользователи)</label>
+            <select name="acl_users" id="import-acl-users" multiple></select>
+          </div>
+          <div class="form-field">
+            <label class="checkbox">
+              <input type="checkbox" name="inherit_acl" checked>
+              <span data-i18n="docs.field.inheritAcl">Наследовать ACL из папки</span>
+            </label>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="import-form" data-i18n="docs.importCommit">Сохранить</button>
+          <button class="btn ghost" type="button" data-close="#doc-import-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="folder-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="folder-modal-title" data-i18n="docs.folderCreateTitle">Новая папка</h3>
+        <button class="btn ghost" data-close="#folder-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="folder-alert" hidden></div>
+        <form id="folder-form" class="form-grid two-column">
+          <input type="hidden" name="id" id="folder-id">
+          <input type="hidden" name="parent_id" id="folder-parent">
+          <div class="form-field required">
+            <label data-i18n="docs.folderName">Название папки</label>
+            <input name="name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select name="classification_level" id="folder-classification"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="folder-tags" name="folder_tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="folder-tags"></div>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="folder-form" data-i18n="common.save">Сохранить</button>
+          <button class="btn ghost" type="button" data-close="#folder-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="doc-view-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header viewer-header">
+        <div>
+          <h3 id="doc-view-title"></h3>
+          <p class="muted" id="doc-view-meta"></p>
+        </div>
+        <div class="viewer-actions">
+          <div class="viewer-zoom">
+            <label for="view-zoom" data-i18n="docs.view.zoom">Масштаб</label>
+            <input type="range" id="view-zoom" min="50" max="200" value="100">
+            <span id="view-zoom-label">100%</span>
+          </div>
+          <div class="viewer-search">
+            <input type="search" id="view-search" class="input" placeholder="Поиск" data-i18n-placeholder="docs.searchPlaceholder">
+            <button class="btn ghost" id="view-search-btn" data-i18n="docs.view.search">Искать</button>
+          </div>
+          <button class="btn secondary" id="view-edit-btn" data-i18n="docs.view.edit">Редактировать</button>
+          <button class="btn ghost" data-close="#doc-view-modal" aria-label="Close">x</button>
+        </div>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="doc-view-alert" hidden></div>
+        <div class="doc-info-grid">
+          <div>
+            <span class="muted" data-i18n="docs.meta.created">Создан</span>
+            <div id="doc-view-created" class="meta-value"></div>
+          </div>
+          <div>
+            <span class="muted" data-i18n="docs.meta.updated">Обновлен</span>
+            <div id="doc-view-updated" class="meta-value"></div>
+          </div>
+          <div>
+            <span class="muted" data-i18n="docs.versionsTitle">Версии</span>
+            <div class="meta-value"><button class="btn ghost" type="button" id="doc-view-versions-btn" data-i18n="docs.view">Открыть</button></div>
+          </div>
+          <div>
+            <span class="muted" data-i18n="docs.field.aclUsers">Права</span>
+            <div id="doc-view-acl" class="meta-value"></div>
+          </div>
+          <div>
+            <span class="muted" data-i18n="docs.links">Связи</span>
+            <div id="doc-view-links" class="meta-value"></div>
+          </div>
+          <div>
+            <span class="muted" data-i18n="docs.controls">Контроли</span>
+            <div id="doc-view-controls" class="meta-value"></div>
+          </div>
+        </div>
+        <div class="doc-viewer-pane" id="doc-viewer-md"></div>
+        <div class="doc-viewer-frame" id="doc-viewer-frame-wrap" hidden>
+          <iframe id="doc-viewer-frame"></iframe>
+          <p class="muted small" id="doc-viewer-frame-hint"></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="templates-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="docs.templatesTitle">Шаблоны</h3>
+        <button class="btn ghost" data-close="#templates-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="templates-alert" hidden></div>
+        <div class="templates-list" id="templates-list"></div>
+        <div class="template-manage-actions">
+          <button class="btn ghost" type="button" id="btn-new-template" data-i18n="docs.templateNew">Новый шаблон</button>
+        </div>
+        <div class="alert" id="template-manage-alert" hidden></div>
+        <form id="template-edit-form" class="form-grid two-column" hidden>
+          <div class="form-field required">
+            <label data-i18n="docs.templateName">Название шаблона</label>
+            <input name="name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.templateDescription">Описание</label>
+            <input name="description">
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.format">Формат</label>
+            <select name="format">
+              <option value="md">MD</option>
+              <option value="docx">DOCX</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select name="classification_level" id="template-edit-classification"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="template-edit-tags" name="edit-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="template-edit-tags"></div>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="docs.templateContent">Содержимое шаблона</label>
+            <textarea id="template-edit-content" rows="6"></textarea>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="docs.templateVars">Переменные</label>
+            <div id="template-edit-vars" class="template-vars"></div>
+            <button class="btn ghost" type="button" id="template-add-var" data-i18n="docs.templateAddVar">Добавить переменную</button>
+          </div>
+          <div class="form-actions">
+            <button class="btn primary" type="submit" data-i18n="docs.templateSave">Сохранить шаблон</button>
+            <button class="btn ghost danger" type="button" id="template-delete" hidden data-i18n="common.delete">Удалить</button>
+          </div>
+        </form>
+        <form id="template-form" class="form-grid two-column" hidden>
+          <div class="form-field required">
+            <label data-i18n="docs.field.title">Название</label>
+            <input name="title" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.folder">Папка</label>
+            <select name="folder_id" id="template-folder"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select name="classification_level" id="template-classification" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="template-tags" name="tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="template-tags"></div>
+          </div>
+          <div id="template-vars" class="template-vars"></div>
+          <div class="form-actions">
+            <button class="btn primary" type="submit" data-i18n="docs.useTemplate">Создать из шаблона</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="versions-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="docs.versionsTitle">Версии</h3>
+        <button class="btn ghost" data-close="#versions-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="versions-alert" hidden></div>
+        <div class="table-responsive">
+          <table class="data-table" id="versions-table">
+            <thead>
+              <tr>
+                <th data-i18n="docs.version">Версия</th>
+                <th data-i18n="docs.versionAuthor">Автор</th>
+                <th data-i18n="docs.versionReason">Причина</th>
+                <th data-i18n="docs.versionCreated">Создана</th>
+                <th data-i18n="docs.table.actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div id="version-viewer" class="version-viewer" hidden>
+          <div class="viewer-header">
+            <span id="version-label"></span>
+            <button class="btn ghost" id="close-version-view" data-i18n="common.close">Close</button>
+          </div>
+          <pre id="version-content"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="start-approval-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="docs.approvalTitle">Отправить на согласование</h3>
+        <button class="btn ghost" data-close="#start-approval-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="approval-alert" hidden></div>
+        <form id="approval-form" class="form-grid three-column">
+          <div class="form-field full">
+            <div class="stage-header">
+              <label data-i18n="docs.field.approvers">Этапы согласования</label>
+              <button class="btn ghost" type="button" id="approval-add-stage" data-i18n="docs.approvalAddStage">+ Этап</button>
+            </div>
+            <div id="approval-stages"></div>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="approval-form" data-i18n="docs.approvalStart">Запустить</button>
+          <button class="btn ghost" type="button" data-close="#start-approval-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="approval-detail-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="approval-doc-title"></h3>
+          <p class="muted" id="approval-doc-meta"></p>
+        </div>
+        <button class="btn ghost" data-close="#approval-detail-modal" data-i18n="common.close">Close</button>
+      </div>
+      <div class="modal-content approval-content">
+        <div class="alert" id="approval-detail-alert" hidden></div>
+        <div class="approval-detail-grid">
+          <div class="approval-info">
+            <div class="info-card">
+              <div class="info-row">
+                <span data-i18n="approvals.meta.status">Status</span>
+                <span id="approval-status"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.level">Classification</span>
+                <span id="approval-classification"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.version">Version</span>
+                <span id="approval-version"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.initiator">Initiator</span>
+                <span id="approval-initiator"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.reason">Change reason</span>
+                <span id="approval-reason"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.request">Message</span>
+                <span id="approval-request"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.updated">Updated</span>
+                <span id="approval-updated"></span>
+              </div>
+            </div>
+            <div class="info-card">
+              <h4 data-i18n="approvals.participants">Participants</h4>
+              <ul id="participants-list"></ul>
+            </div>
+          </div>
+          <div class="approval-stages" id="approval-stages-container"></div>
+          <div class="approval-comments info-card">
+            <h4 data-i18n="approvals.comments">Comments</h4>
+            <div id="comments-list" class="comments-list"></div>
+            <div class="comment-form">
+              <textarea id="comment-text" rows="2" placeholder="Comment" data-i18n-placeholder="approvals.commentPlaceholder"></textarea>
+              <button class="btn secondary" id="comment-submit" data-i18n="approvals.commentSend">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="doc-editor" class="editor-panel" hidden>
+    <div class="editor-header">
+      <div>
+        <h3 id="editor-title"></h3>
+        <p class="muted" data-i18n="editor.subtitle">Встроенный редактор Markdown</p>
+      </div>
+      <div class="editor-actions">
+        <input type="text" id="editor-reason" placeholder="Причина изменения" data-i18n-placeholder="editor.reason">
+        <button class="btn secondary" id="editor-edit-toggle" data-i18n="editor.edit">Редактировать</button>
+        <button class="btn primary" id="editor-save" data-i18n="editor.save">Сохранить</button>
+        <button class="btn ghost" id="editor-close" data-i18n="common.close">Close</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <div class="alert" id="editor-alert" hidden></div>
+      <div class="editor-toolbar" id="editor-toolbar">
+        <button data-action="bold" title="Bold">B</button>
+        <button data-action="italic" title="Italic">I</button>
+        <button data-action="heading" title="Heading">H</button>
+        <button data-action="list" title="List">•</button>
+        <button data-action="quote" title="Quote">“”</button>
+        <button data-action="code" title="Code">{} </button>
+        <button data-action="link" title="Link">🔗</button>
+        <button data-action="table" title="Table">#</button>
+      </div>
+      <div class="editor-columns">
+        <div class="editor-main">
+          <textarea id="editor-content" spellcheck="false"></textarea>
+          <div id="editor-md-view" class="doc-viewer-pane" hidden></div>
+          <div id="editor-viewer" class="doc-viewer" hidden>
+            <iframe id="editor-pdf-frame" hidden></iframe>
+            <div id="editor-nonmd" hidden class="doc-alt-viewer">
+              <p id="editor-nonmd-hint"></p>
+              <button class="btn ghost" id="editor-download" data-i18n="docs.download">Скачать</button>
+              <button class="btn secondary" id="editor-convert" data-i18n="docs.convertToMd">Конвертировать в MD</button>
+            </div>
+          </div>
+        </div>
+        <div class="editor-meta">
+          <h4 data-i18n="editor.meta">Метаданные</h4>
+          <div class="form-field">
+            <label data-i18n="docs.field.classification">Гриф</label>
+            <select id="editor-classification"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.tags">Теги</label>
+            <select id="editor-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="editor-tags"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.table.status">Статус</label>
+            <input id="editor-status" disabled>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.table.owner">Владелец</label>
+            <input id="editor-owner" disabled>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.table.number">№</label>
+            <input id="editor-reg" disabled>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.field.folder">Папка</label>
+            <input id="editor-folder" disabled>
+          </div>
+          <div class="form-field">
+            <label data-i18n="docs.links">Связи</label>
+            <div id="editor-links" class="links-list"></div>
+            <div class="links-form">
+              <select id="link-type">
+                <option value="incident" data-i18n="docs.link.incident">Инцидент</option>
+                <option value="finding" data-i18n="docs.link.finding">Замечание</option>
+                <option value="task" data-i18n="docs.link.task">Задача</option>
+                <option value="control" data-i18n="docs.link.control">Контроль</option>
+              </select>
+              <input type="text" id="link-id" placeholder="ID">
+              <button class="btn ghost" id="add-link" data-i18n="docs.link.add">Добавить</button>
+            </div>
+          </div>
+          <div class="form-field acl-field">
+            <label data-i18n="docs.field.aclRoles">ACL (роли)</label>
+            <select id="editor-acl-roles" multiple></select>
+          </div>
+          <div class="form-field acl-field">
+            <label data-i18n="docs.field.aclUsers">ACL (пользователи)</label>
+            <select id="editor-acl-users" multiple></select>
+          </div>
+          <div class="form-actions acl-actions">
+            <button class="btn ghost" type="button" id="editor-acl-refresh" data-i18n="common.refresh">Refresh</button>
+            <button class="btn secondary" type="button" id="editor-acl-save" data-i18n="common.save">Сохранить ACL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="docs-confirm-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="docs-confirm-title" data-i18n="common.confirm">Confirm</h3>
+        <button class="btn ghost" id="docs-confirm-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="docs-confirm-message" class="confirm-message"></div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="docs-confirm-yes" data-i18n="common.confirm">Confirm</button>
+          <button type="button" class="btn ghost" id="docs-confirm-no" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+
+
+

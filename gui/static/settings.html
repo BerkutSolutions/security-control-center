@@ -1,0 +1,389 @@
+<div class="page" id="settings-page">
+  <div class="card">
+    <div class="card-body">
+      <div class="alert" id="settings-alert" hidden></div>
+
+      <div class="tabs browser-tabs settings-tabs" id="settings-tabs">
+        <button class="tab-btn active" data-tab="settings-general" data-i18n="settings.tabs.general">General</button>
+        <button class="tab-btn" data-tab="settings-advanced" data-i18n="settings.tabs.advanced">Advanced</button>
+        <button class="tab-btn" data-tab="settings-https" data-i18n="settings.tabs.https">HTTPS</button>
+        <button class="tab-btn" data-tab="settings-tags" data-i18n="settings.tabs.tags">Tags</button>
+        <button class="tab-btn" data-tab="settings-classifications" data-i18n="settings.tabs.classifications">Classifications</button>
+        <button class="tab-btn" data-tab="settings-incidents" data-i18n="settings.tabs.incidents">Incidents</button>
+        <button class="tab-btn" data-tab="settings-sources" data-i18n="settings.tabs.sources">Sources</button>
+        <button class="tab-btn" data-tab="settings-controls" data-i18n="settings.tabs.controls">Controls</button>
+        <button class="tab-btn" data-tab="settings-about" data-i18n="settings.tabs.about">About</button>
+      </div>
+
+      <div class="tab-panels settings-panels">
+        <div class="tab-panel settings-panel" id="settings-general" data-tab="settings-general">
+          <div class="card nested-card" id="password-change-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="accounts.passwordChange">Change password</h3>
+                <p class="muted" id="password-last-changed"></p>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="password-change-form" class="form-grid two-column">
+                <div class="form-field required">
+                  <label data-i18n="accounts.currentPassword">Current password</label>
+                  <input type="password" name="current_password" autocomplete="current-password" required>
+                </div>
+                <div class="form-field required">
+                  <label data-i18n="accounts.newPassword">New password</label>
+                  <input type="password" name="password" autocomplete="new-password" required>
+                </div>
+                <div class="form-field required">
+                  <label data-i18n="accounts.passwordConfirm">Confirm password</label>
+                  <input type="password" name="password_confirm" autocomplete="new-password" required>
+                </div>
+                <div class="form-actions">
+                  <button type="submit" class="btn primary" data-i18n="accounts.passwordChange">Change password</button>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <form id="settings-form" class="settings-form card nested-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.language">Interface language</h3>
+                <p class="muted" data-i18n="settings.languageHint">Choose language</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form-grid two-column">
+                <div class="form-field">
+                  <label for="settings-language" data-i18n="settings.language">Interface language</label>
+                  <select id="settings-language" name="language">
+                    <option value="ru">Русский</option>
+                    <option value="en">English</option>
+                  </select>
+                </div>
+              </div>
+              <div class="settings-section">
+                <h3 data-i18n="settings.general">General settings</h3>
+                <div class="checkbox-list">
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-auto-logout">
+                    <span data-i18n="settings.autoLogout">Auto-logout on inactivity</span>
+                  </label>
+                </div>
+                <div class="autosave-controls">
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-autosave-enabled">
+                    <span data-i18n="settings.autosave.enable">Incident autosave</span>
+                  </label>
+                  <label class="autosave-period">
+                    <span class="muted" data-i18n="settings.autosave.periodLabel">Period</span>
+                    <select id="settings-autosave-period" class="select select-compact">
+                      <option value="1" data-i18n="settings.autosave.period.1">1 min</option>
+                      <option value="3" data-i18n="settings.autosave.period.3">3 min</option>
+                      <option value="5" data-i18n="settings.autosave.period.5">5 min</option>
+                      <option value="10" data-i18n="settings.autosave.period.10">10 min</option>
+                      <option value="15" data-i18n="settings.autosave.period.15">15 min</option>
+                    </select>
+                  </label>
+                </div>
+                <p class="muted" data-i18n="settings.autosave.hint">Autosave hint</p>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+            </div>
+          </form>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-advanced" data-tab="settings-advanced" hidden>
+          <div class="card nested-card" id="settings-timezone-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.timezone.title">Time zone</h3>
+                <p class="muted" data-i18n="settings.timezone.hint">Set default time zone</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="settings-timezone-form" class="form-grid single-column">
+                <div class="form-field">
+                  <label for="settings-timezone" data-i18n="settings.timezone.label">Time zone</label>
+                  <div class="settings-inline-row">
+                    <select id="settings-timezone" class="select settings-compact-select"></select>
+                    <button type="submit" class="btn primary settings-compact-action" data-i18n="common.save">Save</button>
+                  </div>
+                </div>
+              </form>
+            </div>
+          </div>
+
+          <div class="card nested-card" id="settings-runtime-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.deployment.title">Deployment mode</h3>
+                <p class="muted" data-i18n="settings.deployment.hint">Choose deployment mode for this installation.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <form id="settings-runtime-form" class="form-grid two-column">
+                <div class="form-field">
+                  <label for="settings-deployment-mode" data-i18n="settings.deployment.mode">Mode</label>
+                  <select id="settings-deployment-mode" class="select">
+                    <option value="enterprise" data-i18n="settings.deployment.enterprise">Enterprise</option>
+                    <option value="home" data-i18n="settings.deployment.home">Home</option>
+                  </select>
+                </div>
+                <div class="form-field settings-runtime-updates">
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-updates-enabled">
+                    <span data-i18n="settings.updates.enabled">Check for updates</span>
+                  </label>
+                </div>
+              </form>
+              <div class="banner" id="settings-home-warning" data-i18n="settings.deployment.homeWarning" hidden>
+                Home mode warning
+              </div>
+              <div class="settings-inline-row settings-runtime-actions">
+                <button type="button" class="btn primary" id="settings-runtime-save" data-i18n="common.save">Save</button>
+                <button type="button" class="btn ghost" id="settings-updates-check" data-i18n="settings.updates.checkNow">Check now</button>
+              </div>
+              <p class="muted" id="settings-updates-status"></p>
+            </div>
+          </div>
+
+          <div class="card nested-card" id="approvals-cleanup-section" hidden>
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.approvalsCleanupTitle">Approvals cleanup</h3>
+                <p class="muted" data-i18n="settings.approvalsCleanupHint">Cleanup approvals list</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form-grid single-column">
+                <div class="form-field">
+                  <label for="approvals-cleanup-scope" data-i18n="settings.approvalsCleanupScope">What to remove</label>
+                  <div class="settings-inline-row">
+                    <select id="approvals-cleanup-scope" class="select">
+                      <option value="closed" data-i18n="settings.approvalsCleanupClosed">Finished</option>
+                      <option value="all" data-i18n="settings.approvalsCleanupAll">All approvals</option>
+                    </select>
+                    <button type="button" class="btn danger settings-compact-action" id="approvals-cleanup-btn" data-i18n="settings.approvalsCleanupRun">Clean up</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="card nested-card" id="tabs-cleanup-section" hidden>
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.tabsCleanupTitle">Tabs cleanup</h3>
+                <p class="muted" data-i18n="settings.tabsCleanupHint">Clear local settings and cache.</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="form-grid single-column">
+                <div class="form-field">
+                  <label for="tabs-cleanup-target" data-i18n="settings.tabsCleanupScope">Tab</label>
+                  <div class="settings-inline-row">
+                    <select id="tabs-cleanup-target" class="select">
+                      <option value="dashboard" data-i18n="nav.dashboard">Dashboard</option>
+                      <option value="monitoring" data-i18n="nav.monitoring">Monitoring</option>
+                      <option value="controls" data-i18n="nav.controls">Controls</option>
+                      <option value="tasks" data-i18n="nav.tasks">Tasks</option>
+                      <option value="incidents" data-i18n="nav.incidents">Incidents</option>
+                      <option value="reports" data-i18n="nav.reports">Reports</option>
+                      <option value="docs" data-i18n="nav.docs">Docs</option>
+                      <option value="accounts" data-i18n="nav.accounts">Accounts</option>
+                      <option value="logs" data-i18n="nav.logs">Logs</option>
+                      <option value="settings" data-i18n="nav.settings">Settings</option>
+                    </select>
+                    <button type="button" class="btn danger settings-compact-action" id="tabs-cleanup-btn" data-i18n="settings.tabsCleanupRun">Clean up</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-https" data-tab="settings-https" hidden>
+          <div class="card nested-card" id="settings-https-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="settings.https.title">HTTPS</h3>
+                <p class="muted" data-i18n="settings.https.hint">TLS strategy</p>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="banner" id="settings-https-home-warning" data-i18n="settings.deployment.homeWarning" hidden>
+                Home mode warning
+              </div>
+              <form id="settings-https-form" class="form-grid two-column">
+                <div class="form-field">
+                  <label for="settings-https-mode" data-i18n="settings.https.mode">Mode</label>
+                  <select id="settings-https-mode" class="select">
+                    <option value="disabled" data-i18n="settings.https.mode.disabled">Disabled</option>
+                    <option value="external_proxy" data-i18n="settings.https.mode.proxy">External reverse proxy</option>
+                    <option value="builtin_tls" data-i18n="settings.https.mode.builtin">Built-in TLS</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="settings-https-port" data-i18n="settings.https.port">Application port</label>
+                  <input id="settings-https-port" class="input" type="number" min="1" max="65535">
+                </div>
+                <div class="form-field">
+                  <label for="settings-https-proxy-hint" data-i18n="settings.https.proxyHint">Proxy topology</label>
+                  <select id="settings-https-proxy-hint" class="select">
+                    <option value="nginx" data-i18n="settings.https.proxy.nginx">Nginx - Berkut SCC</option>
+                    <option value="traefik-nginx" data-i18n="settings.https.proxy.traefikNginx">Traefik - Nginx - Berkut SCC</option>
+                    <option value="traefik" data-i18n="settings.https.proxy.traefik">Traefik - Berkut SCC</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="settings-https-trusted-proxies" data-i18n="settings.https.trustedProxies">Trusted proxies</label>
+                  <textarea id="settings-https-trusted-proxies" class="textarea" rows="3" data-i18n-placeholder="settings.https.trustedProxiesPlaceholder"></textarea>
+                </div>
+                <div class="form-field" id="settings-https-cert-field">
+                  <label for="settings-https-cert" data-i18n="settings.https.cert">TLS certificate path</label>
+                  <input id="settings-https-cert" class="input" type="text" placeholder="/etc/ssl/certs/fullchain.pem">
+                </div>
+                <div class="form-field" id="settings-https-key-field">
+                  <label for="settings-https-key" data-i18n="settings.https.key">TLS key path</label>
+                  <input id="settings-https-key" class="input" type="text" placeholder="/etc/ssl/private/privkey.pem">
+                </div>
+              </form>
+              <div class="form-actions">
+                <button type="button" class="btn primary" id="settings-https-save" data-i18n="common.save">Save</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-tags" data-tab="settings-tags" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="settings.tags.title">Tags</h3>
+                <p class="muted" data-i18n="settings.tags.subtitle">Manage tags</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="settings-tag-input" data-i18n-placeholder="settings.tags.placeholder" placeholder="New tag">
+                <button class="btn primary" id="settings-tag-add" data-i18n="settings.tags.add">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="settings-tags-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-classifications" data-tab="settings-classifications" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="settings.classifications.title">Classifications</h3>
+                <p class="muted" data-i18n="settings.classifications.subtitle">Manage document classifications and hierarchy.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="settings-classification-input" data-i18n-placeholder="settings.classifications.placeholder" placeholder="New classification">
+                <button class="btn primary" id="settings-classification-add" data-i18n="settings.classifications.add">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="classification-list" id="settings-classifications-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-incidents" data-tab="settings-incidents" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="incidents.settings.incidentTypes">Incident types</h3>
+                <p class="muted" data-i18n="incidents.settings.incidentTypesHint">Manage incident types.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="incident-type-input" data-i18n-placeholder="incidents.settings.addPlaceholder" placeholder="New item">
+                <button class="btn primary" id="incident-type-add" data-i18n="incidents.settings.add">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="incident-type-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-sources" data-tab="settings-sources" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="incidents.settings.sources">Detection sources</h3>
+                <p class="muted" data-i18n="incidents.settings.sourcesHint">Manage incident source dictionary.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="incident-source-input" data-i18n-placeholder="incidents.settings.addPlaceholder" placeholder="New source">
+                <button class="btn primary" id="incident-source-add" data-i18n="incidents.settings.add">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="incident-source-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-controls" data-tab="settings-controls" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="settings.controls.domainsTitle">Control domains</h3>
+                <p class="muted" data-i18n="settings.controls.domainsHint">Manage control domains.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="controls-domain-input" data-i18n-placeholder="settings.controls.domainsPlaceholder" placeholder="New domain">
+                <button class="btn primary" id="controls-domain-add" data-i18n="settings.controls.domainsAdd">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="controls-domain-list"></div>
+            </div>
+          </div>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="settings.controls.typesTitle">Control types</h3>
+                <p class="muted" data-i18n="settings.controls.typesHint">Manage control types.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="controls-type-input" data-i18n-placeholder="settings.controls.typesPlaceholder" placeholder="New type">
+                <button class="btn primary" id="controls-type-add" data-i18n="settings.controls.typesAdd">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="controls-type-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-about" data-tab="settings-about" hidden>
+          <div class="card nested-card about-card">
+            <div class="card-body">
+              <div class="about-grid">
+                <div class="about-logo-wrap">
+                  <img class="about-logo" src="/static/logo.png" alt="Berkut Solutions logo">
+                </div>
+                <div class="about-content">
+                  <h4 class="about-name" data-i18n="settings.about.name">Security Control Center</h4>
+                  <p class="about-description" data-i18n="settings.about.description">Secure document and incident control center.</p>
+                  <p class="muted" id="settings-app-version"></p>
+                  <div class="about-links">
+                    <a class="btn primary" href="https://github.com/BerkutSolutions/security-control-center" target="_blank" rel="noopener" data-i18n="settings.about.projectLink">Project GitHub</a>
+                    <a class="btn secondary" href="https://github.com/BerkutSolutions/" target="_blank" rel="noopener" data-i18n="settings.about.profileLink">BerkutSolutions GitHub</a>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

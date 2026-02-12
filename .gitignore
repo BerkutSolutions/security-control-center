@@ -1,0 +1,34 @@
+.env
+.env.*
+!.env.example
+
+# Build outputs
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+bin/
+dist/
+build/
+coverage/
+*.coverprofile
+coverage.out
+
+# IDE/editor
+.idea/
+.vscode/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temp/backup files
+*.tmp
+*.temp
+*.bak
+*.orig
+*.rej
+*~

@@ -1,0 +1,79 @@
+<div class="page" id="incidents-page">
+  <div class="tabs browser-tabs incident-tabs" id="incidents-tabs"></div>
+  <div class="tab-panels" id="incidents-panels">
+    <div class="tab-panel" id="incidents-home" data-tab="home"></div>
+    <div class="tab-panel" id="incidents-list" data-tab="list" hidden></div>
+  </div>
+
+  <div class="context-menu" id="incidents-context-menu" hidden></div>
+
+  <div class="modal" id="incident-stage-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="incidents.stage.addTitle">Add section</h3>
+        <button class="btn ghost" id="close-incident-stage-modal" aria-label="Close">x</button>
+      </div>
+        <div class="modal-content">
+          <div class="alert" id="incident-stage-alert" hidden></div>
+          <div class="form-grid">
+            <div class="form-field required">
+              <label data-i18n="incidents.stage.name">Section name</label>
+              <input class="input" id="incident-stage-name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="incidents.stage.type">Section type</label>
+            <select class="select" id="incident-stage-type">
+              <option value="custom" data-i18n="incidents.stage.type.custom">Custom</option>
+              <option value="investigation" data-i18n="incidents.stage.type.investigation">Investigation</option>
+              <option value="response" data-i18n="incidents.stage.type.response">Response</option>
+              <option value="decision" data-i18n="incidents.stage.type.decision">Decision</option>
+              <option value="closure" data-i18n="incidents.stage.type.closure">Closure</option>
+            </select>
+            <div class="form-hint" id="incident-stage-type-description"></div>
+          </div>
+        </div>
+        <div class="form-field form-field-inline">
+          <label class="checkbox switch">
+            <input type="checkbox" id="incident-stage-use-preset" checked>
+            <span data-i18n="incidents.stage.usePreset">Use recommended block set</span>
+          </label>
+        </div>
+        <div class="form-field">
+          <div class="form-label-row">
+            <label data-i18n="incidents.stage.blocks.title">Blocks</label>
+            <span class="form-hint" data-i18n="incidents.stage.blocks.reorderHint">Reorder and toggle blocks. Required blocks are locked.</span>
+          </div>
+          <div class="stage-block-selector" id="incident-stage-blocks"></div>
+          <div class="stage-block-available" id="incident-stage-blocks-available">
+            <div class="stage-block-available-controls">
+              <select class="select" id="incident-stage-blocks-select"></select>
+              <button type="button" class="btn ghost" id="incident-stage-blocks-add" data-i18n="incidents.stage.blocks.addOptional">Add block</button>
+            </div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="incident-stage-confirm" data-i18n="incidents.stage.addAction">Add</button>
+          <button type="button" class="btn ghost" id="incident-stage-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="confirm-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="confirm-modal-title" data-i18n="common.confirm">Confirm</h3>
+        <button class="btn ghost" id="confirm-modal-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="confirm-modal-message" class="confirm-message"></div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="confirm-modal-yes" data-i18n="common.confirm">Confirm</button>
+          <button type="button" class="btn ghost" id="confirm-modal-no" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

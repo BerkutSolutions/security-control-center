@@ -1,0 +1,599 @@
+<div class="page" id="controls-page">
+  <div class="tabs browser-tabs controls-tabs" id="controls-tabs">
+    <button class="tab-btn active" data-tab="controls-tab-overview" data-i18n="controls.tabs.overview">Overview</button>
+    <button class="tab-btn" data-tab="controls-tab-controls" data-i18n="controls.tabs.controls">Controls</button>
+    <button class="tab-btn" data-tab="controls-tab-checks" data-i18n="controls.tabs.checks">Checks</button>
+    <button class="tab-btn" data-tab="controls-tab-violations" data-i18n="controls.tabs.violations">Violations</button>
+    <button class="tab-btn" data-tab="controls-tab-frameworks" data-i18n="controls.tabs.frameworks">Frameworks</button>
+  </div>
+
+  <div class="tab-panels controls-panels">
+    <div class="tab-panel" id="controls-tab-overview" data-tab="controls-tab-overview">
+      <div class="card">
+        <div class="card-header">
+          <div class="inline-actions">
+            <button class="btn ghost" id="controls-overview-refresh" data-i18n="controls.actions.refresh">Refresh</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="controls-metrics" id="controls-overview-metrics"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="controls-tab-controls" data-tab="controls-tab-controls" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="controls.tabs.controls">Controls</h3>
+            <p data-i18n="controls.subtitle">Security control registry</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn primary" id="controls-create-btn" data-i18n="controls.actions.create">Create control</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid three-column">
+            <div class="form-field">
+              <label data-i18n="controls.filter.search">Search</label>
+              <input type="search" id="controls-filter-q" data-i18n-placeholder="controls.filter.search" placeholder="Search">
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.status">Status</label>
+              <select id="controls-filter-status">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.risk">Risk</label>
+              <select id="controls-filter-risk">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.domain">Domain</label>
+              <select id="controls-filter-domain">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.owner">Owner</label>
+              <select id="controls-filter-owner">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.tag">Tag</label>
+              <input id="controls-filter-tag" data-i18n-placeholder="controls.filter.tag" placeholder="Tag">
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.active">Activity</label>
+              <select id="controls-filter-active">
+                <option value="1" data-i18n="controls.filter.activeOnly">Active only</option>
+                <option value="0" data-i18n="controls.filter.inactiveOnly">Inactive</option>
+                <option value="all" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-actions-inline">
+              <button class="btn ghost" id="controls-apply-filters" data-i18n="common.apply">Apply</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="controls-table">
+              <thead>
+                <tr>
+                  <th data-i18n="controls.table.code">Code</th>
+                  <th data-i18n="controls.table.title">Title</th>
+                  <th data-i18n="controls.table.type">Type</th>
+                  <th data-i18n="controls.table.domain">Domain</th>
+                  <th data-i18n="controls.table.status">Status</th>
+                  <th data-i18n="controls.table.risk">Risk</th>
+                  <th data-i18n="controls.table.owner">Owner</th>
+                  <th data-i18n="controls.table.lastCheck">Last check</th>
+                  <th data-i18n="controls.table.tags">Tags</th>
+                  <th data-i18n="controls.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="controls-empty" hidden data-i18n="controls.empty.controls">No controls yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="controls-tab-checks" data-tab="controls-tab-checks" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="controls.tabs.checks">Checks</h3>
+            <p data-i18n="controls.subtitle">Security control registry</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn primary" id="controls-check-create" data-i18n="controls.actions.addCheck">Add check</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid three-column">
+            <div class="form-field">
+              <label data-i18n="controls.field.control">Control</label>
+              <select id="controls-check-filter-control">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.result">Result</label>
+              <select id="controls-check-filter-result">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.owner">Owner</label>
+              <select id="controls-check-filter-owner">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.dateFrom">From</label>
+              <input type="date" id="controls-check-filter-from" class="input date-input" lang="ru">
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.dateTo">To</label>
+              <input type="date" id="controls-check-filter-to" class="input date-input" lang="ru">
+            </div>
+            <div class="form-actions-inline">
+              <button class="btn ghost" id="controls-check-apply" data-i18n="common.apply">Apply</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="controls-checks-table">
+              <thead>
+                <tr>
+                  <th data-i18n="controls.table.code">Code</th>
+                  <th data-i18n="controls.table.title">Title</th>
+                  <th data-i18n="controls.table.result">Result</th>
+                  <th data-i18n="controls.table.checkedAt">Checked</th>
+                  <th data-i18n="controls.table.checkedBy">Checked by</th>
+                  <th data-i18n="controls.table.notes">Notes</th>
+                  <th data-i18n="controls.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="controls-checks-empty" hidden data-i18n="controls.empty.checks">No checks yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="controls-tab-violations" data-tab="controls-tab-violations" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="controls.tabs.violations">Violations</h3>
+            <p data-i18n="controls.subtitle">Security control registry</p>
+          </div>
+          <div class="btn-group">
+            <button class="btn primary" id="controls-violation-create" data-i18n="controls.actions.addViolation">Add violation</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid three-column">
+            <div class="form-field">
+              <label data-i18n="controls.field.control">Control</label>
+              <select id="controls-violation-filter-control">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.severity">Severity</label>
+              <select id="controls-violation-filter-severity">
+                <option value="" data-i18n="controls.filter.all">All</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.dateFrom">From</label>
+              <input type="date" id="controls-violation-filter-from" class="input date-input" lang="ru">
+            </div>
+            <div class="form-field">
+              <label data-i18n="controls.filter.dateTo">To</label>
+              <input type="date" id="controls-violation-filter-to" class="input date-input" lang="ru">
+            </div>
+            <div class="form-actions-inline">
+              <button class="btn ghost" id="controls-violation-apply" data-i18n="common.apply">Apply</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="controls-violations-table">
+              <thead>
+                <tr>
+                  <th data-i18n="controls.table.code">Code</th>
+                  <th data-i18n="controls.table.title">Title</th>
+                  <th data-i18n="controls.table.severity">Severity</th>
+                  <th data-i18n="controls.table.auto">Auto</th>
+                  <th data-i18n="controls.table.summary">Summary</th>
+                  <th data-i18n="controls.table.happenedAt">Date</th>
+                  <th data-i18n="controls.table.incident">Incident</th>
+                  <th data-i18n="controls.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="controls-violations-empty" hidden data-i18n="controls.empty.violations">No violations yet.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="controls-tab-frameworks" data-tab="controls-tab-frameworks" hidden>
+      <div class="card-grid two-column frameworks-grid">
+        <div class="card">
+          <div class="card-header">
+            <div>
+              <h3 data-i18n="controls.tabs.frameworks">Frameworks</h3>
+              <p data-i18n="controls.subtitle">Security control registry</p>
+            </div>
+            <div class="btn-group">
+              <button class="btn primary" id="framework-create-btn" data-i18n="controls.actions.addFramework">Add framework</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div id="framework-list" class="framework-list"></div>
+            <div class="muted" id="frameworks-empty" hidden data-i18n="controls.empty.frameworks">No frameworks yet.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="control-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="control-modal-title" data-i18n="controls.modal.createTitle">New control</h3>
+        <button class="btn ghost" data-close="#control-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="control-modal-alert" hidden></div>
+        <form id="control-form" class="form-grid two-column">
+          <input type="hidden" id="control-id">
+          <div class="form-field required">
+            <label data-i18n="controls.field.code">Code</label>
+            <input id="control-code" required>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.title">Title</label>
+            <input id="control-title" required>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.type">Type</label>
+            <select id="control-type" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.domain">Domain</label>
+            <select id="control-domain" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.owner">Owner</label>
+            <select id="control-owner"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.frequency">Review frequency</label>
+            <select id="control-frequency" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.status">Status</label>
+            <select id="control-status" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.risk">Risk</label>
+            <select id="control-risk" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.tags">Tags</label>
+            <input id="control-tags" data-i18n-placeholder="controls.field.tagsHint" placeholder="Tag1, Tag2">
+          </div>
+          <div class="form-field full">
+            <label data-i18n="controls.field.description">Description</label>
+            <textarea id="control-description" rows="4"></textarea>
+          </div>
+        </form>
+        <div class="modal-section" id="control-links-section">
+          <h4 data-i18n="controls.links.title">Связи</h4>
+          <div class="links-list" id="control-links-list"></div>
+          <div class="muted" id="control-links-empty" hidden data-i18n="controls.links.empty">Связей нет.</div>
+          <div class="links-form">
+            <select id="control-link-target-type" class="select">
+              <option value="doc" data-i18n="controls.links.type.doc">Документ</option>
+              <option value="task" data-i18n="controls.links.type.task">Задача</option>
+              <option value="incident" data-i18n="controls.links.type.incident">Инцидент</option>
+            </select>
+            <select id="control-link-relation" class="select">
+              <option value="related" data-i18n="controls.links.relation.related">Связано</option>
+              <option value="evidence" data-i18n="controls.links.relation.evidence">Доказательство</option>
+              <option value="implements" data-i18n="controls.links.relation.implements">Реализует</option>
+              <option value="violates" data-i18n="controls.links.relation.violates">Нарушает</option>
+            </select>
+            <input id="control-link-search" class="input" data-i18n-placeholder="controls.links.searchPlaceholder" placeholder="Search">
+            <select id="control-link-target-id" class="select"></select>
+            <button class="btn ghost" type="button" id="control-link-add" data-i18n="controls.links.add">Добавить</button>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="control-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost danger" type="button" id="control-delete-btn" data-i18n="controls.actions.delete">Delete</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="check-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="controls.modal.checkTitle">New check</h3>
+        <button class="btn ghost" data-close="#check-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="check-modal-alert" hidden></div>
+        <form id="check-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="controls.field.control">Control</label>
+            <select id="check-control" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.result">Result</label>
+            <select id="check-result" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.checkedAt">Checked at</label>
+            <input type="text" id="check-date" class="input" data-i18n-placeholder="common.datetimePlaceholder" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ">
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.evidence">Evidence</label>
+            <textarea id="check-evidence" rows="3"></textarea>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="controls.field.notes">Notes</label>
+            <textarea id="check-notes" rows="3"></textarea>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="check-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#check-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="violation-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="controls.modal.violationTitle">New violation</h3>
+        <button class="btn ghost" data-close="#violation-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="violation-modal-alert" hidden></div>
+        <form id="violation-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="controls.field.control">Control</label>
+            <select id="violation-control" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.incidentId">Incident ID</label>
+            <input id="violation-incident-search" class="input" data-i18n-placeholder="controls.incidents.searchPlaceholder" placeholder="Search">
+            <select id="violation-incident" class="select"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.severity">Severity</label>
+            <select id="violation-severity" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.field.happenedAt">Date</label>
+            <input type="text" id="violation-date" class="input" data-i18n-placeholder="common.datetimePlaceholder" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ">
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.field.summary">Summary</label>
+            <input id="violation-summary" required>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="controls.field.impact">Impact</label>
+            <textarea id="violation-impact" rows="3"></textarea>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="violation-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#violation-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="framework-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="controls.modal.frameworkTitle">New framework</h3>
+        <button class="btn ghost" data-close="#framework-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="framework-modal-alert" hidden></div>
+        <form id="framework-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="controls.table.framework">Framework</label>
+            <input id="framework-name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="controls.table.version">Version</label>
+            <input id="framework-version">
+          </div>
+          <div class="form-field">
+            <label class="checkbox">
+              <input type="checkbox" id="framework-active" checked>
+              <span data-i18n="controls.table.active">Active</span>
+            </label>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="framework-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#framework-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="framework-item-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="controls.modal.frameworkItemTitle">New requirement</h3>
+        <button class="btn ghost" data-close="#framework-item-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="framework-item-alert" hidden></div>
+        <form id="framework-item-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="controls.table.code">Code</label>
+            <input id="framework-item-code" required>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="controls.table.title">Title</label>
+            <input id="framework-item-title" required>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="controls.field.description">Description</label>
+            <textarea id="framework-item-description" rows="4"></textarea>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="framework-item-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#framework-item-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="framework-map-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="controls.modal.frameworkMapTitle">Map requirement</h3>
+        <button class="btn ghost" data-close="#framework-map-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="framework-map-alert" hidden></div>
+        <form id="framework-map-form" class="form-grid single-column">
+          <input type="hidden" id="framework-map-item-id">
+          <div class="form-field">
+            <label data-i18n="controls.actions.mapControls">Map to controls</label>
+            <select id="framework-map-controls" multiple class="select"></select>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="framework-map-form" data-i18n="controls.actions.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#framework-map-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="framework-items-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="framework-items-title" data-i18n="controls.table.items">Requirements</h3>
+          <p class="muted" id="framework-items-subtitle" data-i18n="controls.empty.noSelection">Select a framework</p>
+        </div>
+        <div class="btn-group">
+          <button class="btn secondary" id="framework-item-create" data-i18n="controls.actions.addFrameworkItem">Add item</button>
+          <button class="btn ghost" data-close="#framework-items-modal" aria-label="Close">x</button>
+        </div>
+      </div>
+      <div class="modal-content">
+        <div class="table-responsive">
+          <table class="data-table" id="framework-items-table">
+            <thead>
+              <tr>
+                <th data-i18n="controls.table.code">Code</th>
+                <th data-i18n="controls.table.title">Title</th>
+                <th data-i18n="controls.table.mappedControls">Mapped controls</th>
+                <th data-i18n="controls.table.actions">Actions</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="muted" id="framework-items-empty" hidden data-i18n="controls.empty.frameworkItems">No items yet.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="control-detail-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="control-detail-title">-</h3>
+          <p class="muted" id="control-detail-subtitle"></p>
+        </div>
+        <button class="btn ghost" data-close="#control-detail-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="detail-grid" id="control-detail-main"></div>
+        <div class="detail-section">
+          <h4 data-i18n="controls.history.checks">Checks</h4>
+          <div class="table-responsive">
+            <table class="data-table" id="control-detail-checks-table">
+              <thead>
+                <tr>
+                  <th data-i18n="controls.table.checkedAt">Checked</th>
+                  <th data-i18n="controls.table.result">Result</th>
+                  <th data-i18n="controls.table.checkedBy">Checked by</th>
+                  <th data-i18n="controls.table.notes">Notes</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="control-detail-checks-empty" hidden data-i18n="controls.history.emptyChecks">No checks</div>
+        </div>
+        <div class="detail-section">
+          <h4 data-i18n="controls.history.violations">Violations</h4>
+          <div class="table-responsive">
+            <table class="data-table" id="control-detail-violations-table">
+              <thead>
+                <tr>
+                  <th data-i18n="controls.table.happenedAt">Date</th>
+                  <th data-i18n="controls.table.severity">Severity</th>
+                  <th data-i18n="controls.table.summary">Summary</th>
+                  <th data-i18n="controls.table.incident">Incident</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="control-detail-violations-empty" hidden data-i18n="controls.history.emptyViolations">No violations</div>
+        </div>
+        <div class="detail-section" id="control-comments-section">
+          <div class="section-head">
+            <h4 data-i18n="controls.comments.title">Comments</h4>
+          </div>
+          <div class="controls-comments-list" id="controls-comments-list"></div>
+          <div class="muted" id="controls-comments-empty" hidden data-i18n="controls.comments.empty">No comments</div>
+          <div class="control-comment-editor" id="control-comment-editor">
+            <textarea id="control-comment-text" rows="3" data-i18n-placeholder="controls.comments.placeholder" placeholder="Комментарий"></textarea>
+            <div class="control-comment-editor-actions">
+              <input type="file" id="control-comment-files" multiple>
+              <div class="control-comment-buttons">
+                <button class="btn primary" type="button" id="control-comment-submit" data-i18n="controls.comments.add">Add</button>
+                <button class="btn ghost" type="button" id="control-comment-cancel" data-i18n="common.cancel" hidden>Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

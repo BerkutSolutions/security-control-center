@@ -1,0 +1,725 @@
+<div class="page" id="tasks-page">
+  <div class="banner" id="tasks-connection-banner" data-i18n="tasks.errors.noConnection" hidden></div>
+
+  <div class="tabs browser-tabs tasks-tabs" id="tasks-tabs">
+    <button class="tab-btn active" data-tab="tasks-tab-home" data-i18n="tasks.tabs.home">Home</button>
+    <button class="tab-btn" data-tab="tasks-tab-archive" data-i18n="tasks.tabs.archive">Archive</button>
+  </div>
+
+  <div class="tab-panels tasks-panels">
+    <div class="tab-panel tasks-panel" id="tasks-tab-home" data-tab="tasks-tab-home">
+      <div class="card tasks-home-card">
+        <div class="card-header">
+          <div class="btn-group">
+            <button class="btn primary" id="tasks-space-create-btn" data-i18n="tasks.actions.createSpace">Create space</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="tasks-space-list" id="tasks-space-list"></div>
+          <div class="muted tasks-empty" id="tasks-space-empty" data-i18n="tasks.spaces.empty" hidden>No spaces</div>
+        </div>
+      </div>
+      <div class="card tasks-home-card">
+        <div class="card-header">
+          <div class="card-title" data-i18n="tasks.templatesHomeTitle">Card templates</div>
+          <div class="btn-group">
+            <button class="btn ghost" id="tasks-templates-open" data-i18n="tasks.actions.templates">Templates</button>
+            <button class="btn primary" id="tasks-template-create" data-i18n="tasks.templateNew">New template</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="templates-list" id="tasks-templates-home-list"></div>
+          <div class="muted tasks-empty" id="tasks-templates-home-empty" data-i18n="tasks.empty.noTemplates" hidden>No templates</div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-panel tasks-panel" id="tasks-tab-archive" data-tab="tasks-tab-archive" hidden>
+      <div class="card tasks-home-card">
+        <div class="card-header">
+          <div class="card-title" data-i18n="tasks.tabs.archive">Archive</div>
+          <div class="btn-group">
+            <button class="btn ghost" id="tasks-archive-refresh" data-i18n="common.refresh">Refresh</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div id="tasks-archive-list" class="tasks-links-list"></div>
+          <div id="tasks-archive-empty" class="muted tasks-empty" data-i18n="tasks.archive.empty" hidden>No archived tasks</div>
+        </div>
+      </div>
+    </div>
+    <div class="tasks-space-panels" id="tasks-space-panels"></div>
+  </div>
+
+  <template id="tasks-space-panel-template">
+    <div class="tasks-space-view" data-space-id="">
+      <div class="tasks-boards-shell">
+        <div class="tasks-boards" data-space-boards></div>
+        <div class="tasks-empty muted" data-space-empty data-i18n="tasks.boards.empty" hidden>No boards</div>
+      </div>
+    </div>
+  </template>
+  <template id="tasks-board-template">
+    <div class="tasks-board-frame" draggable="true">
+      <div class="tasks-board-header">
+        <button type="button" class="btn ghost btn-sm tasks-board-drag" aria-label="Move board" title="Move board">⫶⫶</button>
+        <div class="tasks-board-title"></div>
+        <div class="tasks-board-actions">
+          <button type="button" class="btn ghost btn-sm tasks-menu-btn" data-menu="board">⫶</button>
+          <button type="button" class="btn ghost btn-sm tasks-board-toggle" aria-label="Toggle board"></button>
+        </div>
+      </div>
+      <div class="tasks-board-columns"></div>
+    </div>
+  </template>
+  <template id="tasks-column-template">
+    <div class="tasks-column">
+      <div class="tasks-column-header">
+        <div class="tasks-column-text">
+          <div class="tasks-column-title" data-column-title></div>
+          <div class="tasks-column-meta" data-column-type></div>
+        </div>
+        <div class="tasks-column-actions">
+          <button type="button" class="btn ghost btn-sm tasks-column-add-btn" data-menu="column-add">+</button>
+          <button type="button" class="btn ghost btn-sm tasks-menu-btn" data-menu="column">⫶</button>
+        </div>
+      </div>
+      <div class="tasks-column-body" data-column-body></div>
+    </div>
+  </template>
+  <template id="tasks-subcolumn-template">
+    <div class="tasks-subcolumn">
+      <div class="tasks-subcolumn-header">
+        <div class="tasks-subcolumn-title"></div>
+        <div class="tasks-subcolumn-actions">
+          <button type="button" class="btn ghost btn-sm tasks-subcolumn-add-btn" data-menu="subcolumn-add">+</button>
+          <button type="button" class="btn ghost btn-sm tasks-menu-btn" data-menu="subcolumn">⫶</button>
+        </div>
+      </div>
+      <div class="tasks-subcolumn-body" data-subcolumn-body></div>
+    </div>
+  </template>
+  <template id="tasks-card-template">
+    <div class="task-card">
+      <div class="task-card-title"></div>
+      <div class="task-card-meta"></div>
+      <div class="task-card-tags"></div>
+      <div class="task-card-size" hidden></div>
+      <button type="button" class="task-card-blocker" hidden></button>
+      <div class="task-card-assignees"></div>
+      <button type="button" class="btn ghost btn-xs task-card-menu">⫶</button>
+    </div>
+  </template>
+
+  <div class="context-menu" id="tasks-context-menu" hidden></div>
+  <div class="context-menu" id="task-block-context-menu" hidden></div>
+
+  <div class="modal" id="tasks-space-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="tasks-space-modal-title" data-i18n="tasks.actions.createSpace">Create space</h3>
+        <button class="btn ghost" id="tasks-space-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="tasks-space-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field required wide">
+            <label data-i18n="tasks.fields.spaceName">Space name</label>
+            <input id="tasks-space-name" class="input" />
+          </div>
+          <div class="form-field wide">
+            <label data-i18n="tasks.fields.description">Description</label>
+            <textarea id="tasks-space-description" class="textarea"></textarea>
+          </div>
+          <div class="form-field wide">
+            <label data-i18n="tasks.fields.access">Access</label>
+            <div class="radio-grid">
+              <label class="radio"><input type="radio" name="tasks-space-access" value="all"><span data-i18n="tasks.access.all">All</span></label>
+              <label class="radio"><input type="radio" name="tasks-space-access" value="users"><span data-i18n="tasks.access.users">Users</span></label>
+              <label class="radio"><input type="radio" name="tasks-space-access" value="departments"><span data-i18n="tasks.access.departments">Departments</span></label>
+            </div>
+          </div>
+          <div class="form-field wide" id="tasks-space-users-field" hidden>
+            <label data-i18n="tasks.fields.users">Users</label>
+            <select id="tasks-space-users" class="select" multiple size="6"></select>
+            <div class="selected-hint" id="tasks-space-users-hint"></div>
+          </div>
+          <div class="form-field wide" id="tasks-space-departments-field" hidden>
+            <label data-i18n="tasks.fields.departments">Departments</label>
+            <select id="tasks-space-departments" class="select" multiple size="6"></select>
+            <div class="selected-hint" id="tasks-space-departments-hint"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="tasks-space-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="tasks-space-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="tasks-board-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="tasks-board-modal-title" data-i18n="tasks.actions.createBoard">Create board</h3>
+        <button class="btn ghost" id="tasks-board-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="tasks-board-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label data-i18n="tasks.fields.boardName">Board name</label>
+            <input id="tasks-board-name" class="input" />
+          </div>
+          <div class="form-field">
+            <label data-i18n="tasks.fields.description">Description</label>
+            <textarea id="tasks-board-description" class="textarea"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="tasks-board-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="tasks-board-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="tasks-column-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="tasks-column-modal-title" data-i18n="tasks.columns.renameTitle">Rename column</h3>
+        <button class="btn ghost" id="tasks-column-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="tasks-column-alert" hidden></div>
+          <div class="form-grid single-column">
+            <div class="form-field required">
+              <label data-i18n="tasks.fields.columnName">Column name</label>
+              <input id="tasks-column-name" class="input" />
+            </div>
+            <div class="form-field">
+              <label data-i18n="tasks.fields.columnType">Column type</label>
+              <select id="tasks-column-type" class="select">
+                <option value="normal" data-i18n="tasks.columnTypes.normal">Normal</option>
+                <option value="waiting" data-i18n="tasks.columnTypes.waiting">Waiting</option>
+                <option value="in_progress" data-i18n="tasks.columnTypes.inProgress">In progress</option>
+                <option value="rework" data-i18n="tasks.columnTypes.rework">Rework</option>
+                <option value="done" data-i18n="tasks.columnTypes.done">Done</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="tasks.fields.wipLimit">WIP limit</label>
+              <input id="tasks-column-wip" class="input" type="number" min="0" />
+            </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="tasks-column-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="tasks-column-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="tasks-subcolumn-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="tasks-subcolumn-modal-title" data-i18n="tasks.subcolumns.addTitle">Add subcolumn</h3>
+        <button class="btn ghost" id="tasks-subcolumn-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="tasks-subcolumn-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label data-i18n="tasks.fields.subcolumnName">Subcolumn name</label>
+            <input id="tasks-subcolumn-name" class="input" />
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="tasks-subcolumn-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="tasks-subcolumn-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="task-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide task-modal">
+      <div class="modal-header task-modal-top task-modal-frame">
+        <div class="task-title-wrap">
+          <div id="task-modal-title-display" class="task-title-display"></div>
+          <div id="task-modal-title-edit" class="task-title-edit" hidden>
+            <input id="task-modal-title-input" class="input task-title-input" data-i18n-placeholder="tasks.fields.title" />
+            <button class="btn ghost btn-xs" id="task-modal-title-save">
+              <span class="icon">OK</span>
+              <span class="visually-hidden" data-i18n="common.save">Save</span>
+            </button>
+            <button class="btn ghost btn-xs" id="task-modal-title-cancel">
+              <span class="icon">X</span>
+              <span class="visually-hidden" data-i18n="common.cancel">Cancel</span>
+            </button>
+          </div>
+        </div>
+        <div class="modal-header-actions">
+          <button class="btn ghost" id="task-modal-copy-link" data-i18n="tasks.actions.copyLink">Copy link</button>
+          <button class="btn ghost" id="task-modal-close" aria-label="Close">x</button>
+        </div>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="task-modal-alert" hidden></div>
+        <div class="task-modal-grid">
+          <div class="task-modal-center task-modal-frame">
+            <div class="task-modal-toolbar">
+              <button type="button" class="btn ghost btn-sm task-modal-add-btn" id="task-modal-add-block" aria-label="Add field" title="Add field">+</button>
+            </div>
+            <div class="task-blocker-frame">
+              <div class="task-blocker-head">
+                <h4 data-i18n="tasks.blocks.blockedByShort">Blocked</h4>
+                <button class="btn ghost btn-sm" id="task-modal-block-btn" data-i18n="tasks.blocks.add">Block</button>
+              </div>
+              <div class="alert" id="task-modal-blocks-alert" hidden></div>
+              <div class="task-blocker-grid">
+                <div>
+                  <div class="task-blocker-title" data-i18n="tasks.blocks.blockedByShort">Blocked by</div>
+                  <div id="task-modal-blocks-list" class="tasks-blocks-list"></div>
+                </div>
+                <div>
+                  <div class="task-blocker-title" data-i18n="tasks.blocks.blocking">Blocks</div>
+                  <div id="task-modal-blocking-list" class="tasks-blocks-list"></div>
+                </div>
+              </div>
+            </div>
+
+            <div class="task-modal-main">
+              <div class="task-field task-location-field">
+                <label data-i18n="tasks.fields.location">Location</label>
+                <button type="button" class="task-location-link" id="task-modal-location-link" data-i18n="tasks.fields.locationLink">Location</button>
+              </div>
+              <div class="task-field">
+                <label data-i18n="tasks.fields.priority">Priority</label>
+                <select id="task-modal-priority" class="select"></select>
+              </div>
+              <div class="task-field">
+                <label data-i18n="tasks.fields.dueDate">Due date</label>
+                <input type="date" id="task-modal-due" class="input date-input" lang="ru" />
+              </div>
+              <div class="task-field assignees-field">
+                <label data-i18n="tasks.fields.assignees">Assignees</label>
+                <div class="task-assignees-select" id="task-modal-assignees-wrap">
+                  <input id="task-modal-assignees-search" class="input task-assignees-search" data-i18n-placeholder="tasks.fields.assigneesSearch" />
+                  <div id="task-modal-assignees-list" class="task-assignees-list" hidden></div>
+                </div>
+                <select id="task-modal-assignees" class="select" multiple size="6" hidden></select>
+                <div class="selected-hint" id="task-modal-assignees-hint"></div>
+              </div>
+              <div class="task-functional-blocks">
+                <div class="task-block task-tags-field" id="task-modal-tags-field" hidden data-block="tags">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.fields.tags">Tags</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div class="task-tags-list" id="task-modal-tags-list"></div>
+                    <input id="task-modal-tag-input" class="input" data-i18n-placeholder="tasks.tags.placeholder" list="task-modal-tags-suggestions" />
+                    <datalist id="task-modal-tags-suggestions"></datalist>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="tags">...</button>
+                </div>
+
+                <div class="task-block task-checklist-field" id="task-modal-checklist-field" hidden data-block="checklist">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.sections.checklist">Checklist</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-checklist-list" class="tasks-checklist-list"></div>
+                    <div class="tasks-checklist-add">
+                      <input id="task-modal-checklist-input" class="input" data-i18n-placeholder="tasks.checklist.placeholder" />
+                      <button type="button" class="btn ghost btn-sm" id="task-modal-checklist-add" data-i18n="tasks.actions.addItem">Add</button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="checklist">...</button>
+                </div>
+
+                <div class="task-block task-relations-parent-field" id="task-modal-relations-parent-field" hidden data-block="relations_parent">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.links.parent">Parent task</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-relations-parent" class="tasks-links-list"></div>
+                    <div class="task-relation-picker" data-relation-picker="parent">
+                      <input id="task-modal-relation-parent-input" class="input" data-i18n-placeholder="tasks.links.selectPlaceholder" autocomplete="off" />
+                      <div class="task-relation-dropdown" id="task-modal-relation-parent-dropdown" hidden></div>
+                    </div>
+                    <div class="task-relation-actions">
+                      <button type="button" class="btn ghost btn-sm" id="task-modal-relation-parent" data-i18n="tasks.links.addParent">Parent task</button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="relations_parent">...</button>
+                </div>
+
+                <div class="task-block task-relations-child-field" id="task-modal-relations-child-field" hidden data-block="relations_child">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.links.child">Child task</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-relations-child" class="tasks-links-list"></div>
+                    <div class="task-relation-picker" data-relation-picker="child">
+                      <input id="task-modal-relation-child-input" class="input" data-i18n-placeholder="tasks.links.selectPlaceholder" autocomplete="off" />
+                      <div class="task-relation-dropdown" id="task-modal-relation-child-dropdown" hidden></div>
+                    </div>
+                    <div class="task-relation-actions">
+                      <button type="button" class="btn ghost btn-sm" id="task-modal-relation-child" data-i18n="tasks.links.addChild">Child task</button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="relations_child">...</button>
+                </div>
+
+                <div class="task-block task-external-link-field" id="task-modal-external-link-field" hidden data-block="external_link">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.blocks.externalLink">Link</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div class="task-inline-view" id="task-modal-external-link-view" data-inline-view="external_link" data-i18n="tasks.fields.addValue">Add value</div>
+                    <div class="task-inline-editor" id="task-modal-external-link-editor" hidden>
+                    <input id="task-modal-external-link" class="input" data-i18n-placeholder="tasks.blocks.externalLinkPlaceholder" />
+                    <div class="task-inline-actions">
+                      <button type="button" class="btn ghost btn-xs" data-inline-save="external_link">✓</button>
+                      <button type="button" class="btn ghost btn-xs" data-inline-cancel="external_link">✕</button>
+                    </div>
+                  </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="external_link">...</button>
+                </div>
+
+                <div class="task-block task-files-field" id="task-modal-files-field" hidden data-block="files">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.blocks.files">Files</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-files-list" class="task-files-list"></div>
+                    <div class="task-files-actions">
+                      <input type="file" id="task-files-input" multiple hidden>
+                      <button type="button" class="btn ghost btn-sm" id="task-files-upload" data-i18n="tasks.actions.uploadFile">Upload</button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="files">...</button>
+                </div>
+
+                <div class="task-block task-size-field" id="task-modal-size-field" hidden data-block="size">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.fields.size">Size</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div class="task-inline-view" id="task-modal-size-view" data-inline-view="size_estimate" data-i18n="tasks.fields.addValue">Add value</div>
+                    <div class="task-inline-editor" id="task-modal-size-editor" hidden>
+                    <input id="task-modal-size" class="input" type="number" min="0" />
+                    <div class="task-inline-actions">
+                      <button type="button" class="btn ghost btn-xs" data-inline-save="size_estimate">✓</button>
+                      <button type="button" class="btn ghost btn-xs" data-inline-cancel="size_estimate">✕</button>
+                    </div>
+                  </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="size">...</button>
+                </div>
+
+                <div class="task-block task-business-field" id="task-modal-business-field" hidden data-block="business_customer">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.blocks.businessCustomer">Business customer</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div class="task-inline-view" id="task-modal-business-view" data-inline-view="business_customer" data-i18n="tasks.fields.addValue">Add value</div>
+                    <div class="task-inline-editor" id="task-modal-business-editor" hidden>
+                    <input id="task-modal-business" class="input" data-i18n-placeholder="tasks.blocks.businessCustomerPlaceholder" />
+                    <div class="task-inline-actions">
+                      <button type="button" class="btn ghost btn-xs" data-inline-save="business_customer">✓</button>
+                      <button type="button" class="btn ghost btn-xs" data-inline-cancel="business_customer">✕</button>
+                    </div>
+                  </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="business_customer">...</button>
+                </div>
+
+                <div class="task-block task-links-field" id="task-modal-links-field" hidden data-block="links">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.sections.links">Links</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-links-list" class="tasks-links-list"></div>
+                    <div class="links-form compact">
+                      <select id="task-modal-link-type" class="select">
+                        <option value="doc" data-i18n="tasks.links.doc">Document</option>
+                        <option value="incident" data-i18n="tasks.links.incident">Incident</option>
+                        <option value="control" data-i18n="tasks.links.control">Control</option>
+                      </select>
+                      <div class="task-link-picker">
+                        <input id="task-modal-link-search" class="input" data-i18n-placeholder="tasks.links.searchPlaceholder" autocomplete="off" />
+                        <div class="task-link-dropdown" id="task-modal-link-dropdown" hidden></div>
+                      </div>
+                      <button type="button" class="btn ghost btn-sm" id="task-modal-link-add" data-i18n="tasks.actions.addLink">Add</button>
+                    </div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="links">...</button>
+                </div>
+
+                <div class="task-block task-controls-field" id="task-modal-controls-field" hidden data-block="controls">
+                  <div class="task-block-head">
+                    <span data-i18n="tasks.sections.controls">Controls</span>
+                  </div>
+                  <div class="task-block-body">
+                    <div id="task-modal-controls-list" class="tasks-links-list"></div>
+                  </div>
+                  <button type="button" class="btn ghost btn-xs task-block-menu" data-block-menu="controls">...</button>
+                </div>
+              </div>
+              <div class="task-field text-field">
+                <label data-i18n="tasks.fields.description">Description</label>
+                <div class="task-text-view" id="task-modal-description-view" data-i18n="tasks.fields.descriptionHint"></div>
+                <div class="task-text-editor" id="task-modal-description-editor" hidden>
+                  <textarea id="task-modal-description" class="textarea"></textarea>
+                  <div class="form-actions-inline">
+                    <button class="btn primary btn-sm" id="task-modal-description-save" data-i18n="common.save">Save</button>
+                    <button class="btn ghost btn-sm" id="task-modal-description-cancel" data-i18n="common.cancel">Cancel</button>
+                  </div>
+                </div>
+              </div>
+              <div class="task-field text-field">
+                <label data-i18n="tasks.fields.result">Result</label>
+                <div class="task-text-view" id="task-modal-result-view" data-i18n="tasks.fields.resultHint"></div>
+                <div class="task-text-editor" id="task-modal-result-editor" hidden>
+                  <textarea id="task-modal-result" class="textarea"></textarea>
+                  <div class="form-actions-inline">
+                    <button class="btn primary btn-sm" id="task-modal-result-save" data-i18n="common.save">Save</button>
+                    <button class="btn ghost btn-sm" id="task-modal-result-cancel" data-i18n="common.cancel">Cancel</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="task-modal-right task-modal-frame">
+            <div class="task-comments-section">
+              <div class="tasks-section-header">
+                <h4 data-i18n="tasks.sections.comments">Comments</h4>
+              </div>
+              <div id="task-modal-comments-list" class="task-comments-list"></div>
+              <div class="task-comment-form">
+                <textarea id="task-comment-input" class="textarea" rows="3" data-i18n-placeholder="tasks.comments.placeholder"></textarea>
+                <div id="task-comment-attachments" class="task-comment-attachments"></div>
+                <div class="task-comment-actions">
+                  <input type="file" id="task-comment-file" multiple hidden>
+                  <button type="button" class="btn ghost btn-sm" id="task-comment-attach" aria-label="Attach" title="Attach">📎</button>
+                  <button type="button" class="btn primary btn-sm" id="task-comment-submit" data-i18n="tasks.comments.send">Send</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+<div class="modal" id="task-move-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="tasks.actions.moveTask">Move task</h3>
+        <button class="btn ghost" id="task-move-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="task-move-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label data-i18n="tasks.fields.space">Space</label>
+            <select id="task-move-space" class="select"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="tasks.board">Board</label>
+            <select id="task-move-board" class="select"></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="tasks.fields.column">Column</label>
+            <select id="task-move-column" class="select"></select>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="task-move-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="task-move-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="task-block-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="tasks.blocks.blockTitle">Block task</h3>
+        <button class="btn ghost" id="task-block-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="task-block-modal-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field">
+            <label data-i18n="tasks.blocks.reason">Reason</label>
+            <textarea id="task-block-reason-input" class="textarea"></textarea>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn secondary" id="task-block-add-link" data-i18n="tasks.blocks.addBlocker">Add blocker task</button>
+          <button type="button" class="btn primary" id="task-block-save" data-i18n="common.save">Save</button>
+          <button type="button" class="btn ghost" id="task-block-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="task-blocker-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="tasks.blocks.selectBlocker">Select blocker</h3>
+        <button class="btn ghost" id="task-blocker-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="task-blocker-tree" class="tasks-blocker-tree"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="task-templates-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="tasks.templatesTitle">Templates</h3>
+        <button class="btn ghost" data-close aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="task-templates-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field wide">
+            <div class="tasks-template-header">
+              <label data-i18n="tasks.templatesTitle">Templates</label>
+              <button class="btn primary btn-sm" id="task-template-new" data-i18n="tasks.templateNew">New template</button>
+            </div>
+            <div class="templates-list" id="task-templates-list"></div>
+          </div>
+          <div class="form-field wide">
+            <form id="task-template-form">
+              <div class="alert" id="task-template-manage-alert" hidden></div>
+              <div class="form-grid single-column">
+                <div class="form-field required">
+                  <label data-i18n="tasks.templateTitle">Template title</label>
+                  <input id="task-template-title" class="input" />
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.templateDescription">Template description</label>
+                  <textarea id="task-template-description" class="textarea"></textarea>
+                </div>
+                <div class="form-field required">
+                  <label data-i18n="tasks.board">Board</label>
+                  <select id="task-template-board" class="select"></select>
+                </div>
+                <div class="form-field required">
+                  <label data-i18n="tasks.fields.column">Column</label>
+                  <select id="task-template-column" class="select"></select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.fields.priority">Priority</label>
+                  <select id="task-template-priority" class="select"></select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.templateAssignees">Default assignees</label>
+                  <select id="task-template-assignees" class="select" multiple size="6"></select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.templateDueDays">Due in (days)</label>
+                  <input id="task-template-due-days" class="input" type="number" min="0" />
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.templateChecklist">Checklist</label>
+                  <textarea id="task-template-checklist" class="textarea" rows="5"></textarea>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="tasks.templateLinks">Links</label>
+                  <div id="task-template-links-list" class="tasks-links-list"></div>
+                  <div class="links-form compact">
+                    <select id="task-template-link-type" class="select">
+                      <option value="doc" data-i18n="tasks.links.doc">Document</option>
+                      <option value="incident" data-i18n="tasks.links.incident">Incident</option>
+                      <option value="task" data-i18n="tasks.links.task">Task</option>
+                      <option value="control" data-i18n="tasks.links.control">Control</option>
+                    </select>
+                    <input id="task-template-link-id" class="input" data-i18n-placeholder="tasks.links.idPlaceholder" />
+                    <button type="button" class="btn ghost btn-sm" id="task-template-link-add" data-i18n="tasks.actions.addLink">Add</button>
+                  </div>
+                </div>
+                <div class="form-field">
+                  <label class="checkbox">
+                    <input type="checkbox" id="task-template-active" checked />
+                    <span data-i18n="tasks.templateActive">Active</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-actions">
+                <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+                <button type="button" class="btn ghost danger" id="task-template-delete" data-i18n="common.delete">Delete</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="task-template-picker-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="tasks.actions.createFromTemplate">Create from template</h3>
+        <button class="btn ghost" id="task-template-picker-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="task-template-picker-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label data-i18n="tasks.fields.template">Template</label>
+            <select id="task-template-picker-select" class="select"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="tasks.fields.title">Title</label>
+            <input id="task-template-picker-title" class="input" data-i18n-placeholder="tasks.fields.title" />
+          </div>
+          <div class="form-field">
+            <div class="muted" id="task-template-picker-meta"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="task-template-picker-create" data-i18n="tasks.actions.createTask">Create task</button>
+          <button type="button" class="btn ghost" id="task-template-picker-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="tasks-confirm-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="tasks-confirm-title" data-i18n="common.confirm">Confirm</h3>
+        <button class="btn ghost" id="tasks-confirm-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="tasks-confirm-message" class="confirm-message"></div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="tasks-confirm-yes" data-i18n="common.confirm">Confirm</button>
+          <button type="button" class="btn ghost" id="tasks-confirm-no" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+
+

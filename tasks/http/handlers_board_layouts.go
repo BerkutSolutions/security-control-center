@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) GetBoardLayout(w http.ResponseWriter, r *http.Request) {
@@ -14,7 +14,7 @@ func (h *Handler) GetBoardLayout(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	spaceID := parseInt64Default(mux.Vars(r)["id"], 0)
+	spaceID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if spaceID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -47,7 +47,7 @@ func (h *Handler) SaveBoardLayout(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	spaceID := parseInt64Default(mux.Vars(r)["id"], 0)
+	spaceID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if spaceID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

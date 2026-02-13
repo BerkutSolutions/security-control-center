@@ -1,0 +1,87 @@
+package routegroups
+
+import (
+	"berkut-scc/api/handlers"
+	"github.com/go-chi/chi/v5"
+)
+
+func RegisterIncidents(apiRouter chi.Router, g Guards, incidents *handlers.IncidentsHandler) {
+	apiRouter.Route("/incidents", func(incidentsRouter chi.Router) {
+		incidentsRouter.MethodFunc("GET", "/dashboard", g.SessionPerm("incidents.view", incidents.Dashboard))
+		incidentsRouter.MethodFunc("GET", "/list", g.SessionPerm("incidents.view", incidents.ListIncidentsLite))
+		incidentsRouter.MethodFunc("GET", "/", g.SessionPerm("incidents.view", incidents.List))
+		incidentsRouter.MethodFunc("POST", "/", g.SessionPerm("incidents.create", incidents.Create))
+		incidentsRouter.MethodFunc("GET", "/{id}", g.SessionPerm("incidents.view", incidents.Get))
+		incidentsRouter.MethodFunc("PUT", "/{id}", g.SessionPerm("incidents.edit", incidents.Update))
+		incidentsRouter.MethodFunc("DELETE", "/{id}", g.SessionPerm("incidents.delete", incidents.Delete))
+		incidentsRouter.MethodFunc("POST", "/{id}/restore", g.SessionPerm("incidents.manage", incidents.Restore))
+		incidentsRouter.MethodFunc("GET", "/{id}/links", g.SessionPerm("incidents.view", incidents.ListLinks))
+		incidentsRouter.MethodFunc("POST", "/{id}/links", g.SessionPerm("incidents.edit", incidents.AddLink))
+		incidentsRouter.MethodFunc("DELETE", "/{id}/links/{link_id}", g.SessionPerm("incidents.edit", incidents.DeleteLink))
+		incidentsRouter.MethodFunc("GET", "/{id}/control-links", g.SessionPerm("incidents.view", incidents.ListControlLinks))
+		incidentsRouter.MethodFunc("GET", "/{id}/attachments", g.SessionPerm("incidents.view", incidents.ListAttachments))
+		incidentsRouter.MethodFunc("POST", "/{id}/attachments/upload", g.SessionPerm("incidents.edit", incidents.UploadAttachment))
+		incidentsRouter.MethodFunc("GET", "/{id}/attachments/{att_id}/download", g.SessionPerm("incidents.view", incidents.DownloadAttachment))
+		incidentsRouter.MethodFunc("DELETE", "/{id}/attachments/{att_id}", g.SessionPerm("incidents.edit", incidents.DeleteAttachment))
+		incidentsRouter.MethodFunc("GET", "/{id}/artifacts/{artifact_id}/files", g.SessionPerm("incidents.view", incidents.ListArtifactFiles))
+		incidentsRouter.MethodFunc("POST", "/{id}/artifacts/{artifact_id}/files", g.SessionPerm("incidents.edit", incidents.UploadArtifactFile))
+		incidentsRouter.MethodFunc("GET", "/{id}/artifacts/{artifact_id}/files/{file_id}/download", g.SessionPerm("incidents.view", incidents.DownloadArtifactFile))
+		incidentsRouter.MethodFunc("DELETE", "/{id}/artifacts/{artifact_id}/files/{file_id}", g.SessionPerm("incidents.edit", incidents.DeleteArtifactFile))
+		incidentsRouter.MethodFunc("GET", "/{id}/timeline", g.SessionPerm("incidents.view", incidents.ListTimeline))
+		incidentsRouter.MethodFunc("POST", "/{id}/timeline", g.SessionPerm("incidents.edit", incidents.AddTimeline))
+		incidentsRouter.MethodFunc("GET", "/{id}/activity", g.SessionPerm("incidents.view", incidents.ListActivity))
+		incidentsRouter.MethodFunc("GET", "/{id}/export", g.SessionPerm("incidents.export", incidents.Export))
+		incidentsRouter.MethodFunc("POST", "/{id}/create-report-doc", g.SessionPerm("incidents.edit", incidents.CreateReportDoc))
+		incidentsRouter.MethodFunc("POST", "/{id}/close", g.SessionPerm("incidents.edit", incidents.CloseIncident))
+		incidentsRouter.MethodFunc("GET", "/{id}/stages", g.SessionPerm("incidents.view", incidents.ListStages))
+		incidentsRouter.MethodFunc("POST", "/{id}/stages", g.SessionPerm("incidents.edit", incidents.AddStage))
+		incidentsRouter.MethodFunc("GET", "/{id}/stages/{stage_id}", g.SessionPerm("incidents.view", incidents.GetStage))
+		incidentsRouter.MethodFunc("PUT", "/{id}/stages/{stage_id}", g.SessionPerm("incidents.edit", incidents.UpdateStage))
+		incidentsRouter.MethodFunc("DELETE", "/{id}/stages/{stage_id}", g.SessionPerm("incidents.edit", incidents.DeleteStage))
+		incidentsRouter.MethodFunc("POST", "/{id}/stages/{stage_id}/complete", g.SessionPerm("incidents.edit", incidents.CompleteStage))
+		incidentsRouter.MethodFunc("GET", "/{id}/stages/{stage_id}/content", g.SessionPerm("incidents.view", incidents.GetStageContent))
+		incidentsRouter.MethodFunc("PUT", "/{id}/stages/{stage_id}/content", g.SessionPerm("incidents.edit", incidents.UpdateStageContent))
+		incidentsRouter.MethodFunc("GET", "/{id}/acl", g.SessionPerm("incidents.manage", incidents.GetACL))
+		incidentsRouter.MethodFunc("PUT", "/{id}/acl", g.SessionPerm("incidents.manage", incidents.UpdateACL))
+	})
+}
+
+func RegisterControls(apiRouter chi.Router, g Guards, controls *handlers.ControlsHandler) {
+	apiRouter.Route("/controls", func(controlsRouter chi.Router) {
+		controlsRouter.MethodFunc("GET", "/", g.SessionPerm("controls.view", controls.ListControls))
+		controlsRouter.MethodFunc("POST", "/", g.SessionPerm("controls.manage", controls.CreateControl))
+		controlsRouter.MethodFunc("GET", "/types", g.SessionPerm("controls.view", controls.ListControlTypes))
+		controlsRouter.MethodFunc("POST", "/types", g.SessionPerm("settings.controls", controls.CreateControlType))
+		controlsRouter.MethodFunc("DELETE", "/types/{id:[0-9]+}", g.SessionPerm("settings.controls", controls.DeleteControlType))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}", g.SessionPerm("controls.view", controls.GetControl))
+		controlsRouter.MethodFunc("PUT", "/{id:[0-9]+}", g.SessionPerm("controls.manage", controls.UpdateControl))
+		controlsRouter.MethodFunc("DELETE", "/{id:[0-9]+}", g.SessionPerm("controls.manage", controls.DeleteControl))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}/comments", g.SessionPerm("controls.view", controls.ListControlComments))
+		controlsRouter.MethodFunc("POST", "/{id:[0-9]+}/comments", g.SessionPerm("controls.manage", controls.AddControlComment))
+		controlsRouter.MethodFunc("PUT", "/{id:[0-9]+}/comments/{comment_id:[0-9]+}", g.SessionPerm("controls.view", controls.UpdateControlComment))
+		controlsRouter.MethodFunc("DELETE", "/{id:[0-9]+}/comments/{comment_id:[0-9]+}", g.SessionPerm("controls.view", controls.DeleteControlComment))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}/comments/{comment_id:[0-9]+}/files/{file_id}", g.SessionPerm("controls.view", controls.DownloadControlCommentFile))
+		controlsRouter.MethodFunc("DELETE", "/{id:[0-9]+}/comments/{comment_id:[0-9]+}/files/{file_id}", g.SessionPerm("controls.view", controls.DeleteControlCommentFile))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}/checks", g.SessionPerm("controls.checks.view", controls.ListControlChecks))
+		controlsRouter.MethodFunc("POST", "/{id:[0-9]+}/checks", g.SessionPerm("controls.checks.manage", controls.CreateControlCheck))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}/violations", g.SessionPerm("controls.violations.view", controls.ListControlViolations))
+		controlsRouter.MethodFunc("POST", "/{id:[0-9]+}/violations", g.SessionPerm("controls.violations.manage", controls.CreateControlViolation))
+		controlsRouter.MethodFunc("GET", "/{id:[0-9]+}/links", g.SessionPerm("controls.view", controls.ListControlLinks))
+		controlsRouter.MethodFunc("POST", "/{id:[0-9]+}/links", g.SessionPerm("controls.manage", controls.CreateControlLink))
+		controlsRouter.MethodFunc("DELETE", "/{id:[0-9]+}/links/{link_id:[0-9]+}", g.SessionPerm("controls.manage", controls.DeleteControlLink))
+	})
+
+	apiRouter.MethodFunc("GET", "/checks", g.SessionPerm("controls.checks.view", controls.ListChecks))
+	apiRouter.MethodFunc("DELETE", "/checks/{id:[0-9]+}", g.SessionPerm("controls.checks.manage", controls.DeleteCheck))
+	apiRouter.MethodFunc("GET", "/violations", g.SessionPerm("controls.violations.view", controls.ListViolations))
+	apiRouter.MethodFunc("DELETE", "/violations/{id:[0-9]+}", g.SessionPerm("controls.violations.manage", controls.DeleteViolation))
+
+	apiRouter.Route("/frameworks", func(frameworksRouter chi.Router) {
+		frameworksRouter.MethodFunc("GET", "/", g.SessionPerm("controls.frameworks.view", controls.ListFrameworks))
+		frameworksRouter.MethodFunc("POST", "/", g.SessionPerm("controls.frameworks.manage", controls.CreateFramework))
+		frameworksRouter.MethodFunc("GET", "/{id:[0-9]+}/items", g.SessionPerm("controls.frameworks.view", controls.ListFrameworkItems))
+		frameworksRouter.MethodFunc("POST", "/{id:[0-9]+}/items", g.SessionPerm("controls.frameworks.manage", controls.CreateFrameworkItem))
+		frameworksRouter.MethodFunc("POST", "/map", g.SessionPerm("controls.frameworks.manage", controls.CreateFrameworkMap))
+		frameworksRouter.MethodFunc("GET", "/{id:[0-9]+}/map", g.SessionPerm("controls.frameworks.view", controls.ListFrameworkMap))
+	})
+}

@@ -1,15 +1,18 @@
-# Berkut Solutions - Security Control Center Documentation (EN)
+﻿# Berkut SCC Documentation (EN)
 
-## Table of Contents
+## Sections
 1. Architecture: `docs/eng/architecture.md`
 2. API: `docs/eng/api.md`
 3. Security: `docs/eng/security.md`
 4. Deploy and CI/CD: `docs/eng/deploy.md`
-5. Runbook (start/recovery): `docs/eng/runbook.md`
+5. Runbook (start and recovery): `docs/eng/runbook.md`
 6. Tabs wiki: `docs/eng/wiki/tabs.md`
 7. Features wiki: `docs/eng/wiki/features.md`
+8. Current evolution plan: `docs/eng/roadmap.md`
 
-## Quick start
-See commands in `docs/eng/runbook.md`.
-
-
+## Context
+Documentation is aligned with current runtime reality:
+- PostgreSQL runtime
+- goose migrations
+- cleanenv configuration
+- server-side zero-trust authorization

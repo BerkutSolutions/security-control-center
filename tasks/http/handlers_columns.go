@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListColumns(w http.ResponseWriter, r *http.Request) {
@@ -17,7 +17,7 @@ func (h *Handler) ListColumns(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["board_id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "board_id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -51,7 +51,7 @@ func (h *Handler) CreateColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["board_id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "board_id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -117,7 +117,7 @@ func (h *Handler) UpdateColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if columnID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -218,7 +218,7 @@ func (h *Handler) DeleteColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if columnID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -256,7 +256,7 @@ func (h *Handler) MoveColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if columnID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -302,7 +302,7 @@ func (h *Handler) ArchiveColumnTasks(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if columnID <= 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

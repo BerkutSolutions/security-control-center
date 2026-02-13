@@ -17,40 +17,39 @@ import (
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
 )
 
 type ReportsHandler struct {
-	cfg     *config.AppConfig
-	docs    store.DocsStore
-	reports store.ReportsStore
-	users   store.UsersStore
-	policy  *rbac.Policy
-	svc     *docs.Service
-	incidents store.IncidentsStore
+	cfg          *config.AppConfig
+	docs         store.DocsStore
+	reports      store.ReportsStore
+	users        store.UsersStore
+	policy       *rbac.Policy
+	svc          *docs.Service
+	incidents    store.IncidentsStore
 	incidentsSvc *incidents.Service
-	controls store.ControlsStore
-	monitoring store.MonitoringStore
-	tasksSvc *tasks.Service
-	audits  store.AuditStore
-	logger  *utils.Logger
+	controls     store.ControlsStore
+	monitoring   store.MonitoringStore
+	tasksSvc     *tasks.Service
+	audits       store.AuditStore
+	logger       *utils.Logger
 }
 
 func NewReportsHandler(cfg *config.AppConfig, ds store.DocsStore, rs store.ReportsStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, incidents store.IncidentsStore, incidentsSvc *incidents.Service, controls store.ControlsStore, monitoring store.MonitoringStore, tasksSvc *tasks.Service, audits store.AuditStore, logger *utils.Logger) *ReportsHandler {
 	return &ReportsHandler{
-		cfg: cfg,
-		docs: ds,
-		reports: rs,
-		users: us,
-		policy: policy,
-		svc: svc,
-		incidents: incidents,
+		cfg:          cfg,
+		docs:         ds,
+		reports:      rs,
+		users:        us,
+		policy:       policy,
+		svc:          svc,
+		incidents:    incidents,
 		incidentsSvc: incidentsSvc,
-		controls: controls,
-		monitoring: monitoring,
-		tasksSvc: tasksSvc,
-		audits: audits,
-		logger: logger,
+		controls:     controls,
+		monitoring:   monitoring,
+		tasksSvc:     tasksSvc,
+		audits:       audits,
+		logger:       logger,
 	}
 }
 
@@ -104,7 +103,7 @@ func (h *ReportsHandler) loadReportForAccess(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return nil, nil, nil, nil, false
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.docs.GetDocument(r.Context(), id)
 	if err != nil || doc == nil || !h.isReport(doc) {
 		http.Error(w, "not found", http.StatusNotFound)

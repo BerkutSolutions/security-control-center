@@ -1,14 +1,18 @@
-# Berkut Solutions - Security Control Center - Документация (RU)
+п»ї# Berkut SCC вЂ” Р”РѕРєСѓРјРµРЅС‚Р°С†РёСЏ (RU)
 
-## Оглавление
-1. Архитектура: `docs/ru/architecture.md`
+## Р Р°Р·РґРµР»С‹
+1. РђСЂС…РёС‚РµРєС‚СѓСЂР°: `docs/ru/architecture.md`
 2. API: `docs/ru/api.md`
-3. Безопасность: `docs/ru/security.md`
-4. Деплой и CI/CD: `docs/ru/deploy.md`
-5. Runbook (старт/восстановление): `docs/ru/runbook.md`
-6. Wiki по вкладкам: `docs/ru/wiki/tabs.md`
-7. Wiki по функционалу: `docs/ru/wiki/features.md`
+3. Р‘РµР·РѕРїР°СЃРЅРѕСЃС‚СЊ: `docs/ru/security.md`
+4. Р”РµРїР»РѕР№ Рё CI/CD: `docs/ru/deploy.md`
+5. Runbook (Р·Р°РїСѓСЃРє Рё РІРѕСЃСЃС‚Р°РЅРѕРІР»РµРЅРёРµ): `docs/ru/runbook.md`
+6. Wiki РїРѕ РІРєР»Р°РґРєР°Рј: `docs/ru/wiki/tabs.md`
+7. Wiki РїРѕ С„СѓРЅРєС†РёРѕРЅР°Р»Сѓ: `docs/ru/wiki/features.md`
+8. РђРєС‚СѓР°Р»СЊРЅС‹Р№ РїР»Р°РЅ СЂР°Р·РІРёС‚РёСЏ: `docs/ru/roadmap.md`
 
-## Быстрый старт
-Смотри команды в `docs/ru/runbook.md`.
-
+## РљРѕРЅС‚РµРєСЃС‚
+Р”РѕРєСѓРјРµРЅС‚Р°С†РёСЏ СЃРёРЅС…СЂРѕРЅРёР·РёСЂРѕРІР°РЅР° СЃ С‚РµРєСѓС‰РµР№ РјРѕРґРµР»СЊСЋ:
+- PostgreSQL runtime
+- goose РјРёРіСЂР°С†РёРё
+- cleanenv-РєРѕРЅС„РёРіСѓСЂР°С†РёСЏ
+- zero-trust РїСЂРѕРІРµСЂРєРё РґРѕСЃС‚СѓРїР° РЅР° СЃРµСЂРІРµСЂРµ

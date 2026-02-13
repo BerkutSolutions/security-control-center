@@ -1,12 +1,11 @@
-# Documentation
+﻿# Documentation
 
-This directory contains detailed (deep-dive) project documentation.
-For a high-level product overview and quick start, see root `README.md`.
+This directory contains detailed technical documentation for the current runtime model.
 
-## Primary structure
+Primary entry points:
 - Russian: `docs/ru/README.md`
 - English: `docs/eng/README.md`
 
-## Runbooks
-- RU: `docs/ru/runbook.md`
-- EN: `docs/eng/runbook.md`
+Root product overview:
+- `README.md`
+- `README.en.md`

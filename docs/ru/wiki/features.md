@@ -4,7 +4,7 @@
 Login/logout/me, cookie sessions, CSRF, password policy.
 
 ## Authorization
-RBAC + ACL + classification/clearance, zero-trust на сервере.
+RBAC + ACL + classification/clearance, zero-trust проверки на сервере.
 
 ## Audit
 Логирование критичных действий в `audit_log`.
@@ -13,14 +13,14 @@ RBAC + ACL + classification/clearance, zero-trust на сервере.
 RU/EN локализация через `gui/static/i18n/*.json`.
 
 ## HTTPS and network
-Reverse proxy (recommended) или built-in TLS.
-Trusted proxies и аудит изменений HTTPS.
+Reverse proxy (рекомендуется) или built-in TLS.
+Trusted proxies и аудит изменений HTTPS-конфига.
 
 ## Storage and encryption
-SQLite + encrypted content/attachments + persistent volumes.
+PostgreSQL runtime + шифрование чувствительного контента/вложений + persistent volumes.
 
 ## Import/export/conversion
 Импорт/экспорт документов и отчетов, локальная конвертация.
 
 ## Deploy and CI/CD
-Docker/compose, GitLab pipeline, rollback.
+Docker/Compose, verify pipeline, rollback.

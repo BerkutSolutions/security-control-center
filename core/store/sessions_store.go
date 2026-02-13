@@ -14,6 +14,7 @@ type SessionStore interface {
 	ListAll(ctx context.Context) ([]SessionRecord, error)
 	DeleteSession(ctx context.Context, id string, by string) error
 	DeleteAllForUser(ctx context.Context, userID int64, by string) error
+	DeleteAll(ctx context.Context, by string) error
 	UpdateActivity(ctx context.Context, id string, now time.Time, extendBy time.Duration) error
 }
 
@@ -38,7 +39,23 @@ func (s *sessionsStore) SaveSession(ctx context.Context, sess *SessionRecord) er
 	if sess.RevokedAt != nil {
 		revokedAt = *sess.RevokedAt
 	}
-	_, err := s.db.ExecContext(ctx, `INSERT OR REPLACE INTO sessions(id, user_id, username, roles, csrf_token, ip, user_agent, created_at, last_seen_at, expires_at, revoked, revoked_at, revoked_by) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+	_, err := s.db.ExecContext(ctx, `
+		INSERT INTO sessions(id, user_id, username, roles, csrf_token, ip, user_agent, created_at, last_seen_at, expires_at, revoked, revoked_at, revoked_by)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT(id) DO UPDATE SET
+			user_id=EXCLUDED.user_id,
+			username=EXCLUDED.username,
+			roles=EXCLUDED.roles,
+			csrf_token=EXCLUDED.csrf_token,
+			ip=EXCLUDED.ip,
+			user_agent=EXCLUDED.user_agent,
+			created_at=EXCLUDED.created_at,
+			last_seen_at=EXCLUDED.last_seen_at,
+			expires_at=EXCLUDED.expires_at,
+			revoked=EXCLUDED.revoked,
+			revoked_at=EXCLUDED.revoked_at,
+			revoked_by=EXCLUDED.revoked_by
+	`,
 		sess.ID, sess.UserID, sess.Username, string(rolesJSON), sess.CSRFToken, sess.IP, sess.UserAgent, sess.CreatedAt, sess.LastSeenAt, sess.ExpiresAt, boolToInt(sess.Revoked), revokedAt, sess.RevokedBy)
 	return err
 }
@@ -82,6 +99,12 @@ func (s *sessionsStore) DeleteSession(ctx context.Context, id string, by string)
 func (s *sessionsStore) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
 	now := time.Now().UTC()
 	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET revoked=1, revoked_at=?, revoked_by=?, expires_at=? WHERE user_id=?`, now, by, now, userID)
+	return err
+}
+
+func (s *sessionsStore) DeleteAll(ctx context.Context, by string) error {
+	now := time.Now().UTC()
+	_, err := s.db.ExecContext(ctx, `UPDATE sessions SET revoked=1, revoked_at=?, revoked_by=?, expires_at=? WHERE revoked=0`, now, by, now)
 	return err
 }
 

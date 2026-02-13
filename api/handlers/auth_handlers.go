@@ -148,15 +148,15 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"user": auth.UserDTO{
-			ID:          user.ID,
-			Username:    user.Username,
-			Roles:       roles,
-			Active:      user.Active,
-			PasswordSet: user.PasswordSet,
+			ID:                    user.ID,
+			Username:              user.Username,
+			Roles:                 roles,
+			Active:                user.Active,
+			PasswordSet:           user.PasswordSet,
 			RequirePasswordChange: user.RequirePasswordChange,
-			PasswordChangedAt: user.PasswordChangedAt,
-			Permissions: eff.Permissions,
-			MenuPermissions: eff.MenuPermissions,
+			PasswordChangedAt:     user.PasswordChangedAt,
+			Permissions:           eff.Permissions,
+			MenuPermissions:       eff.MenuPermissions,
 		},
 		"csrf_token": sess.CSRFToken,
 		"session":    sess,
@@ -210,15 +210,15 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"user": auth.UserDTO{
-			ID:          user.ID,
-			Username:    user.Username,
-			Roles:       roles,
-			Active:      user.Active,
-			PasswordSet: user.PasswordSet,
+			ID:                    user.ID,
+			Username:              user.Username,
+			Roles:                 roles,
+			Active:                user.Active,
+			PasswordSet:           user.PasswordSet,
 			RequirePasswordChange: user.RequirePasswordChange,
-			PasswordChangedAt: user.PasswordChangedAt,
-			Permissions: eff.Permissions,
-			MenuPermissions: eff.MenuPermissions,
+			PasswordChangedAt:     user.PasswordChangedAt,
+			Permissions:           eff.Permissions,
+			MenuPermissions:       eff.MenuPermissions,
 		},
 		"csrf_token": sr.CSRFToken,
 	})
@@ -412,28 +412,28 @@ func preferredLang(r *http.Request) string {
 
 func localized(lang, key string) string {
 	ru := map[string]string{
-		"auth.lockoutSoon":    "Ваша учетная запись будет заблокирована на 1 час.",
-		"auth.lockedPermanent": "Аккаунт заблокирован. Обратитесь к администратору.",
-		"accounts.passwordReuseDenied": "Пароль уже использовался. Выберите другой.",
-		"accounts.currentPasswordInvalid": "Текущий пароль неверен",
-		"accounts.clearanceTooHigh": "Нельзя выдать допуск выше своего",
+		"auth.lockoutSoon":                 "Ваша учетная запись будет заблокирована на 1 час.",
+		"auth.lockedPermanent":             "Аккаунт заблокирован. Обратитесь к администратору.",
+		"accounts.passwordReuseDenied":     "Пароль уже использовался. Выберите другой.",
+		"accounts.currentPasswordInvalid":  "Текущий пароль неверен",
+		"accounts.clearanceTooHigh":        "Нельзя выдать допуск выше своего",
 		"accounts.clearanceTagsNotAllowed": "Нельзя назначить эти теги допуска",
 		"accounts.lastSuperadminProtected": "Нельзя изменить последнего супер-админа",
-		"accounts.selfLockoutPrevented": "Операция запрещена: привела бы к потере доступа",
-		"accounts.roleSystemProtected": "Системную роль нельзя изменить или удалить",
-		"errors.roleTemplateNotFound": "Шаблон роли не найден",
+		"accounts.selfLockoutPrevented":    "Операция запрещена: привела бы к потере доступа",
+		"accounts.roleSystemProtected":     "Системную роль нельзя изменить или удалить",
+		"errors.roleTemplateNotFound":      "Шаблон роли не найден",
 	}
 	en := map[string]string{
-		"auth.lockoutSoon":    "Your account will be locked for 1 hour.",
-		"auth.lockedPermanent": "Account is locked. Contact administrator.",
-		"accounts.passwordReuseDenied": "Password was used recently. Choose a new one.",
-		"accounts.currentPasswordInvalid": "Current password is invalid",
-		"accounts.clearanceTooHigh": "Clearance level exceeds your own",
+		"auth.lockoutSoon":                 "Your account will be locked for 1 hour.",
+		"auth.lockedPermanent":             "Account is locked. Contact administrator.",
+		"accounts.passwordReuseDenied":     "Password was used recently. Choose a new one.",
+		"accounts.currentPasswordInvalid":  "Current password is invalid",
+		"accounts.clearanceTooHigh":        "Clearance level exceeds your own",
 		"accounts.clearanceTagsNotAllowed": "Clearance tags are not allowed",
 		"accounts.lastSuperadminProtected": "Cannot modify the last superadmin",
-		"accounts.selfLockoutPrevented": "Operation blocked to avoid self-lockout",
-		"accounts.roleSystemProtected": "System role cannot be modified or deleted",
-		"errors.roleTemplateNotFound": "Role template not found",
+		"accounts.selfLockoutPrevented":    "Operation blocked to avoid self-lockout",
+		"accounts.roleSystemProtected":     "System role cannot be modified or deleted",
+		"errors.roleTemplateNotFound":      "Role template not found",
 	}
 	ru["accounts.groupSystemProtected"] = "Системную группу нельзя изменить или удалить"
 	en["accounts.groupSystemProtected"] = "System group cannot be modified or deleted"

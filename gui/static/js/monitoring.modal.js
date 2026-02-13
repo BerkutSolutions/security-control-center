@@ -1,6 +1,9 @@
 (() => {
   const els = {};
   const modalState = { editingId: null };
+  const URL_TYPES = new Set(['http', 'http_keyword', 'http_json', 'postgres', 'grpc_keyword']);
+  const HOST_PORT_TYPES = new Set(['tcp', 'ping', 'dns', 'docker', 'steam', 'gamedig', 'mqtt', 'kafka_producer', 'mssql', 'mysql', 'mongodb', 'radius', 'redis', 'tailscale_ping']);
+  const HTTP_TYPES = new Set(['http', 'http_keyword', 'http_json']);
 
   function bindModal() {
     els.modal = document.getElementById('monitor-modal');
@@ -39,7 +42,10 @@
     });
 
     if (els.type) {
-      els.type.addEventListener('change', () => toggleTypeFields(els.type.value));
+      els.type.addEventListener('change', () => {
+        adaptTargetFieldsForType(els.type.value);
+        toggleTypeFields(els.type.value);
+      });
     }
     if (els.save) {
       els.save.addEventListener('click', submitForm);
@@ -191,11 +197,14 @@
         payload.sla_target_pct = sla;
       }
     }
-    if (type === 'http') {
+    if (URL_TYPES.has(type)) {
       payload.url = els.url.value.trim();
-    } else {
+    } else if (HOST_PORT_TYPES.has(type)) {
       payload.host = els.host.value.trim();
       payload.port = parseInt(els.port.value, 10) || 0;
+    } else if (type === 'push') {
+      payload.request_body = (els.body.value || '').trim();
+      payload.request_body_type = 'none';
     }
     return payload;
   }
@@ -248,16 +257,84 @@
   }
 
   function toggleTypeFields(type) {
-    const isHTTP = type === 'http';
-    document.getElementById('monitor-url-field').hidden = !isHTTP;
-    document.getElementById('monitor-method-field').hidden = !isHTTP;
-    document.getElementById('monitor-status-field').hidden = !isHTTP;
-    document.getElementById('monitor-headers-field').hidden = !isHTTP;
-    document.getElementById('monitor-body-field').hidden = !isHTTP;
-    document.getElementById('monitor-host-field').hidden = isHTTP;
-    document.getElementById('monitor-port-field').hidden = isHTTP;
+    const kind = (type || '').toLowerCase();
+    const isHTTP = HTTP_TYPES.has(kind);
+    const usesURL = URL_TYPES.has(kind);
+    const usesHostPort = HOST_PORT_TYPES.has(kind);
+    const hasHTTPRequest = isHTTP;
+    const isPush = kind === 'push';
+    const isGRPC = kind === 'grpc_keyword';
+    const bodyTypeField = els.bodyType ? els.bodyType.closest('.form-field') : null;
+    const bodyLabel = document.querySelector('#monitor-body-field label');
+
+    document.getElementById('monitor-url-field').hidden = !usesURL;
+    document.getElementById('monitor-host-field').hidden = !usesHostPort;
+    document.getElementById('monitor-port-field').hidden = !usesHostPort || kind === 'dns' || kind === 'tailscale_ping';
+    document.getElementById('monitor-method-field').hidden = !(hasHTTPRequest || isGRPC);
+    document.getElementById('monitor-status-field').hidden = !hasHTTPRequest;
+    document.getElementById('monitor-headers-field').hidden = !(hasHTTPRequest || isGRPC);
+    if (bodyTypeField) bodyTypeField.hidden = !hasHTTPRequest || kind === 'http_keyword' || isPush || isGRPC;
+    document.getElementById('monitor-body-field').hidden = !(hasHTTPRequest || kind === 'dns' || isPush);
+
+    if (kind === 'http_keyword') {
+      if (bodyLabel) bodyLabel.textContent = MonitoringPage.t('monitoring.field.expectedWord');
+      if (els.bodyType) els.bodyType.value = 'none';
+    } else if (isPush) {
+      if (bodyLabel) bodyLabel.textContent = MonitoringPage.t('monitoring.field.pushToken');
+      if (els.bodyType) els.bodyType.value = 'none';
+      if (els.body && !els.body.value.trim()) {
+        els.body.value = randomPushToken();
+      }
+    } else if (kind === 'dns') {
+      if (bodyLabel) bodyLabel.textContent = MonitoringPage.t('monitoring.field.dnsExpected');
+    } else if (isGRPC) {
+      if (bodyLabel) bodyLabel.textContent = MonitoringPage.t('monitoring.field.body');
+      if (els.method) els.method.value = 'GET';
+    } else if (kind === 'http_json' || kind === 'http') {
+      if (bodyLabel) bodyLabel.textContent = MonitoringPage.t('monitoring.field.body');
+    }
     if (els.notifyTLS) els.notifyTLS.closest('.form-field').hidden = !isHTTP;
     if (els.ignoreTLS) els.ignoreTLS.closest('.form-field').hidden = !isHTTP;
+  }
+
+  function adaptTargetFieldsForType(nextType) {
+    const kind = (nextType || '').toLowerCase();
+    const toURL = URL_TYPES.has(kind);
+    const toHostPort = HOST_PORT_TYPES.has(kind);
+    if (toHostPort) {
+      const urlValue = (els.url?.value || '').trim();
+      if (urlValue) {
+        try {
+          const u = new URL(urlValue);
+          if (els.host && !els.host.value.trim()) {
+            els.host.value = u.hostname || '';
+          }
+          if (els.port && !els.port.value.trim()) {
+            if (u.port) {
+              els.port.value = u.port;
+            } else if (u.protocol === 'https:') {
+              els.port.value = '443';
+            } else if (u.protocol === 'http:') {
+              els.port.value = '80';
+            }
+          }
+        } catch (_) {
+          // ignore parse failures and keep entered values as-is
+        }
+      }
+    }
+    if (toURL) {
+      const currentURL = (els.url?.value || '').trim();
+      const host = (els.host?.value || '').trim();
+      const port = (els.port?.value || '').trim();
+      if (!currentURL && host) {
+        const scheme = (port === '443' || kind === 'grpc_keyword') ? (kind === 'grpc_keyword' ? 'grpcs' : 'https') : (kind === 'grpc_keyword' ? 'grpc' : 'http');
+        const hostPort = port ? `${host}:${port}` : host;
+        if (els.url) {
+          els.url.value = `${scheme}://${hostPort}`;
+        }
+      }
+    }
   }
 
   function toggleIncidentFields() {
@@ -331,6 +408,15 @@
   function splitList(raw) {
     if (!raw) return [];
     return raw.split(',').map(v => v.trim()).filter(Boolean);
+  }
+
+  function randomPushToken() {
+    const chars = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
+    let out = '';
+    for (let i = 0; i < 32; i += 1) {
+      out += chars[Math.floor(Math.random() * chars.length)];
+    }
+    return out;
   }
 
   function getSelectedOptions(select) {

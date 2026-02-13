@@ -337,37 +337,19 @@ func (s *docsStore) CreateDocument(ctx context.Context, doc *Document, acl []ACL
 }
 
 func (s *docsStore) nextSeqTx(ctx context.Context, tx *sql.Tx, level int, folderID *int64, year int, perFolder bool) (int64, error) {
+	folderKey := int64(0)
+	if folderID != nil && perFolder {
+		folderKey = *folderID
+	}
 	var seq int64
-	var err error
-	if folderID == nil || !perFolder {
-		err = tx.QueryRowContext(ctx, `SELECT seq FROM doc_reg_counters WHERE classification_level=? AND folder_id IS NULL AND year=?`, level, year).Scan(&seq)
-	} else {
-		err = tx.QueryRowContext(ctx, `SELECT seq FROM doc_reg_counters WHERE classification_level=? AND folder_id=? AND year=?`, level, *folderID, year).Scan(&seq)
-	}
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			seq = 1
-			if folderID == nil || !perFolder {
-				_, err = tx.ExecContext(ctx, `INSERT INTO doc_reg_counters(classification_level, folder_id, year, seq) VALUES(?,?,?,?)`, level, nil, year, seq)
-			} else {
-				_, err = tx.ExecContext(ctx, `INSERT INTO doc_reg_counters(classification_level, folder_id, year, seq) VALUES(?,?,?,?)`, level, *folderID, year, seq)
-			}
-			return seq, err
-		}
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO doc_reg_counters(classification_level, folder_id, year, seq)
+		VALUES(?,?,?,1)
+		ON CONFLICT (classification_level, folder_id, year)
+		DO UPDATE SET seq = doc_reg_counters.seq + 1
+		RETURNING seq
+	`, level, folderKey, year).Scan(&seq); err != nil {
 		return 0, err
-	}
-	seq++
-	var res sql.Result
-	if folderID == nil || !perFolder {
-		res, err = tx.ExecContext(ctx, `UPDATE doc_reg_counters SET seq=? WHERE classification_level=? AND folder_id IS NULL AND year=?`, seq, level, year)
-	} else {
-		res, err = tx.ExecContext(ctx, `UPDATE doc_reg_counters SET seq=? WHERE classification_level=? AND folder_id=? AND year=?`, seq, level, *folderID, year)
-	}
-	if err != nil {
-		return 0, err
-	}
-	if affected, _ := res.RowsAffected(); affected == 0 {
-		return 0, errors.New("reg counter not updated")
 	}
 	return seq, nil
 }

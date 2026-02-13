@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListBlocks(w http.ResponseWriter, r *http.Request) {
@@ -210,7 +210,7 @@ func (h *Handler) ResolveBlock(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	blockID := parseInt64Default(mux.Vars(r)["block_id"], 0)
+	blockID := parseInt64Default(chi.URLParam(r, "block_id"), 0)
 	if blockID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-func (s *SQLiteStore) GetBoardLayout(ctx context.Context, userID, spaceID int64) (string, error) {
+func (s *SQLStore) GetBoardLayout(ctx context.Context, userID, spaceID int64) (string, error) {
 	if userID == 0 || spaceID == 0 {
 		return "", nil
 	}
@@ -22,7 +22,7 @@ func (s *SQLiteStore) GetBoardLayout(ctx context.Context, userID, spaceID int64)
 	return layout, err
 }
 
-func (s *SQLiteStore) SaveBoardLayout(ctx context.Context, userID, spaceID int64, layoutJSON string) error {
+func (s *SQLStore) SaveBoardLayout(ctx context.Context, userID, spaceID int64, layoutJSON string) error {
 	if userID == 0 || spaceID == 0 {
 		return nil
 	}
@@ -35,3 +35,4 @@ func (s *SQLiteStore) SaveBoardLayout(ctx context.Context, userID, spaceID int64
 	`, userID, spaceID, layoutJSON, now, now)
 	return err
 }
+

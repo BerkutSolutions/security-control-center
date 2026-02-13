@@ -172,7 +172,7 @@ func (s *groupsStore) SetUserGroups(ctx context.Context, userID int64, groupIDs 
 		return err
 	}
 	for _, gid := range groupIDs {
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO user_groups(user_id, group_id) VALUES(?,?)`, userID, gid); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_groups(user_id, group_id) VALUES(?,?) ON CONFLICT DO NOTHING`, userID, gid); err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -189,7 +189,7 @@ func (s *groupsStore) replaceGroupRolesTx(ctx context.Context, tx *sql.Tx, group
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO group_roles(group_id, role_id) VALUES(?,?)`, groupID, roleID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO group_roles(group_id, role_id) VALUES(?,?) ON CONFLICT DO NOTHING`, groupID, roleID); err != nil {
 			return err
 		}
 	}
@@ -201,7 +201,7 @@ func (s *groupsStore) replaceGroupUsersTx(ctx context.Context, tx *sql.Tx, group
 		return err
 	}
 	for _, id := range userIDs {
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO user_groups(user_id, group_id) VALUES(?,?)`, id, groupID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_groups(user_id, group_id) VALUES(?,?) ON CONFLICT DO NOTHING`, id, groupID); err != nil {
 			return err
 		}
 	}
@@ -243,7 +243,7 @@ func (s *groupsStore) rolesForGroup(ctx context.Context, id int64) ([]string, er
 }
 
 func (s *groupsStore) AddMember(ctx context.Context, groupID, userID int64) error {
-	_, err := s.db.ExecContext(ctx, `INSERT OR IGNORE INTO user_groups(user_id, group_id) VALUES(?,?)`, userID, groupID)
+	_, err := s.db.ExecContext(ctx, `INSERT INTO user_groups(user_id, group_id) VALUES(?,?) ON CONFLICT DO NOTHING`, userID, groupID)
 	return err
 }
 

@@ -1,4 +1,5 @@
-db_path: data/berkut.db
+db_driver: postgres
+db_url: "postgres://berkut:berkut@postgres:5432/berkut?sslmode=disable"
 listen_addr: "0.0.0.0:8080"
 session_ttl: 24h
 app_env: ""

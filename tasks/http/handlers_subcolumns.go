@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListSubColumnsByBoard(w http.ResponseWriter, r *http.Request) {
@@ -16,7 +16,7 @@ func (h *Handler) ListSubColumnsByBoard(w http.ResponseWriter, r *http.Request) 
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["board_id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "board_id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -46,7 +46,7 @@ func (h *Handler) ListSubColumns(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["column_id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "column_id"), 0)
 	if columnID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -85,7 +85,7 @@ func (h *Handler) CreateSubColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	columnID := parseInt64Default(mux.Vars(r)["column_id"], 0)
+	columnID := parseInt64Default(chi.URLParam(r, "column_id"), 0)
 	if columnID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -147,7 +147,7 @@ func (h *Handler) UpdateSubColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	subID := parseInt64Default(mux.Vars(r)["id"], 0)
+	subID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if subID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -212,7 +212,7 @@ func (h *Handler) DeleteSubColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	subID := parseInt64Default(mux.Vars(r)["id"], 0)
+	subID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if subID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -264,7 +264,7 @@ func (h *Handler) MoveSubColumn(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	subID := parseInt64Default(mux.Vars(r)["id"], 0)
+	subID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if subID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

@@ -10,26 +10,26 @@ import (
 )
 
 type monitoringSettingsPayload struct {
-	RetentionDays       int   `json:"retention_days"`
-	MaxConcurrentChecks int   `json:"max_concurrent_checks"`
-	DefaultTimeoutSec   int   `json:"default_timeout_sec"`
-	DefaultIntervalSec  int   `json:"default_interval_sec"`
-	DefaultRetries      int   `json:"default_retries"`
-	DefaultRetryIntervalSec int `json:"default_retry_interval_sec"`
-	DefaultSLATargetPct float64 `json:"default_sla_target_pct"`
-	EngineEnabled       *bool `json:"engine_enabled"`
-	AllowPrivateNetworks *bool `json:"allow_private_networks"`
-	TLSRefreshHours     int   `json:"tls_refresh_hours"`
-	TLSExpiringDays     int   `json:"tls_expiring_days"`
-	NotifySuppressMinutes int `json:"notify_suppress_minutes"`
-	NotifyRepeatDownMinutes int `json:"notify_repeat_down_minutes"`
-	NotifyMaintenance *bool `json:"notify_maintenance"`
+	RetentionDays           int     `json:"retention_days"`
+	MaxConcurrentChecks     int     `json:"max_concurrent_checks"`
+	DefaultTimeoutSec       int     `json:"default_timeout_sec"`
+	DefaultIntervalSec      int     `json:"default_interval_sec"`
+	DefaultRetries          int     `json:"default_retries"`
+	DefaultRetryIntervalSec int     `json:"default_retry_interval_sec"`
+	DefaultSLATargetPct     float64 `json:"default_sla_target_pct"`
+	EngineEnabled           *bool   `json:"engine_enabled"`
+	AllowPrivateNetworks    *bool   `json:"allow_private_networks"`
+	TLSRefreshHours         int     `json:"tls_refresh_hours"`
+	TLSExpiringDays         int     `json:"tls_expiring_days"`
+	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
+	NotifyRepeatDownMinutes int     `json:"notify_repeat_down_minutes"`
+	NotifyMaintenance       *bool   `json:"notify_maintenance"`
 }
 
 func (h *MonitoringHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
 	settings, err := h.store.GetSettings(r.Context())
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, settings)
@@ -38,12 +38,12 @@ func (h *MonitoringHandler) GetSettings(w http.ResponseWriter, r *http.Request) 
 func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
 	var payload monitoringSettingsPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	current, err := h.store.GetSettings(r.Context())
 	if err != nil || current == nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	prevTLSRefresh := current.TLSRefreshHours
@@ -111,12 +111,12 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := h.store.UpdateSettings(r.Context(), current); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.settings.update", settingsDetails(current))
+	h.audit(r, monitorAuditSettingsUpdate, settingsDetails(current))
 	if prevTLSRefresh != current.TLSRefreshHours || prevTLSExpiring != current.TLSExpiringDays {
-		h.audits.Log(r.Context(), currentUsername(r), "monitoring.certs.settings.update", settingsDetails(current))
+		h.audit(r, monitorAuditCertsSettingsUpdate, settingsDetails(current))
 	}
 	writeJSON(w, http.StatusOK, current)
 }

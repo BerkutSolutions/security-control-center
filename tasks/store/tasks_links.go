@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateTaskWithLinks(ctx context.Context, task *tasks.Task, assignments []int64, links []tasks.Link) (int64, error) {
+func (s *SQLStore) CreateTaskWithLinks(ctx context.Context, task *tasks.Task, assignments []int64, links []tasks.Link) (int64, error) {
 	var taskID int64
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		id, err := s.createTaskTx(ctx, tx, task, assignments)
@@ -34,3 +34,4 @@ func (s *SQLiteStore) CreateTaskWithLinks(ctx context.Context, task *tasks.Task,
 	}
 	return taskID, nil
 }
+

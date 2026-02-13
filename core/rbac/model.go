@@ -1,5 +1,10 @@
 package rbac
 
+import (
+	"sort"
+	"strings"
+)
+
 var permissions = []Permission{
 	"app.view", "dashboard.view",
 	"accounts.view", "accounts.manage", "accounts.view_dashboard",
@@ -21,6 +26,54 @@ var permissions = []Permission{
 	"incidents.view", "incidents.create", "incidents.edit", "incidents.delete", "incidents.manage", "incidents.export",
 	"reports.view", "reports.create", "reports.edit", "reports.delete", "reports.export", "reports.templates.view", "reports.templates.manage",
 	"logs.view",
+}
+
+var knownPermissionSet = buildPermissionSet()
+
+func buildPermissionSet() map[Permission]struct{} {
+	out := make(map[Permission]struct{}, len(permissions))
+	for _, p := range permissions {
+		out[p] = struct{}{}
+	}
+	return out
+}
+
+func AllPermissions() []Permission {
+	out := make([]Permission, len(permissions))
+	copy(out, permissions)
+	return out
+}
+
+func IsKnownPermission(p Permission) bool {
+	_, ok := knownPermissionSet[p]
+	return ok
+}
+
+func NormalizePermissionNames(in []string) ([]string, []string) {
+	validSet := map[string]struct{}{}
+	invalidSet := map[string]struct{}{}
+	for _, raw := range in {
+		p := strings.ToLower(strings.TrimSpace(raw))
+		if p == "" {
+			continue
+		}
+		if IsKnownPermission(Permission(p)) {
+			validSet[p] = struct{}{}
+			continue
+		}
+		invalidSet[p] = struct{}{}
+	}
+	valid := make([]string, 0, len(validSet))
+	for p := range validSet {
+		valid = append(valid, p)
+	}
+	sort.Strings(valid)
+	invalid := make([]string, 0, len(invalidSet))
+	for p := range invalidSet {
+		invalid = append(invalid, p)
+	}
+	sort.Strings(invalid)
+	return valid, invalid
 }
 
 var roles = []Role{

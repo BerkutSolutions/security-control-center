@@ -17,10 +17,9 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
-func setupSessionEnv(t *testing.T) (store.SessionStore, store.UsersStore, *handlers.AccountsHandler, *handlers.AuthHandler, *config.AppConfig, *sql.DB, *store.RolesStore, *store.GroupsStore, *utils.Logger, func()) {
+func setupSessionEnv(t *testing.T) (store.SessionStore, store.UsersStore, *handlers.AccountsHandler, *handlers.AuthHandler, *config.AppConfig, *sql.DB, store.RolesStore, store.GroupsStore, *utils.Logger, func()) {
 	t.Helper()
 	dir := t.TempDir()
 	cfg := &config.AppConfig{
@@ -165,7 +164,7 @@ func TestKillSessionAndKillAllRevoke(t *testing.T) {
 
 	adminSess := &store.SessionRecord{Username: "admin", Roles: []string{"admin"}}
 	req := httptest.NewRequest(http.MethodPost, "/api/accounts/sessions/"+s1.ID+"/kill", nil)
-	req = mux.SetURLVars(req, map[string]string{"session_id": s1.ID})
+	req = withURLParams(req, map[string]string{"session_id": s1.ID})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, adminSess))
 	rr := httptest.NewRecorder()
 	acc.KillSession(rr, req)
@@ -182,7 +181,7 @@ func TestKillSessionAndKillAllRevoke(t *testing.T) {
 	}
 
 	reqAll := httptest.NewRequest(http.MethodPost, "/api/accounts/users/kill_all", nil)
-	reqAll = mux.SetURLVars(reqAll, map[string]string{"id": strconv.FormatInt(uid, 10)})
+	reqAll = withURLParams(reqAll, map[string]string{"id": strconv.FormatInt(uid, 10)})
 	reqAll = reqAll.WithContext(context.WithValue(reqAll.Context(), auth.SessionContextKey, adminSess))
 	rrAll := httptest.NewRecorder()
 	acc.KillAllSessions(rrAll, reqAll)
@@ -203,7 +202,7 @@ func TestAccessDeniedWithoutPermission(t *testing.T) {
 	policy := rbac.NewPolicy([]rbac.Role{{Name: "viewer", Permissions: []rbac.Permission{}}})
 	handler := wrapRequireAny(policy, []rbac.Permission{"accounts.manage"})(acc.KillAllSessions)
 	req := httptest.NewRequest(http.MethodPost, "/api/accounts/users/1/sessions/kill_all", nil)
-	req = mux.SetURLVars(req, map[string]string{"id": "1"})
+	req = withURLParams(req, map[string]string{"id": "1"})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{Username: "bob", Roles: []string{"viewer"}}))
 	rr := httptest.NewRecorder()
 	handler(rr, req)

@@ -809,22 +809,14 @@ func (s *incidentsStore) scanIncidentStage(row *sql.Row) (*IncidentStage, error)
 
 func (s *incidentsStore) nextIncidentSeqTx(ctx context.Context, tx *sql.Tx, year int) (int64, error) {
 	var seq int64
-	err := tx.QueryRowContext(ctx, `SELECT seq FROM incident_reg_counters WHERE year=?`, year).Scan(&seq)
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			seq = 1
-			_, err = tx.ExecContext(ctx, `INSERT INTO incident_reg_counters(year, seq) VALUES(?,?)`, year, seq)
-			return seq, err
-		}
+	if err := tx.QueryRowContext(ctx, `
+		INSERT INTO incident_reg_counters(year, seq)
+		VALUES(?,1)
+		ON CONFLICT (year)
+		DO UPDATE SET seq = incident_reg_counters.seq + 1
+		RETURNING seq
+	`, year).Scan(&seq); err != nil {
 		return 0, err
-	}
-	seq++
-	res, err := tx.ExecContext(ctx, `UPDATE incident_reg_counters SET seq=? WHERE year=?`, seq, year)
-	if err != nil {
-		return 0, err
-	}
-	if affected, _ := res.RowsAffected(); affected == 0 {
-		return 0, errors.New("incident reg counter not updated")
 	}
 	return seq, nil
 }

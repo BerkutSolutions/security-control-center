@@ -6,40 +6,41 @@ import (
 	"strconv"
 	"strings"
 
+	"berkut-scc/core/monitoring"
 	"berkut-scc/core/store"
 )
 
 type monitorPayload struct {
-	Name             string            `json:"name"`
-	Type             string            `json:"type"`
-	URL              string            `json:"url"`
-	Host             string            `json:"host"`
-	Port             int               `json:"port"`
-	Method           string            `json:"method"`
-	RequestBody      string            `json:"request_body"`
-	RequestBodyType  string            `json:"request_body_type"`
-	Headers          map[string]string `json:"headers"`
-	IntervalSec      int               `json:"interval_sec"`
-	TimeoutSec       int               `json:"timeout_sec"`
-	Retries          int               `json:"retries"`
-	RetryIntervalSec int               `json:"retry_interval_sec"`
-	AllowedStatus    []string          `json:"allowed_status"`
-	IsActive         *bool             `json:"is_active"`
-	IsPaused         *bool             `json:"is_paused"`
-	Tags             []string          `json:"tags"`
-	GroupID          *int64            `json:"group_id"`
-	SLATargetPct     *float64          `json:"sla_target_pct"`
-	IgnoreTLSErrors  *bool             `json:"ignore_tls_errors"`
-	NotifyTLSExpiring *bool            `json:"notify_tls_expiring"`
-	AutoIncident     *bool             `json:"auto_incident"`
-	IncidentSeverity string            `json:"incident_severity"`
-	IncidentTypeID   string            `json:"incident_type_id"`
+	Name              string            `json:"name"`
+	Type              string            `json:"type"`
+	URL               string            `json:"url"`
+	Host              string            `json:"host"`
+	Port              int               `json:"port"`
+	Method            string            `json:"method"`
+	RequestBody       string            `json:"request_body"`
+	RequestBodyType   string            `json:"request_body_type"`
+	Headers           map[string]string `json:"headers"`
+	IntervalSec       int               `json:"interval_sec"`
+	TimeoutSec        int               `json:"timeout_sec"`
+	Retries           int               `json:"retries"`
+	RetryIntervalSec  int               `json:"retry_interval_sec"`
+	AllowedStatus     []string          `json:"allowed_status"`
+	IsActive          *bool             `json:"is_active"`
+	IsPaused          *bool             `json:"is_paused"`
+	Tags              []string          `json:"tags"`
+	GroupID           *int64            `json:"group_id"`
+	SLATargetPct      *float64          `json:"sla_target_pct"`
+	IgnoreTLSErrors   *bool             `json:"ignore_tls_errors"`
+	NotifyTLSExpiring *bool             `json:"notify_tls_expiring"`
+	AutoIncident      *bool             `json:"auto_incident"`
+	IncidentSeverity  string            `json:"incident_severity"`
+	IncidentTypeID    string            `json:"incident_type_id"`
 }
 
 func payloadToMonitor(payload monitorPayload, settings *store.MonitorSettings, createdBy int64) (*store.Monitor, error) {
 	m := &store.Monitor{
 		Name:             strings.TrimSpace(payload.Name),
-		Type:             strings.ToLower(strings.TrimSpace(payload.Type)),
+		Type:             monitoring.NormalizeType(payload.Type),
 		URL:              strings.TrimSpace(payload.URL),
 		Host:             strings.TrimSpace(payload.Host),
 		Port:             payload.Port,
@@ -94,12 +95,12 @@ func mergeMonitor(existing *store.Monitor, payload monitorPayload, settings *sto
 		m.Name = strings.TrimSpace(payload.Name)
 	}
 	if payload.Type != "" {
-		m.Type = strings.ToLower(strings.TrimSpace(payload.Type))
+		m.Type = monitoring.NormalizeType(payload.Type)
 	}
-	if payload.URL != "" || strings.ToLower(payload.Type) == "http" {
+	if payload.URL != "" || monitoring.TypeUsesURL(strings.ToLower(payload.Type)) {
 		m.URL = strings.TrimSpace(payload.URL)
 	}
-	if payload.Host != "" || strings.ToLower(payload.Type) == "tcp" {
+	if payload.Host != "" || monitoring.TypeUsesHostPort(strings.ToLower(payload.Type)) {
 		m.Host = strings.TrimSpace(payload.Host)
 	}
 	if payload.Port > 0 {
@@ -209,6 +210,18 @@ func applyDefaults(m *store.Monitor, settings *store.MonitorSettings) {
 	if m.Method == "" {
 		m.Method = "GET"
 	}
+	switch monitoring.NormalizeType(m.Type) {
+	case monitoring.TypeDNS:
+		if m.Method == "" || m.Method == "GET" {
+			m.Method = "A"
+		}
+	default:
+		if m.Port <= 0 {
+			if p := monitoring.DefaultPortForType(m.Type); p > 0 {
+				m.Port = p
+			}
+		}
+	}
 	if len(m.AllowedStatus) == 0 {
 		m.AllowedStatus = []string{"200-299"}
 	}
@@ -218,17 +231,23 @@ func validateMonitor(m *store.Monitor) error {
 	if m.Name == "" {
 		return errors.New("monitoring.error.nameRequired")
 	}
-	switch strings.ToLower(m.Type) {
-	case "http":
+	if !monitoring.IsSupportedType(m.Type) {
+		return errors.New("monitoring.error.invalidType")
+	}
+	switch {
+	case monitoring.TypeUsesURL(m.Type):
 		if err := validateHTTPMonitor(m); err != nil {
 			return err
 		}
-	case "tcp":
+	case monitoring.TypeUsesHostPort(m.Type):
 		if err := validateTCPMonitor(m); err != nil {
 			return err
 		}
-	default:
-		return errors.New("monitoring.error.invalidType")
+	case monitoring.TypeIsPassive(m.Type):
+		// Passive monitors are updated externally and do not require target fields.
+		if strings.TrimSpace(m.RequestBody) == "" {
+			return errors.New("monitoring.error.pushTokenRequired")
+		}
 	}
 	if m.IntervalSec <= 0 {
 		return errors.New("monitoring.error.invalidInterval")
@@ -244,6 +263,9 @@ func validateMonitor(m *store.Monitor) error {
 	}
 	if m.RequestBodyType != "" && m.RequestBodyType != "none" && m.RequestBodyType != "json" && m.RequestBodyType != "xml" {
 		return errors.New("monitoring.error.invalidBodyType")
+	}
+	if strings.EqualFold(m.Type, monitoring.TypeHTTPKeyword) && strings.TrimSpace(m.RequestBody) == "" {
+		return errors.New("monitoring.error.keywordRequired")
 	}
 	if !validateStatusRanges(m.AllowedStatus) {
 		return errors.New("monitoring.error.invalidStatusRange")
@@ -272,11 +294,34 @@ func validateHTTPMonitor(m *store.Monitor) error {
 		return errors.New("monitoring.error.invalidUrl")
 	}
 	scheme := strings.ToLower(u.Scheme)
-	if scheme != "http" && scheme != "https" {
-		return errors.New("monitoring.error.invalidUrl")
+	switch strings.ToLower(strings.TrimSpace(m.Type)) {
+	case "postgres":
+		if scheme != "postgres" && scheme != "postgresql" {
+			return errors.New("monitoring.error.invalidUrl")
+		}
+	case "grpc_keyword":
+		if scheme != "grpc" && scheme != "grpcs" {
+			return errors.New("monitoring.error.invalidUrl")
+		}
+	default:
+		if scheme != "http" && scheme != "https" {
+			return errors.New("monitoring.error.invalidUrl")
+		}
 	}
-	if m.Method != "GET" && m.Method != "POST" {
-		return errors.New("monitoring.error.invalidMethod")
+	if strings.ToLower(strings.TrimSpace(m.Type)) == monitoring.TypePostgres {
+		host := u.Hostname()
+		m.Host = host
+		if port := u.Port(); port != "" {
+			if n, err := strconv.Atoi(port); err == nil {
+				m.Port = n
+			}
+		}
+		return nil
+	}
+	if strings.ToLower(strings.TrimSpace(m.Type)) != "grpc_keyword" {
+		if m.Method != "GET" && m.Method != "POST" {
+			return errors.New("monitoring.error.invalidMethod")
+		}
 	}
 	host := u.Hostname()
 	m.Host = host
@@ -289,13 +334,38 @@ func validateHTTPMonitor(m *store.Monitor) error {
 }
 
 func validateTCPMonitor(m *store.Monitor) error {
+	m.Host = normalizeMonitorHost(m.Host)
 	if m.Host == "" {
 		return errors.New("monitoring.error.invalidHost")
+	}
+	if strings.EqualFold(m.Type, monitoring.TypeDNS) || strings.EqualFold(m.Type, monitoring.TypePing) || strings.EqualFold(m.Type, monitoring.TypeTailscalePing) {
+		return nil
 	}
 	if m.Port <= 0 || m.Port > 65535 {
 		return errors.New("monitoring.error.invalidPort")
 	}
 	return nil
+}
+
+func normalizeMonitorHost(raw string) string {
+	host := strings.TrimSpace(raw)
+	if host == "" {
+		return ""
+	}
+	if strings.Contains(host, "://") {
+		if u, err := url.Parse(host); err == nil && strings.TrimSpace(u.Hostname()) != "" {
+			host = strings.TrimSpace(u.Hostname())
+		}
+	}
+	return host
+}
+
+func monitorTypeUsesURL(kind string) bool {
+	return monitoring.TypeUsesURL(kind)
+}
+
+func monitorTypeUsesHost(kind string) bool {
+	return monitoring.TypeUsesHostPort(kind)
 }
 
 func validateHeaders(headers map[string]string) bool {

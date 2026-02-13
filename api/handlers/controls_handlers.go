@@ -15,7 +15,6 @@ import (
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
 )
 
 type ControlsHandler struct {
@@ -176,7 +175,7 @@ func (h *ControlsHandler) GetControl(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -199,7 +198,7 @@ func (h *ControlsHandler) UpdateControl(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -300,7 +299,7 @@ func (h *ControlsHandler) DeleteControl(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -327,7 +326,7 @@ func (h *ControlsHandler) ListControlLinks(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -375,7 +374,7 @@ func (h *ControlsHandler) CreateControlLink(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -444,7 +443,7 @@ func (h *ControlsHandler) DeleteControlLink(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -454,7 +453,7 @@ func (h *ControlsHandler) DeleteControlLink(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	linkID := parseInt64Default(mux.Vars(r)["link_id"], 0)
+	linkID := parseInt64Default(pathParams(r)["link_id"], 0)
 	if linkID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -510,7 +509,7 @@ func (h *ControlsHandler) ListControlChecks(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -537,7 +536,7 @@ func (h *ControlsHandler) CreateControlCheck(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -646,7 +645,7 @@ func (h *ControlsHandler) DeleteCheck(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -673,7 +672,7 @@ func (h *ControlsHandler) ListControlViolations(w http.ResponseWriter, r *http.R
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -700,7 +699,7 @@ func (h *ControlsHandler) CreateControlViolation(w http.ResponseWriter, r *http.
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -833,7 +832,7 @@ func (h *ControlsHandler) DeleteViolation(w http.ResponseWriter, r *http.Request
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -914,7 +913,7 @@ func (h *ControlsHandler) ListFrameworkItems(w http.ResponseWriter, r *http.Requ
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	frameworkID := parseInt64Default(mux.Vars(r)["id"], 0)
+	frameworkID := parseInt64Default(pathParams(r)["id"], 0)
 	if frameworkID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -942,7 +941,7 @@ func (h *ControlsHandler) CreateFrameworkItem(w http.ResponseWriter, r *http.Req
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	frameworkID := parseInt64Default(mux.Vars(r)["id"], 0)
+	frameworkID := parseInt64Default(pathParams(r)["id"], 0)
 	if frameworkID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -953,8 +952,8 @@ func (h *ControlsHandler) CreateFrameworkItem(w http.ResponseWriter, r *http.Req
 		return
 	}
 	var payload struct {
-		Code         string `json:"code"`
-		Title        string `json:"title"`
+		Code          string `json:"code"`
+		Title         string `json:"title"`
 		DescriptionMD string `json:"description_md"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -968,9 +967,9 @@ func (h *ControlsHandler) CreateFrameworkItem(w http.ResponseWriter, r *http.Req
 		return
 	}
 	item := &store.ControlFrameworkItem{
-		FrameworkID:  frameworkID,
-		Code:         code,
-		Title:        title,
+		FrameworkID:   frameworkID,
+		Code:          code,
+		Title:         title,
 		DescriptionMD: strings.TrimSpace(payload.DescriptionMD),
 	}
 	if _, err := h.store.CreateFrameworkItem(r.Context(), item); err != nil {
@@ -1042,7 +1041,7 @@ func (h *ControlsHandler) ListFrameworkMap(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	frameworkID := parseInt64Default(mux.Vars(r)["id"], 0)
+	frameworkID := parseInt64Default(pathParams(r)["id"], 0)
 	if frameworkID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return

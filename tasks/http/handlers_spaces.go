@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListSpaces(w http.ResponseWriter, r *http.Request) {
@@ -167,7 +167,7 @@ func (h *Handler) UpdateSpace(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	spaceID := parseInt64Default(mux.Vars(r)["id"], 0)
+	spaceID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if spaceID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -237,7 +237,7 @@ func (h *Handler) DeleteSpace(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	spaceID := parseInt64Default(mux.Vars(r)["id"], 0)
+	spaceID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if spaceID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

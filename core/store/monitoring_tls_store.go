@@ -61,7 +61,7 @@ func (s *monitoringStore) ListCerts(ctx context.Context, filter CertFilter) ([]M
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id
 		LEFT JOIN monitor_tls t ON t.monitor_id=m.id
-		WHERE LOWER(m.type)='http' AND LOWER(m.url) LIKE 'https:%'`
+		WHERE LOWER(m.type) IN ('http','http_keyword','http_json') AND LOWER(m.url) LIKE 'https:%'`
 	var clauses []string
 	var args []any
 	if len(filter.Tags) > 0 {
@@ -84,7 +84,7 @@ func (s *monitoringStore) ListCerts(ctx context.Context, filter CertFilter) ([]M
 			SELECT m.id, m.name, m.url, '', COALESCE(s.status, ''), NULL, NULL, NULL, '', '', NULL
 			FROM monitors m
 			LEFT JOIN monitor_state s ON s.monitor_id=m.id
-			WHERE LOWER(m.type)='http' AND LOWER(m.url) LIKE 'https:%'`
+			WHERE LOWER(m.type) IN ('http','http_keyword','http_json') AND LOWER(m.url) LIKE 'https:%'`
 		fallbackClauses := clauses
 		fallbackArgs := args
 		if strings.Contains(strings.ToLower(err.Error()), "tags_json") {
@@ -112,7 +112,7 @@ func (s *monitoringStore) ListCerts(ctx context.Context, filter CertFilter) ([]M
 					SELECT m.id, m.name, m.url, '', COALESCE(s.status, ''), NULL, NULL, NULL, '', '', NULL
 					FROM monitors m
 					LEFT JOIN monitor_state s ON s.monitor_id=m.id
-					WHERE LOWER(m.type)='http' AND LOWER(m.url) LIKE 'https:%'`
+					WHERE LOWER(m.type) IN ('http','http_keyword','http_json') AND LOWER(m.url) LIKE 'https:%'`
 				if len(fallbackClauses) > 0 {
 					fallbackQuery += " AND " + strings.Join(fallbackClauses, " AND ")
 				}

@@ -21,8 +21,8 @@ import (
 )
 
 type importResponse struct {
-	ImportID        string `json:"import_id"`
-	DetectedHeaders []string `json:"detected_headers"`
+	ImportID        string     `json:"import_id"`
+	DetectedHeaders []string   `json:"detected_headers"`
 	PreviewRows     [][]string `json:"preview_rows"`
 }
 
@@ -52,11 +52,11 @@ func TestImportCreatesUsersWithMapping(t *testing.T) {
 	csvBody := "login,full_name,roles,department,status\nuser1,User One,admin,IT,active\nuser2,User Two,doc_viewer,HR,disabled"
 	importID := uploadCSV(t, acc, actor.Username, actorID, csvBody)
 	mapping := map[string]string{
-		"login":     "login",
-		"full_name": "full_name",
-		"roles":     "roles",
+		"login":      "login",
+		"full_name":  "full_name",
+		"roles":      "roles",
 		"department": "department",
-		"status":    "status",
+		"status":     "status",
 	}
 	res := commitImport(t, acc, actor.Username, actorID, mapping, map[string]any{"import_id": importID})
 	if res.CreatedCount != 2 || res.FailedCount != 0 {
@@ -150,7 +150,7 @@ func TestImportTempPasswordMustChange(t *testing.T) {
 	mapping := map[string]string{"login": "login", "full_name": "full_name", "roles": "roles"}
 	res := commitImport(t, acc, actor.Username, actorID, mapping, map[string]any{
 		"import_id": importID,
-		"options": map[string]any{"temp_password": true, "must_change_password": true},
+		"options":   map[string]any{"temp_password": true, "must_change_password": true},
 	})
 	if res.CreatedCount != 1 || len(res.CreatedUsers) != 1 || res.CreatedUsers[0].TempPassword == "" {
 		t.Fatalf("expected temp password generated, got %+v", res)

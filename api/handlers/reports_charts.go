@@ -8,7 +8,6 @@ import (
 
 	"berkut-scc/core/reports/charts"
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func (h *ReportsHandler) ListCharts(w http.ResponseWriter, r *http.Request) {
@@ -93,7 +92,7 @@ func (h *ReportsHandler) RenderChart(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	idStr := mux.Vars(r)["chart_id"]
+	idStr := pathParams(r)["chart_id"]
 	chartID, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil || chartID == 0 {
 		http.Error(w, localized(preferredLang(r), "reports.error.badRequest"), http.StatusBadRequest)

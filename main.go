@@ -8,11 +8,9 @@ import (
 	"syscall"
 	"time"
 
-	"berkut-scc/api"
 	"berkut-scc/config"
-	"berkut-scc/core/store"
+	"berkut-scc/core/appbootstrap"
 	"berkut-scc/core/utils"
-	"berkut-scc/core/bootstrap"
 )
 
 func main() {
@@ -22,21 +20,14 @@ func main() {
 	}
 
 	logger := utils.NewLogger()
-	db, err := store.NewDB(cfg, logger)
+	rt, err := appbootstrap.InitRuntime(context.Background(), cfg, logger)
 	if err != nil {
-		logger.Fatalf("db init: %v", err)
+		logger.Fatalf("%v", err)
 	}
-	defer db.Close()
+	defer rt.DB.Close()
 
-	if err := store.ApplyMigrations(context.Background(), db, logger); err != nil {
-		logger.Fatalf("migrations: %v", err)
-	}
-
-	if err := bootstrap.EnsureDefaultAdmin(context.Background(), db, cfg, logger); err != nil {
-		logger.Fatalf("seed admin: %v", err)
-	}
-
-	srv := api.NewServer(cfg, db, logger)
+	rt.StartBackground(context.Background())
+	srv := rt.Server
 	go func() {
 		if err := srv.Start(); err != nil {
 			logger.Fatalf("server: %v", err)
@@ -49,6 +40,9 @@ func main() {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+	if err := rt.StopBackground(ctx); err != nil {
+		logger.Errorf("background shutdown: %v", err)
+	}
 	if err := srv.Stop(ctx); err != nil {
 		logger.Errorf("graceful shutdown: %v", err)
 	}

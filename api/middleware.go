@@ -17,28 +17,28 @@ import (
 )
 
 const (
-	sessionCookie = "berkut_session"
-	csrfCookie    = "berkut_csrf"
-	sessionActivityInterval = 30 * time.Second
-	loginLimiterTTL = 10 * time.Minute
+	sessionCookie               = "berkut_session"
+	csrfCookie                  = "berkut_csrf"
+	sessionActivityInterval     = 30 * time.Second
+	loginLimiterTTL             = 10 * time.Minute
 	loginLimiterCleanupInterval = time.Minute
-	loginLimiterMaxBuckets = 10000
+	loginLimiterMaxBuckets      = 10000
 )
 
 type requestLimiter struct {
-	mu       sync.Mutex
-	buckets  map[string]*tokenBucket
-	capacity int
-	refill   time.Duration
-	ttl      time.Duration
+	mu              sync.Mutex
+	buckets         map[string]*tokenBucket
+	capacity        int
+	refill          time.Duration
+	ttl             time.Duration
 	cleanupInterval time.Duration
-	lastCleanup time.Time
-	maxBuckets int
+	lastCleanup     time.Time
+	maxBuckets      int
 }
 
 type tokenBucket struct {
-	tokens int
-	last   time.Time
+	tokens   int
+	last     time.Time
 	lastSeen time.Time
 }
 
@@ -64,12 +64,12 @@ func (sa *sessionActivity) shouldUpdate(id string, now time.Time, interval time.
 
 func newLimiter(capacity int, refill time.Duration) *requestLimiter {
 	return &requestLimiter{
-		buckets:  make(map[string]*tokenBucket),
-		capacity: capacity,
-		refill:   refill,
-		ttl:      loginLimiterTTL,
+		buckets:         make(map[string]*tokenBucket),
+		capacity:        capacity,
+		refill:          refill,
+		ttl:             loginLimiterTTL,
 		cleanupInterval: loginLimiterCleanupInterval,
-		maxBuckets: loginLimiterMaxBuckets,
+		maxBuckets:      loginLimiterMaxBuckets,
 	}
 }
 

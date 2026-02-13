@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListTasks(w http.ResponseWriter, r *http.Request) {
@@ -213,7 +213,7 @@ func (h *Handler) GetTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusUnauthorized, "unauthorized")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -260,7 +260,7 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -417,7 +417,7 @@ func (h *Handler) MoveTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -519,7 +519,7 @@ func (h *Handler) RelocateTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -632,7 +632,7 @@ func (h *Handler) CloneTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -749,7 +749,7 @@ func (h *Handler) CloseTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -814,7 +814,7 @@ func (h *Handler) ArchiveTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -932,7 +932,7 @@ func (h *Handler) RestoreTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID <= 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -1011,7 +1011,7 @@ func (h *Handler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

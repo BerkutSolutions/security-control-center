@@ -38,7 +38,7 @@ func (h *MonitoringHandler) EventsFeed(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.store.ListEventsFeed(r.Context(), filter)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	monitors, _ := h.store.ListMonitors(r.Context(), store.MonitorFilter{})

@@ -6,7 +6,6 @@ import (
 	"strings"
 
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func (h *ControlsHandler) ListControlTypes(w http.ResponseWriter, r *http.Request) {
@@ -71,7 +70,7 @@ func (h *ControlsHandler) DeleteControlType(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(pathParams(r)["id"], 0)
 	if id == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return

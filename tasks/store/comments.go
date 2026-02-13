@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) AddTaskComment(ctx context.Context, comment *tasks.Comment) (int64, error) {
+func (s *SQLStore) AddTaskComment(ctx context.Context, comment *tasks.Comment) (int64, error) {
 	now := time.Now().UTC()
 	attachments := "[]"
 	if comment.Attachments != nil {
@@ -29,7 +29,7 @@ func (s *SQLiteStore) AddTaskComment(ctx context.Context, comment *tasks.Comment
 	return id, nil
 }
 
-func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]tasks.Comment, error) {
+func (s *SQLStore) ListTaskComments(ctx context.Context, taskID int64) ([]tasks.Comment, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, task_id, author_id, content, attachments, created_at
 		FROM task_comments WHERE task_id=? ORDER BY created_at ASC`, taskID)
@@ -52,7 +52,7 @@ func (s *SQLiteStore) ListTaskComments(ctx context.Context, taskID int64) ([]tas
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) GetTaskComment(ctx context.Context, commentID int64) (*tasks.Comment, error) {
+func (s *SQLStore) GetTaskComment(ctx context.Context, commentID int64) (*tasks.Comment, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, task_id, author_id, content, attachments, created_at
 		FROM task_comments WHERE id=?`, commentID)
@@ -70,7 +70,7 @@ func (s *SQLiteStore) GetTaskComment(ctx context.Context, commentID int64) (*tas
 	return &c, nil
 }
 
-func (s *SQLiteStore) UpdateTaskComment(ctx context.Context, comment *tasks.Comment) error {
+func (s *SQLStore) UpdateTaskComment(ctx context.Context, comment *tasks.Comment) error {
 	if comment == nil {
 		return nil
 	}
@@ -86,7 +86,8 @@ func (s *SQLiteStore) UpdateTaskComment(ctx context.Context, comment *tasks.Comm
 	return err
 }
 
-func (s *SQLiteStore) DeleteTaskComment(ctx context.Context, commentID int64) error {
+func (s *SQLStore) DeleteTaskComment(ctx context.Context, commentID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM task_comments WHERE id=?`, commentID)
 	return err
 }
+

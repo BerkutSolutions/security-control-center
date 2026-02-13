@@ -21,21 +21,20 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 type IncidentsHandler struct {
-	cfg    *config.AppConfig
-	store  store.IncidentsStore
-	links  store.EntityLinksStore
-	controls store.ControlsStore
-	users  store.UsersStore
+	cfg       *config.AppConfig
+	store     store.IncidentsStore
+	links     store.EntityLinksStore
+	controls  store.ControlsStore
+	users     store.UsersStore
 	docsStore store.DocsStore
-	policy *rbac.Policy
-	svc    *incidents.Service
-	docsSvc *docs.Service
-	audits store.AuditStore
-	logger *utils.Logger
+	policy    *rbac.Policy
+	svc       *incidents.Service
+	docsSvc   *docs.Service
+	audits    store.AuditStore
+	logger    *utils.Logger
 }
 
 func NewIncidentsHandler(cfg *config.AppConfig, is store.IncidentsStore, links store.EntityLinksStore, controls store.ControlsStore, us store.UsersStore, ds store.DocsStore, policy *rbac.Policy, svc *incidents.Service, docsSvc *docs.Service, audits store.AuditStore, logger *utils.Logger) *IncidentsHandler {
@@ -50,15 +49,15 @@ var validIncidentSeverity = map[string]struct{}{
 }
 
 var validIncidentStatus = map[string]struct{}{
-	"draft":       {},
-	"open":        {},
-	"in_progress": {},
-	"contained":   {},
-	"resolved":    {},
-	"waiting":     {},
+	"draft":        {},
+	"open":         {},
+	"in_progress":  {},
+	"contained":    {},
+	"resolved":     {},
+	"waiting":      {},
 	"waiting_info": {},
-	"approval":    {},
-	"closed":      {},
+	"approval":     {},
+	"closed":       {},
 }
 
 var validDecisionOutcomes = map[string]struct{}{
@@ -255,15 +254,15 @@ func (h *IncidentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Title          string   `json:"title"`
-		Description    string   `json:"description"`
-		Severity       string   `json:"severity"`
-		Status         string   `json:"status"`
-		OwnerUserID    *int64   `json:"owner_user_id"`
-		Owner          string   `json:"owner"`
-		AssigneeUserID *int64   `json:"assignee_user_id"`
-		Assignee       string   `json:"assignee"`
-		Participants   []string `json:"participants"`
+		Title          string             `json:"title"`
+		Description    string             `json:"description"`
+		Severity       string             `json:"severity"`
+		Status         string             `json:"status"`
+		OwnerUserID    *int64             `json:"owner_user_id"`
+		Owner          string             `json:"owner"`
+		AssigneeUserID *int64             `json:"assignee_user_id"`
+		Assignee       string             `json:"assignee"`
+		Participants   []string           `json:"participants"`
 		Meta           store.IncidentMeta `json:"meta"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -325,17 +324,17 @@ func (h *IncidentsHandler) Create(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	incident := &store.Incident{
-		Title:       title,
-		Description: strings.TrimSpace(payload.Description),
-		Severity:    severity,
-		Status:      status,
-		OwnerUserID: ownerUser.ID,
+		Title:               title,
+		Description:         strings.TrimSpace(payload.Description),
+		Severity:            severity,
+		Status:              status,
+		OwnerUserID:         ownerUser.ID,
 		ClassificationLevel: int(docs.ClassificationInternal),
 		ClassificationTags:  nil,
-		CreatedBy:   user.ID,
-		UpdatedBy:   user.ID,
-		Version:     1,
-		Meta:        store.NormalizeIncidentMeta(payload.Meta),
+		CreatedBy:           user.ID,
+		UpdatedBy:           user.ID,
+		Version:             1,
+		Meta:                store.NormalizeIncidentMeta(payload.Meta),
 	}
 	if assigneeUser != nil {
 		incident.AssigneeUserID = &assigneeUser.ID
@@ -364,7 +363,7 @@ func (h *IncidentsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	incident, err := h.store.GetIncident(r.Context(), id)
 	if err != nil || incident == nil {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -414,19 +413,19 @@ func (h *IncidentsHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Title          *string  `json:"title"`
-		Description    *string  `json:"description"`
-		Severity       *string  `json:"severity"`
-		Status         *string  `json:"status"`
-		ClassificationLevel *string `json:"classification_level"`
-		ClassificationTags  []string `json:"classification_tags"`
-		OwnerUserID    *int64   `json:"owner_user_id"`
-		Owner          *string  `json:"owner"`
-		AssigneeUserID *int64   `json:"assignee_user_id"`
-		Assignee       *string  `json:"assignee"`
-		Participants   []string `json:"participants"`
-		Meta           *store.IncidentMeta `json:"meta"`
-		Version        int      `json:"version"`
+		Title               *string             `json:"title"`
+		Description         *string             `json:"description"`
+		Severity            *string             `json:"severity"`
+		Status              *string             `json:"status"`
+		ClassificationLevel *string             `json:"classification_level"`
+		ClassificationTags  []string            `json:"classification_tags"`
+		OwnerUserID         *int64              `json:"owner_user_id"`
+		Owner               *string             `json:"owner"`
+		AssigneeUserID      *int64              `json:"assignee_user_id"`
+		Assignee            *string             `json:"assignee"`
+		Participants        []string            `json:"participants"`
+		Meta                *store.IncidentMeta `json:"meta"`
+		Version             int                 `json:"version"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -628,7 +627,7 @@ func (h *IncidentsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	incident, err := h.store.GetIncident(r.Context(), id)
 	if err != nil || incident == nil {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -670,7 +669,7 @@ func (h *IncidentsHandler) Restore(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	incident, err := h.store.GetIncident(r.Context(), id)
 	if err != nil || incident == nil {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -806,7 +805,7 @@ func (h *IncidentsHandler) GetStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -889,7 +888,7 @@ func (h *IncidentsHandler) UpdateStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -950,7 +949,7 @@ func (h *IncidentsHandler) DeleteStage(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -983,7 +982,7 @@ func (h *IncidentsHandler) CompleteStage(w http.ResponseWriter, r *http.Request)
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -1017,7 +1016,7 @@ func (h *IncidentsHandler) GetStageContent(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -1044,7 +1043,7 @@ func (h *IncidentsHandler) UpdateStageContent(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	stageID, _ := strconv.ParseInt(mux.Vars(r)["stage_id"], 10, 64)
+	stageID, _ := strconv.ParseInt(pathParams(r)["stage_id"], 10, 64)
 	stage, err := h.store.GetIncidentStage(r.Context(), stageID)
 	if err != nil || stage == nil || stage.IncidentID != incident.ID {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -1068,10 +1067,10 @@ func (h *IncidentsHandler) UpdateStageContent(w http.ResponseWriter, r *http.Req
 		return
 	}
 	entry := &store.IncidentStageEntry{
-		StageID:     stage.ID,
-		Content:     payload.Content,
+		StageID:      stage.ID,
+		Content:      payload.Content,
 		ChangeReason: strings.TrimSpace(payload.ChangeReason),
-		UpdatedBy:   user.ID,
+		UpdatedBy:    user.ID,
 	}
 	if err := h.store.UpdateStageEntry(r.Context(), entry, payload.Version); err != nil {
 		if errors.Is(err, store.ErrConflict) {
@@ -1222,10 +1221,10 @@ func (h *IncidentsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 	sortIncidents(attention)
 	sortIncidents(visible)
 	writeJSON(w, http.StatusOK, map[string]any{
-		"metrics": metrics,
-		"mine": toDTO(sliceLimit(mine, 10)),
+		"metrics":   metrics,
+		"mine":      toDTO(sliceLimit(mine, 10)),
 		"attention": toDTO(sliceLimit(attention, 10)),
-		"recent": toDTO(sliceLimit(visible, 10)),
+		"recent":    toDTO(sliceLimit(visible, 10)),
 	})
 }
 
@@ -1416,7 +1415,7 @@ func (h *IncidentsHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	linkID, _ := strconv.ParseInt(mux.Vars(r)["link_id"], 10, 64)
+	linkID, _ := strconv.ParseInt(pathParams(r)["link_id"], 10, 64)
 	if linkID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1497,8 +1496,7 @@ func (h *IncidentsHandler) UploadAttachment(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 		return
 	}
 	file, header, err := r.FormFile("file")
@@ -1583,7 +1581,7 @@ func (h *IncidentsHandler) DownloadAttachment(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	attID, _ := strconv.ParseInt(mux.Vars(r)["att_id"], 10, 64)
+	attID, _ := strconv.ParseInt(pathParams(r)["att_id"], 10, 64)
 	if attID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1634,7 +1632,7 @@ func (h *IncidentsHandler) DeleteAttachment(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		return
 	}
-	attID, _ := strconv.ParseInt(mux.Vars(r)["att_id"], 10, 64)
+	attID, _ := strconv.ParseInt(pathParams(r)["att_id"], 10, 64)
 	if attID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1663,7 +1661,7 @@ func (h *IncidentsHandler) ListArtifactFiles(w http.ResponseWriter, r *http.Requ
 	if !ok {
 		return
 	}
-	artifactID := strings.TrimSpace(mux.Vars(r)["artifact_id"])
+	artifactID := strings.TrimSpace(pathParams(r)["artifact_id"])
 	if artifactID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1712,13 +1710,12 @@ func (h *IncidentsHandler) UploadArtifactFile(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	artifactID := strings.TrimSpace(mux.Vars(r)["artifact_id"])
+	artifactID := strings.TrimSpace(pathParams(r)["artifact_id"])
 	if artifactID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 		return
 	}
 	file, header, err := r.FormFile("file")
@@ -1804,8 +1801,8 @@ func (h *IncidentsHandler) DownloadArtifactFile(w http.ResponseWriter, r *http.R
 	if !ok {
 		return
 	}
-	artifactID := strings.TrimSpace(mux.Vars(r)["artifact_id"])
-	fileID, _ := strconv.ParseInt(mux.Vars(r)["file_id"], 10, 64)
+	artifactID := strings.TrimSpace(pathParams(r)["artifact_id"])
+	fileID, _ := strconv.ParseInt(pathParams(r)["file_id"], 10, 64)
 	if artifactID == "" || fileID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1856,8 +1853,8 @@ func (h *IncidentsHandler) DeleteArtifactFile(w http.ResponseWriter, r *http.Req
 	if !ok {
 		return
 	}
-	artifactID := strings.TrimSpace(mux.Vars(r)["artifact_id"])
-	fileID, _ := strconv.ParseInt(mux.Vars(r)["file_id"], 10, 64)
+	artifactID := strings.TrimSpace(pathParams(r)["artifact_id"])
+	fileID, _ := strconv.ParseInt(pathParams(r)["file_id"], 10, 64)
 	if artifactID == "" || fileID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -2147,7 +2144,7 @@ func (h *IncidentsHandler) currentUser(r *http.Request) (*store.User, []string, 
 }
 
 func (h *IncidentsHandler) getIncidentWithACL(w http.ResponseWriter, r *http.Request, user *store.User, roles []string, eff store.EffectiveAccess, required string) (*store.Incident, bool) {
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	incident, err := h.store.GetIncident(r.Context(), id)
 	if err != nil || incident == nil {
 		http.Error(w, "incidents.notFound", http.StatusNotFound)
@@ -2554,8 +2551,8 @@ type stageContentBlock struct {
 }
 
 type stageContentPayload struct {
-	StageType string             `json:"stageType"`
-	Type      string             `json:"type"`
+	StageType string              `json:"stageType"`
+	Type      string              `json:"type"`
 	Blocks    []stageContentBlock `json:"blocks"`
 }
 

@@ -9,41 +9,40 @@ import (
 
 	"berkut-scc/core/monitoring"
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 type notificationChannelPayload struct {
-	Type              string `json:"type"`
-	Name              string `json:"name"`
-	TelegramBotToken  string `json:"telegram_bot_token"`
-	TelegramChatID    string `json:"telegram_chat_id"`
-	TelegramThreadID  *int64 `json:"telegram_thread_id"`
-	Silent            bool   `json:"silent"`
-	ProtectContent    bool   `json:"protect_content"`
-	IsDefault         bool   `json:"is_default"`
-	IsActive          *bool  `json:"is_active"`
-	ApplyToAll        bool   `json:"apply_to_all"`
+	Type             string `json:"type"`
+	Name             string `json:"name"`
+	TelegramBotToken string `json:"telegram_bot_token"`
+	TelegramChatID   string `json:"telegram_chat_id"`
+	TelegramThreadID *int64 `json:"telegram_thread_id"`
+	Silent           bool   `json:"silent"`
+	ProtectContent   bool   `json:"protect_content"`
+	IsDefault        bool   `json:"is_default"`
+	IsActive         *bool  `json:"is_active"`
+	ApplyToAll       bool   `json:"apply_to_all"`
 }
 
 type notificationChannelView struct {
-	ID               int64   `json:"id"`
-	Type             string  `json:"type"`
-	Name             string  `json:"name"`
-	TelegramBotToken string  `json:"telegram_bot_token"`
-	TelegramChatID   string  `json:"telegram_chat_id"`
-	TelegramThreadID *int64  `json:"telegram_thread_id,omitempty"`
-	Silent           bool    `json:"silent"`
-	ProtectContent   bool    `json:"protect_content"`
-	IsDefault        bool    `json:"is_default"`
-	CreatedBy        int64   `json:"created_by"`
-	CreatedAt        string  `json:"created_at"`
-	IsActive         bool    `json:"is_active"`
+	ID               int64  `json:"id"`
+	Type             string `json:"type"`
+	Name             string `json:"name"`
+	TelegramBotToken string `json:"telegram_bot_token"`
+	TelegramChatID   string `json:"telegram_chat_id"`
+	TelegramThreadID *int64 `json:"telegram_thread_id,omitempty"`
+	Silent           bool   `json:"silent"`
+	ProtectContent   bool   `json:"protect_content"`
+	IsDefault        bool   `json:"is_default"`
+	CreatedBy        int64  `json:"created_by"`
+	CreatedAt        string `json:"created_at"`
+	IsActive         bool   `json:"is_active"`
 }
 
 func (h *MonitoringHandler) ListNotificationChannels(w http.ResponseWriter, r *http.Request) {
 	items, err := h.store.ListNotificationChannels(r.Context())
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	canManage := hasPermission(r, h.policy, "monitoring.notifications.manage")
@@ -79,12 +78,12 @@ func (h *MonitoringHandler) ListNotificationChannels(w http.ResponseWriter, r *h
 
 func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *http.Request) {
 	if h.encryptor == nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	var payload notificationChannelPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if strings.ToLower(strings.TrimSpace(payload.Type)) != "telegram" {
@@ -101,7 +100,7 @@ func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *
 	}
 	enc, err := h.encryptor.EncryptToBlob([]byte(strings.TrimSpace(payload.TelegramBotToken)))
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	isActive := true
@@ -122,13 +121,15 @@ func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *
 	}
 	id, err := h.store.CreateNotificationChannel(r.Context(), ch)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
+	applyCount := 0
 	if payload.ApplyToAll {
-		h.applyChannelToAllMonitors(r.Context(), id)
+		applyCount = h.applyChannelToAllMonitors(r.Context(), id)
+		h.audit(r, monitorAuditNotifChannelApplyAll, strconv.FormatInt(id, 10)+"|"+strconv.Itoa(applyCount))
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.notification.create", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditNotifChannelCreate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusCreated, notificationChannelView{
 		ID:               id,
 		Type:             ch.Type,
@@ -147,26 +148,26 @@ func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *
 
 func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *http.Request) {
 	if h.encryptor == nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	existing, err := h.store.GetNotificationChannel(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if existing == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	var payload notificationChannelPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if payload.Type != "" && strings.ToLower(strings.TrimSpace(payload.Type)) != "telegram" {
@@ -185,7 +186,7 @@ func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *
 	if payload.TelegramBotToken != "" {
 		enc, err := h.encryptor.EncryptToBlob([]byte(strings.TrimSpace(payload.TelegramBotToken)))
 		if err != nil {
-			http.Error(w, "server error", http.StatusInternalServerError)
+			http.Error(w, errServerError, http.StatusInternalServerError)
 			return
 		}
 		existing.TelegramBotTokenEnc = enc
@@ -197,10 +198,10 @@ func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *
 		existing.IsActive = *payload.IsActive
 	}
 	if err := h.store.UpdateNotificationChannel(r.Context(), existing); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.notification.update", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditNotifChannelUpdate, strconv.FormatInt(id, 10))
 	tokenMasked := "******"
 	if payload.TelegramBotToken != "" {
 		tokenMasked = maskToken(payload.TelegramBotToken)
@@ -222,37 +223,37 @@ func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *
 }
 
 func (h *MonitoringHandler) DeleteNotificationChannel(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if err := h.store.DeleteNotificationChannel(r.Context(), id); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.notification.delete", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditNotifChannelDelete, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) TestNotificationChannel(w http.ResponseWriter, r *http.Request) {
 	if h.encryptor == nil || h.engine == nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
 	}
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	ch, err := h.store.GetNotificationChannel(r.Context(), id)
 	if err != nil || ch == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	tokenRaw, err := h.encryptor.DecryptBlob(ch.TelegramBotTokenEnc)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	msg := monitoring.TelegramMessage{
@@ -267,53 +268,54 @@ func (h *MonitoringHandler) TestNotificationChannel(w http.ResponseWriter, r *ht
 		http.Error(w, "monitoring.notifications.testFailed", http.StatusBadRequest)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.notification.test", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditNotifChannelTest, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) ListMonitorNotifications(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	items, err := h.store.ListMonitorNotifications(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
 }
 
 func (h *MonitoringHandler) UpdateMonitorNotifications(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	var payload struct {
 		Items []store.MonitorNotification `json:"items"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	for i := range payload.Items {
 		payload.Items[i].MonitorID = id
 	}
 	if err := h.store.ReplaceMonitorNotifications(r.Context(), id, payload.Items); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.notification.update", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditNotifBindingsUpdate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
-func (h *MonitoringHandler) applyChannelToAllMonitors(ctx context.Context, channelID int64) {
+func (h *MonitoringHandler) applyChannelToAllMonitors(ctx context.Context, channelID int64) int {
 	list, err := h.store.ListMonitors(ctx, store.MonitorFilter{})
 	if err != nil {
-		return
+		return 0
 	}
+	applied := 0
 	for _, mon := range list {
 		existing, err := h.store.ListMonitorNotifications(ctx, mon.ID)
 		if err != nil {
@@ -330,12 +332,15 @@ func (h *MonitoringHandler) applyChannelToAllMonitors(ctx context.Context, chann
 			continue
 		}
 		existing = append(existing, store.MonitorNotification{
-			MonitorID:            mon.ID,
+			MonitorID:             mon.ID,
 			NotificationChannelID: channelID,
-			Enabled:              true,
+			Enabled:               true,
 		})
-		_ = h.store.ReplaceMonitorNotifications(ctx, mon.ID, existing)
+		if err := h.store.ReplaceMonitorNotifications(ctx, mon.ID, existing); err == nil {
+			applied++
+		}
 	}
+	return applied
 }
 
 const timeLayout = "2006-01-02 15:04:05"

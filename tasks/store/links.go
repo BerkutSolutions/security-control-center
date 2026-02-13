@@ -8,7 +8,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) ListEntityLinks(ctx context.Context, sourceType, sourceID string) ([]tasks.Link, error) {
+func (s *SQLStore) ListEntityLinks(ctx context.Context, sourceType, sourceID string) ([]tasks.Link, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, source_type, source_id, target_type, target_id, created_at
 		FROM entity_links WHERE source_type=? AND source_id=? ORDER BY created_at DESC, id DESC`,
@@ -28,7 +28,7 @@ func (s *SQLiteStore) ListEntityLinks(ctx context.Context, sourceType, sourceID 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) AddEntityLink(ctx context.Context, link *tasks.Link) (int64, error) {
+func (s *SQLStore) AddEntityLink(ctx context.Context, link *tasks.Link) (int64, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(ctx, `
 		INSERT INTO entity_links(source_type, source_id, target_type, target_id, created_at)
@@ -47,7 +47,8 @@ func (s *SQLiteStore) AddEntityLink(ctx context.Context, link *tasks.Link) (int6
 	return id, nil
 }
 
-func (s *SQLiteStore) DeleteEntityLink(ctx context.Context, linkID int64) error {
+func (s *SQLStore) DeleteEntityLink(ctx context.Context, linkID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM entity_links WHERE id=?`, linkID)
 	return err
 }
+

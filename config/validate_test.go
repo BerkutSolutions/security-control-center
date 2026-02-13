@@ -4,6 +4,8 @@ import "testing"
 
 func TestValidateRejectsDefaultSecretsInProd(t *testing.T) {
 	cfg := &AppConfig{
+		DBDriver:   "postgres",
+		DBURL:      "postgres://localhost/test",
 		AppEnv:     "prod",
 		CSRFKey:    defaultCSRFKey,
 		Pepper:     defaultPepper,
@@ -19,6 +21,8 @@ func TestValidateRejectsDefaultSecretsInProd(t *testing.T) {
 
 func TestValidateRejectsTLSDisabledInProd(t *testing.T) {
 	cfg := &AppConfig{
+		DBDriver:   "postgres",
+		DBURL:      "postgres://localhost/test",
 		AppEnv:     "prod",
 		CSRFKey:    "csrf",
 		Pepper:     "pepper",
@@ -34,6 +38,8 @@ func TestValidateRejectsTLSDisabledInProd(t *testing.T) {
 
 func TestValidateAllowsDevDefaults(t *testing.T) {
 	cfg := &AppConfig{
+		DBDriver:   "postgres",
+		DBURL:      "postgres://localhost/test",
 		AppEnv:     "dev",
 		CSRFKey:    defaultCSRFKey,
 		Pepper:     defaultPepper,
@@ -49,6 +55,8 @@ func TestValidateAllowsDevDefaults(t *testing.T) {
 
 func TestValidateAllowsHomeModeWithoutTLS(t *testing.T) {
 	cfg := &AppConfig{
+		DBDriver:        "postgres",
+		DBURL:           "postgres://localhost/test",
 		AppEnv:          "prod",
 		DeploymentMode:  "home",
 		CSRFKey:         defaultCSRFKey,

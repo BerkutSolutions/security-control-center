@@ -19,7 +19,6 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 type mockSessions struct{ killed int }
@@ -31,12 +30,13 @@ func (m *mockSessions) GetSession(ctx context.Context, id string) (*store.Sessio
 func (m *mockSessions) ListByUser(ctx context.Context, userID int64) ([]store.SessionRecord, error) {
 	return nil, nil
 }
-func (m *mockSessions) ListAll(ctx context.Context) ([]store.SessionRecord, error) { return nil, nil }
-func (m *mockSessions) DeleteSession(ctx context.Context, id string, by string) error        { return nil }
+func (m *mockSessions) ListAll(ctx context.Context) ([]store.SessionRecord, error)    { return nil, nil }
+func (m *mockSessions) DeleteSession(ctx context.Context, id string, by string) error { return nil }
 func (m *mockSessions) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
 	m.killed++
 	return nil
 }
+func (m *mockSessions) DeleteAll(ctx context.Context, by string) error { return nil }
 func (m *mockSessions) UpdateActivity(ctx context.Context, id string, now time.Time, extendBy time.Duration) error {
 	return nil
 }
@@ -46,12 +46,12 @@ func TestEffectivePermissionsUnion(t *testing.T) {
 	user := &store.User{ClearanceLevel: 1, ClearanceTags: []string{"alpha"}}
 	groups := []store.Group{
 		{
-			ID:               1,
-			Name:             "g1",
-			Roles:            []string{"auditor"},
-			ClearanceLevel:   3,
-			ClearanceTags:    []string{"bravo"},
-			MenuPermissions:  []string{"accounts"},
+			ID:              1,
+			Name:            "g1",
+			Roles:           []string{"auditor"},
+			ClearanceLevel:  3,
+			ClearanceTags:   []string{"bravo"},
+			MenuPermissions: []string{"accounts"},
 		},
 	}
 	eff := auth.CalculateEffectiveAccess(user, []string{"doc_viewer"}, groups, policy)
@@ -136,7 +136,7 @@ func TestRemoveGroupMemberKillsSessions(t *testing.T) {
 	req := httptest.NewRequest(http.MethodDelete, "/api/accounts/groups", nil)
 	req = makeSessionContext(req, "admin", adminID, []string{"admin"})
 	rr := httptest.NewRecorder()
-	acc.RemoveGroupMember(rr, mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(gid, 10), "user_id": strconv.FormatInt(targetID, 10)}))
+	acc.RemoveGroupMember(rr, withURLParams(req, map[string]string{"id": strconv.FormatInt(gid, 10), "user_id": strconv.FormatInt(targetID, 10)}))
 	if rr.Code != http.StatusOK {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
@@ -159,7 +159,7 @@ func TestCannotAssignHigherClearanceGroup(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/accounts/groups", bytes.NewBuffer(payload))
 	req = makeSessionContext(req, "low-admin", adminID, []string{"admin"})
 	rr := httptest.NewRecorder()
-	acc.AddGroupMember(rr, mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(gid, 10)}))
+	acc.AddGroupMember(rr, withURLParams(req, map[string]string{"id": strconv.FormatInt(gid, 10)}))
 	if rr.Code != http.StatusForbidden {
 		t.Fatalf("expected 403, got %d", rr.Code)
 	}

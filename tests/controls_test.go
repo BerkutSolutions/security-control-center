@@ -19,23 +19,22 @@ import (
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
 	taskstore "berkut-scc/tasks/store"
-	"github.com/gorilla/mux"
 )
 
 type controlsTestEnv struct {
-	ctx        context.Context
-	cfg        *config.AppConfig
-	cs         store.ControlsStore
-	links      store.EntityLinksStore
-	us         store.UsersStore
-	ds         store.DocsStore
-	is         store.IncidentsStore
-	ts         tasks.Store
-	audits     store.AuditStore
-	handler    *handlers.ControlsHandler
-	adminUser  *store.User
-	viewUser   *store.User
-	cleanup    func()
+	ctx       context.Context
+	cfg       *config.AppConfig
+	cs        store.ControlsStore
+	links     store.EntityLinksStore
+	us        store.UsersStore
+	ds        store.DocsStore
+	is        store.IncidentsStore
+	ts        tasks.Store
+	audits    store.AuditStore
+	handler   *handlers.ControlsHandler
+	adminUser *store.User
+	viewUser  *store.User
+	cleanup   func()
 }
 
 func setupControls(t *testing.T) controlsTestEnv {
@@ -55,7 +54,7 @@ func setupControls(t *testing.T) controlsTestEnv {
 	us := store.NewUsersStore(db)
 	ds := store.NewDocsStore(db)
 	is := store.NewIncidentsStore(db)
-	ts := taskstore.NewSQLite(db)
+	ts := taskstore.NewStore(db)
 	audits := store.NewAuditStore(db)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	handler := handlers.NewControlsHandler(cs, links, us, ds, is, ts, audits, policy, logger)
@@ -174,7 +173,7 @@ func TestControlsCRUDAndFilters(t *testing.T) {
 	}
 	upBody, _ := json.Marshal(update)
 	upReq := httptest.NewRequest("PUT", "/api/controls/"+strconv.FormatInt(created.ID, 10), bytes.NewReader(upBody))
-	upReq = mux.SetURLVars(upReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
+	upReq = withURLParams(upReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
 	upReq = upReq.WithContext(context.WithValue(upReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	upRR := httptest.NewRecorder()
 	env.handler.UpdateControl(upRR, upReq)
@@ -198,7 +197,7 @@ func TestControlsCRUDAndFilters(t *testing.T) {
 		t.Fatalf("expected 1 filtered control")
 	}
 	delReq := httptest.NewRequest("DELETE", "/api/controls/"+strconv.FormatInt(created.ID, 10), nil)
-	delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
+	delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
 	delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	delRR := httptest.NewRecorder()
 	env.handler.DeleteControl(delRR, delReq)
@@ -259,12 +258,12 @@ func TestControlsChecksCRUD(t *testing.T) {
 	var created store.Control
 	_ = json.Unmarshal(ctrlRR.Body.Bytes(), &created)
 	checkPayload := map[string]any{
-		"result":  "pass",
+		"result":   "pass",
 		"notes_md": "ok",
 	}
 	checkBody, _ := json.Marshal(checkPayload)
 	checkReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(created.ID, 10)+"/checks", bytes.NewReader(checkBody))
-	checkReq = mux.SetURLVars(checkReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
+	checkReq = withURLParams(checkReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
 	checkReq = checkReq.WithContext(context.WithValue(checkReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	checkRR := httptest.NewRecorder()
 	env.handler.CreateControlCheck(checkRR, checkReq)
@@ -281,7 +280,7 @@ func TestControlsChecksCRUD(t *testing.T) {
 		t.Fatalf("list checks: %d", listRR.Code)
 	}
 	delReq := httptest.NewRequest("DELETE", "/api/checks/"+strconv.FormatInt(check.ID, 10), nil)
-	delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(check.ID, 10)})
+	delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(check.ID, 10)})
 	delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	delRR := httptest.NewRecorder()
 	env.handler.DeleteCheck(delRR, delReq)
@@ -351,7 +350,7 @@ func TestControlsLinksCRUD(t *testing.T) {
 	}
 	linkBody, _ := json.Marshal(linkPayload)
 	linkReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", bytes.NewReader(linkBody))
-	linkReq = mux.SetURLVars(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	linkReq = withURLParams(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	linkReq = linkReq.WithContext(context.WithValue(linkReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	linkRR := httptest.NewRecorder()
 	env.handler.CreateControlLink(linkRR, linkReq)
@@ -360,7 +359,7 @@ func TestControlsLinksCRUD(t *testing.T) {
 	}
 
 	listReq := httptest.NewRequest("GET", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", nil)
-	listReq = mux.SetURLVars(listReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	listReq = withURLParams(listReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	listReq = listReq.WithContext(context.WithValue(listReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	listRR := httptest.NewRecorder()
 	env.handler.ListControlLinks(listRR, listReq)
@@ -376,12 +375,12 @@ func TestControlsLinksCRUD(t *testing.T) {
 	}
 
 	delReq := httptest.NewRequest("DELETE", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links/1", nil)
-	delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": "1"})
+	delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": "1"})
 	delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	delRR := httptest.NewRecorder()
 	linkID := fmt.Sprintf("%v", listResp.Items[0]["id"])
 	if linkID != "" {
-		delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": linkID})
+		delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": linkID})
 	}
 	env.handler.DeleteControlLink(delRR, delReq)
 	if delRR.Code != http.StatusOK {
@@ -395,7 +394,7 @@ func TestControlsLinksCRUD(t *testing.T) {
 	}
 	incBody, _ := json.Marshal(incidentLinkPayload)
 	incReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", bytes.NewReader(incBody))
-	incReq = mux.SetURLVars(incReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	incReq = withURLParams(incReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	incReq = incReq.WithContext(context.WithValue(incReq.Context(), auth.SessionContextKey, sessionFor(env.viewUser, []string{"analyst"})))
 	incRR := httptest.NewRecorder()
 	env.handler.CreateControlLink(incRR, incReq)
@@ -450,7 +449,7 @@ func TestControlsAutoViolationFromIncidentLink(t *testing.T) {
 	}
 	linkBody, _ := json.Marshal(linkPayload)
 	linkReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", bytes.NewReader(linkBody))
-	linkReq = mux.SetURLVars(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	linkReq = withURLParams(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	linkReq = linkReq.WithContext(context.WithValue(linkReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	linkRR := httptest.NewRecorder()
 	env.handler.CreateControlLink(linkRR, linkReq)
@@ -468,7 +467,7 @@ func TestControlsAutoViolationFromIncidentLink(t *testing.T) {
 	// Repeat to ensure no duplicates.
 	linkRR2 := httptest.NewRecorder()
 	linkReq2 := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", bytes.NewReader(linkBody))
-	linkReq2 = mux.SetURLVars(linkReq2, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	linkReq2 = withURLParams(linkReq2, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	linkReq2 = linkReq2.WithContext(context.WithValue(linkReq2.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	env.handler.CreateControlLink(linkRR2, linkReq2)
 	if linkRR2.Code != http.StatusCreated {
@@ -485,7 +484,7 @@ func TestControlsAutoViolationFromIncidentLink(t *testing.T) {
 
 	linksResp := httptest.NewRecorder()
 	listReq := httptest.NewRequest("GET", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", nil)
-	listReq = mux.SetURLVars(listReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	listReq = withURLParams(listReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	listReq = listReq.WithContext(context.WithValue(listReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	env.handler.ListControlLinks(linksResp, listReq)
 	var linkList struct {
@@ -498,7 +497,7 @@ func TestControlsAutoViolationFromIncidentLink(t *testing.T) {
 	for _, item := range linkList.Items {
 		linkID := fmt.Sprintf("%v", item["id"])
 		delReq := httptest.NewRequest("DELETE", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links/"+linkID, nil)
-		delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": linkID})
+		delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10), "link_id": linkID})
 		delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 		delRR := httptest.NewRecorder()
 		env.handler.DeleteControlLink(delRR, delReq)
@@ -565,7 +564,7 @@ func TestControlsAutoViolationPermission(t *testing.T) {
 	}
 	linkBody, _ := json.Marshal(linkPayload)
 	linkReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(ctrl.ID, 10)+"/links", bytes.NewReader(linkBody))
-	linkReq = mux.SetURLVars(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
+	linkReq = withURLParams(linkReq, map[string]string{"id": strconv.FormatInt(ctrl.ID, 10)})
 	linkReq = linkReq.WithContext(context.WithValue(linkReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"controls_editor"})))
 	linkRR := httptest.NewRecorder()
 	customHandler.CreateControlLink(linkRR, linkReq)
@@ -609,7 +608,7 @@ func TestControlsViolationsCRUD(t *testing.T) {
 	}
 	violBody, _ := json.Marshal(violPayload)
 	violReq := httptest.NewRequest("POST", "/api/controls/"+strconv.FormatInt(created.ID, 10)+"/violations", bytes.NewReader(violBody))
-	violReq = mux.SetURLVars(violReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
+	violReq = withURLParams(violReq, map[string]string{"id": strconv.FormatInt(created.ID, 10)})
 	violReq = violReq.WithContext(context.WithValue(violReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	violRR := httptest.NewRecorder()
 	env.handler.CreateControlViolation(violRR, violReq)
@@ -626,7 +625,7 @@ func TestControlsViolationsCRUD(t *testing.T) {
 		t.Fatalf("list violations: %d", listRR.Code)
 	}
 	delReq := httptest.NewRequest("DELETE", "/api/violations/"+strconv.FormatInt(viol.ID, 10), nil)
-	delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(viol.ID, 10)})
+	delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(viol.ID, 10)})
 	delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, sessionFor(env.adminUser, []string{"admin"})))
 	delRR := httptest.NewRecorder()
 	env.handler.DeleteViolation(delRR, delReq)

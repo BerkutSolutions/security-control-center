@@ -10,7 +10,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateBoard(ctx context.Context, board *tasks.Board, acl []tasks.ACLRule) (int64, error) {
+func (s *SQLStore) CreateBoard(ctx context.Context, board *tasks.Board, acl []tasks.ACLRule) (int64, error) {
 	if board.SpaceID <= 0 {
 		return 0, tasks.ErrInvalidInput
 	}
@@ -49,7 +49,7 @@ func (s *SQLiteStore) CreateBoard(ctx context.Context, board *tasks.Board, acl [
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateBoard(ctx context.Context, board *tasks.Board) error {
+func (s *SQLStore) UpdateBoard(ctx context.Context, board *tasks.Board) error {
 	if board.SpaceID <= 0 {
 		return tasks.ErrInvalidInput
 	}
@@ -67,7 +67,7 @@ func (s *SQLiteStore) UpdateBoard(ctx context.Context, board *tasks.Board) error
 	return err
 }
 
-func (s *SQLiteStore) MoveBoard(ctx context.Context, boardID int64, position int) (*tasks.Board, error) {
+func (s *SQLStore) MoveBoard(ctx context.Context, boardID int64, position int) (*tasks.Board, error) {
 	var board *tasks.Board
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -118,12 +118,12 @@ func (s *SQLiteStore) MoveBoard(ctx context.Context, boardID int64, position int
 	return board, nil
 }
 
-func (s *SQLiteStore) DeleteBoard(ctx context.Context, boardID int64) error {
+func (s *SQLStore) DeleteBoard(ctx context.Context, boardID int64) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE task_boards SET is_active=0, updated_at=? WHERE id=?`, time.Now().UTC(), boardID)
 	return err
 }
 
-func (s *SQLiteStore) GetBoard(ctx context.Context, boardID int64) (*tasks.Board, error) {
+func (s *SQLStore) GetBoard(ctx context.Context, boardID int64) (*tasks.Board, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, space_id, organization_id, name, description, default_template_id, position, created_by, created_at, updated_at, is_active
 		FROM task_boards WHERE id=?`, boardID)
@@ -147,7 +147,7 @@ func (s *SQLiteStore) GetBoard(ctx context.Context, boardID int64) (*tasks.Board
 	return &b, nil
 }
 
-func (s *SQLiteStore) ListBoards(ctx context.Context, filter tasks.BoardFilter) ([]tasks.Board, error) {
+func (s *SQLStore) ListBoards(ctx context.Context, filter tasks.BoardFilter) ([]tasks.Board, error) {
 	query := `
 		SELECT id, space_id, organization_id, name, description, default_template_id, position, created_by, created_at, updated_at, is_active
 		FROM task_boards`
@@ -190,7 +190,7 @@ func (s *SQLiteStore) ListBoards(ctx context.Context, filter tasks.BoardFilter) 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) SetBoardACL(ctx context.Context, boardID int64, acl []tasks.ACLRule) error {
+func (s *SQLStore) SetBoardACL(ctx context.Context, boardID int64, acl []tasks.ACLRule) error {
 	return withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM task_board_acl WHERE board_id=?`, boardID); err != nil {
 			return err
@@ -205,7 +205,7 @@ func (s *SQLiteStore) SetBoardACL(ctx context.Context, boardID int64, acl []task
 	})
 }
 
-func (s *SQLiteStore) GetBoardACL(ctx context.Context, boardID int64) ([]tasks.ACLRule, error) {
+func (s *SQLStore) GetBoardACL(ctx context.Context, boardID int64) ([]tasks.ACLRule, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT subject_type, subject_id, permission FROM task_board_acl WHERE board_id=?`, boardID)
 	if err != nil {
 		return nil, err
@@ -222,7 +222,7 @@ func (s *SQLiteStore) GetBoardACL(ctx context.Context, boardID int64) ([]tasks.A
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) NextBoardPosition(ctx context.Context, spaceID int64) (int, error) {
+func (s *SQLStore) NextBoardPosition(ctx context.Context, spaceID int64) (int, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) FROM task_boards WHERE space_id=?`, spaceID)
 	var max int
 	if err := row.Scan(&max); err != nil {
@@ -231,7 +231,7 @@ func (s *SQLiteStore) NextBoardPosition(ctx context.Context, spaceID int64) (int
 	return max + 1, nil
 }
 
-func (s *SQLiteStore) getBoardTx(ctx context.Context, tx *sql.Tx, boardID int64) (*tasks.Board, error) {
+func (s *SQLStore) getBoardTx(ctx context.Context, tx *sql.Tx, boardID int64) (*tasks.Board, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, space_id, organization_id, name, description, default_template_id, position, created_by, created_at, updated_at, is_active
 		FROM task_boards WHERE id=?`, boardID)
@@ -254,3 +254,4 @@ func (s *SQLiteStore) getBoardTx(ctx context.Context, tx *sql.Tx, boardID int64)
 	b.IsActive = active == 1
 	return &b, nil
 }
+

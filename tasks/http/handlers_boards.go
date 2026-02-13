@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListBoards(w http.ResponseWriter, r *http.Request) {
@@ -124,7 +124,7 @@ func (h *Handler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -229,7 +229,7 @@ func (h *Handler) DeleteBoard(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -263,7 +263,7 @@ func (h *Handler) MoveBoard(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	boardID := parseInt64Default(mux.Vars(r)["id"], 0)
+	boardID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if boardID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

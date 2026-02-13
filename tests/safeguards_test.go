@@ -19,26 +19,33 @@ import (
 	"berkut-scc/core/utils"
 )
 
-type mockSessions struct{ killed int }
+type safeguardsMockSessions struct{ killed int }
 
-func (m *mockSessions) SaveSession(ctx context.Context, sess *store.SessionRecord) error { return nil }
-func (m *mockSessions) GetSession(ctx context.Context, id string) (*store.SessionRecord, error) {
+func (m *safeguardsMockSessions) SaveSession(ctx context.Context, sess *store.SessionRecord) error {
+	return nil
+}
+func (m *safeguardsMockSessions) GetSession(ctx context.Context, id string) (*store.SessionRecord, error) {
 	return nil, nil
 }
-func (m *mockSessions) ListByUser(ctx context.Context, userID int64) ([]store.SessionRecord, error) {
+func (m *safeguardsMockSessions) ListByUser(ctx context.Context, userID int64) ([]store.SessionRecord, error) {
 	return nil, nil
 }
-func (m *mockSessions) ListAll(ctx context.Context) ([]store.SessionRecord, error) { return nil, nil }
-func (m *mockSessions) DeleteSession(ctx context.Context, id string, by string) error        { return nil }
-func (m *mockSessions) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
+func (m *safeguardsMockSessions) ListAll(ctx context.Context) ([]store.SessionRecord, error) {
+	return nil, nil
+}
+func (m *safeguardsMockSessions) DeleteSession(ctx context.Context, id string, by string) error {
+	return nil
+}
+func (m *safeguardsMockSessions) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
 	m.killed++
 	return nil
 }
-func (m *mockSessions) UpdateActivity(ctx context.Context, id string, now time.Time, extendBy time.Duration) error {
+func (m *safeguardsMockSessions) DeleteAll(ctx context.Context, by string) error { return nil }
+func (m *safeguardsMockSessions) UpdateActivity(ctx context.Context, id string, now time.Time, extendBy time.Duration) error {
 	return nil
 }
 
-func newTestAccountsHandler(t *testing.T) (*handlers.AccountsHandler, *mockSessions, store.UsersStore) {
+func newTestAccountsHandler(t *testing.T) (*handlers.AccountsHandler, *safeguardsMockSessions, store.UsersStore) {
 	dir := t.TempDir()
 	cfg := &config.AppConfig{DBPath: filepath.Join(dir, "safeguard.db"), Pepper: "pepper", Security: config.SecurityConfig{TagsSubsetEnforced: true}}
 	logger := utils.NewLogger()
@@ -50,13 +57,13 @@ func newTestAccountsHandler(t *testing.T) (*handlers.AccountsHandler, *mockSessi
 		t.Fatalf("migrations: %v", err)
 	}
 	users := store.NewUsersStore(db)
-	sessionsStore := &mockSessions{}
+	sessionsStore := &safeguardsMockSessions{}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	acc := handlers.NewAccountsHandler(users, nil, nil, sessionsStore, policy, auth.NewSessionManager(sessionsStore, cfg, logger), cfg, store.NewAuditStore(db), logger, nil)
 	return acc, sessionsStore, users
 }
 
-func makeSessionContext(r *http.Request, username string, userID int64, roles []string) *http.Request {
+func makeSessionContextSafeguards(r *http.Request, username string, userID int64, roles []string) *http.Request {
 	rec := &store.SessionRecord{Username: username, UserID: userID, Roles: roles}
 	ctx := context.WithValue(r.Context(), auth.SessionContextKey, rec)
 	return r.WithContext(ctx)
@@ -71,7 +78,7 @@ func TestClearanceCap(t *testing.T) {
 	targetID, _ := users.Create(context.Background(), target, []string{"admin"})
 	body, _ := json.Marshal(map[string]interface{}{"clearance_level": 3})
 	req := httptest.NewRequest(http.MethodPut, "/api/accounts/users/"+strconv.FormatInt(targetID, 10), bytes.NewReader(body))
-	req = makeSessionContext(req, "admin1", actorID, []string{"admin"})
+	req = makeSessionContextSafeguards(req, "admin1", actorID, []string{"admin"})
 	rr := httptest.NewRecorder()
 	acc.UpdateUser(rr, req)
 	if rr.Code != http.StatusForbidden {
@@ -88,7 +95,7 @@ func TestTagsSubsetEnforced(t *testing.T) {
 	targetID, _ := users.Create(context.Background(), target, []string{"admin"})
 	body, _ := json.Marshal(map[string]interface{}{"clearance_tags": []string{"b"}})
 	req := httptest.NewRequest(http.MethodPut, "/api/accounts/users/"+strconv.FormatInt(targetID, 10), bytes.NewReader(body))
-	req = makeSessionContext(req, "admin2", actorID, []string{"admin"})
+	req = makeSessionContextSafeguards(req, "admin2", actorID, []string{"admin"})
 	rr := httptest.NewRecorder()
 	acc.UpdateUser(rr, req)
 	if rr.Code != http.StatusForbidden {
@@ -103,7 +110,7 @@ func TestLastSuperadminProtected(t *testing.T) {
 	supID, _ := users.Create(context.Background(), sup, []string{"superadmin"})
 	body, _ := json.Marshal(map[string]interface{}{"status": "disabled"})
 	req := httptest.NewRequest(http.MethodPut, "/api/accounts/users/"+strconv.FormatInt(supID, 10), bytes.NewReader(body))
-	req = makeSessionContext(req, "sa", supID, []string{"superadmin"})
+	req = makeSessionContextSafeguards(req, "sa", supID, []string{"superadmin"})
 	rr := httptest.NewRecorder()
 	acc.UpdateUser(rr, req)
 	if rr.Code != http.StatusConflict {
@@ -118,7 +125,7 @@ func TestSelfLockoutPrevented(t *testing.T) {
 	adminID, _ := users.Create(context.Background(), admin, []string{"admin"})
 	body, _ := json.Marshal(map[string]interface{}{"roles": []string{"doc_viewer"}})
 	req := httptest.NewRequest(http.MethodPut, "/api/accounts/users/"+strconv.FormatInt(adminID, 10), bytes.NewReader(body))
-	req = makeSessionContext(req, "self", adminID, []string{"admin"})
+	req = makeSessionContextSafeguards(req, "self", adminID, []string{"admin"})
 	rr := httptest.NewRecorder()
 	acc.UpdateUser(rr, req)
 	if rr.Code != http.StatusConflict {
@@ -135,7 +142,7 @@ func TestSessionsKilledOnChange(t *testing.T) {
 	targetID, _ := users.Create(context.Background(), target, []string{"admin"})
 	body, _ := json.Marshal(map[string]interface{}{"roles": []string{"doc_viewer"}})
 	req := httptest.NewRequest(http.MethodPut, "/api/accounts/users/"+strconv.FormatInt(targetID, 10), bytes.NewReader(body))
-	req = makeSessionContext(req, "a1", adminID, []string{"admin"})
+	req = makeSessionContextSafeguards(req, "a1", adminID, []string{"admin"})
 	rr := httptest.NewRecorder()
 	acc.UpdateUser(rr, req)
 	if rr.Code != http.StatusOK {

@@ -16,8 +16,8 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"berkut-scc/tasks"
 	"berkut-scc/gui"
+	"berkut-scc/tasks"
 )
 
 type DashboardHandler struct {
@@ -35,8 +35,8 @@ type DashboardHandler struct {
 }
 
 type DashboardLayout struct {
-	Order    []string                         `json:"order"`
-	Hidden   []string                         `json:"hidden"`
+	Order    []string                          `json:"order"`
+	Hidden   []string                          `json:"hidden"`
 	Settings map[string]map[string]interface{} `json:"settings,omitempty"`
 }
 
@@ -82,15 +82,15 @@ func (h *DashboardHandler) Data(w http.ResponseWriter, r *http.Request) {
 	summary, todo, docsBlock, incidentsBlock, tasksBlock := h.collectData(r.Context(), user, roles, groups, eff, perms)
 
 	writeJSON(w, http.StatusOK, map[string]any{
-		"layout":           layout,
-		"default_layout":   defaultLayout,
-		"frames":           allowedFrames,
-		"summary":          summary,
-		"todo":             todo,
-		"documents":        docsBlock,
-		"incidents":        incidentsBlock,
-		"tasks":            tasksBlock,
-		"tasks_available":  perms["tasks.view"],
+		"layout":          layout,
+		"default_layout":  defaultLayout,
+		"frames":          allowedFrames,
+		"summary":         summary,
+		"todo":            todo,
+		"documents":       docsBlock,
+		"incidents":       incidentsBlock,
+		"tasks":           tasksBlock,
+		"tasks_available": perms["tasks.view"],
 	})
 }
 
@@ -132,27 +132,27 @@ func (h *DashboardHandler) collectData(ctx context.Context, user *store.User, ro
 		"accounts_blocked": nil,
 	}
 	todo := map[string]any{
-		"approvals_pending": nil,
-		"tasks_assigned":    nil,
-		"docs_returned":     nil,
+		"approvals_pending":  nil,
+		"tasks_assigned":     nil,
+		"docs_returned":      nil,
 		"incidents_assigned": nil,
 	}
 	documents := map[string]any{
-		"on_approval":    nil,
-		"approved_30d":   nil,
-		"returned":       nil,
+		"on_approval":  nil,
+		"approved_30d": nil,
+		"returned":     nil,
 	}
 	incidents := map[string]any{
-		"open":          nil,
-		"critical":      nil,
-		"new_last_7d":   nil,
-		"closed":        nil,
+		"open":        nil,
+		"critical":    nil,
+		"new_last_7d": nil,
+		"closed":      nil,
 	}
 	tasksBlock := map[string]any{
-		"total":        nil,
-		"mine":         nil,
-		"overdue":      nil,
-		"blocked":      nil,
+		"total":         nil,
+		"mine":          nil,
+		"overdue":       nil,
+		"blocked":       nil,
 		"completed_30d": nil,
 	}
 

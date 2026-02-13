@@ -7,8 +7,10 @@ import (
 	"crypto/tls"
 	"crypto/x509"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"net/url"
@@ -17,6 +19,7 @@ import (
 	"time"
 
 	"berkut-scc/core/store"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -83,10 +86,44 @@ func runSingleCheck(ctx context.Context, m store.Monitor, settings store.Monitor
 	res := CheckResult{CheckedAt: start}
 	var err error
 	switch strings.ToLower(strings.TrimSpace(m.Type)) {
-	case "http":
-		res, err = checkHTTP(ctx, m, settings, timeout)
-	case "tcp":
+	case TypeHTTP:
+		res, err = checkHTTP(ctx, m, settings, timeout, TypeHTTP)
+	case TypeHTTPKeyword:
+		res, err = checkHTTP(ctx, m, settings, timeout, TypeHTTPKeyword)
+	case TypeHTTPJSON:
+		res, err = checkHTTP(ctx, m, settings, timeout, TypeHTTPJSON)
+	case TypeTCP:
 		res, err = checkTCP(ctx, m, settings, timeout)
+	case TypeDNS:
+		res, err = checkDNS(ctx, m, settings)
+	case TypeRedis:
+		res, err = checkRedis(ctx, m, settings, timeout)
+	case TypePostgres:
+		res, err = checkPostgres(ctx, m, settings, timeout)
+	case TypePing, TypeTailscalePing:
+		res, err = checkPingLike(ctx, m, settings, timeout)
+	case TypeGRPCKeyword:
+		res, err = checkGRPCKeyword(ctx, m, settings, timeout)
+	case TypeDocker:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeDocker))
+	case TypeSteam:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeSteam))
+	case TypeGameDig:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeGameDig))
+	case TypeMQTT:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeMQTT))
+	case TypeKafkaProducer:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeKafkaProducer))
+	case TypeMSSQL:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeMSSQL))
+	case TypeMySQL:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeMySQL))
+	case TypeMongoDB:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeMongoDB))
+	case TypeRadius:
+		res, err = checkHostPort(ctx, m, settings, timeout, DefaultPortForType(TypeRadius))
+	case TypePush:
+		res, err = CheckResult{OK: true}, nil
 	default:
 		return failedResult(res, errors.New("unsupported monitor type")), errors.New("unsupported monitor type")
 	}
@@ -98,7 +135,7 @@ func runSingleCheck(ctx context.Context, m store.Monitor, settings store.Monitor
 	return res, nil
 }
 
-func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {
+func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration, mode string) (CheckResult, error) {
 	parsed, err := parseMonitorURL(m.URL)
 	if err != nil {
 		return CheckResult{}, ErrInvalidURL
@@ -135,9 +172,11 @@ func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSetti
 	}
 	client := &http.Client{
 		Timeout: timeout,
-		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+	}
+	if expectsRedirectStatus(m.AllowedStatus) {
+		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
-		},
+		}
 	}
 	if strings.EqualFold(parsed.Scheme, "https") && m.IgnoreTLSErrors {
 		client.Transport = &http.Transport{
@@ -164,6 +203,33 @@ func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSetti
 		res.Error = fmt.Sprintf("status_%d", code)
 		return res, nil
 	}
+	if mode == TypeHTTPJSON || mode == TypeHTTPKeyword {
+		payload, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
+		if err != nil {
+			return CheckResult{}, err
+		}
+		if mode == TypeHTTPJSON {
+			var parsed any
+			if err := json.Unmarshal(payload, &parsed); err != nil {
+				res.OK = false
+				res.Error = "monitoring.error.invalidJsonResponse"
+				return res, nil
+			}
+		}
+		if mode == TypeHTTPKeyword {
+			needle := strings.TrimSpace(m.RequestBody)
+			if needle == "" {
+				res.OK = false
+				res.Error = "monitoring.error.keywordRequired"
+				return res, nil
+			}
+			if !strings.Contains(string(payload), needle) {
+				res.OK = false
+				res.Error = "monitoring.error.keywordNotFound"
+				return res, nil
+			}
+		}
+	}
 	return res, nil
 }
 
@@ -185,6 +251,92 @@ func checkTCP(ctx context.Context, m store.Monitor, settings store.MonitorSettin
 		return CheckResult{}, err
 	}
 	_ = conn.Close()
+	return CheckResult{OK: true}, nil
+}
+
+func checkDNS(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
+	host := strings.TrimSpace(m.Host)
+	if host == "" {
+		return CheckResult{}, errors.New("empty host")
+	}
+	if err := guardTarget(ctx, host, settings.AllowPrivateNetworks); err != nil {
+		return CheckResult{}, err
+	}
+	addrs, err := net.DefaultResolver.LookupHost(ctx, host)
+	if err != nil {
+		return CheckResult{}, err
+	}
+	res := CheckResult{OK: true}
+	expect := strings.TrimSpace(m.RequestBody)
+	if expect != "" {
+		found := false
+		for _, addr := range addrs {
+			if strings.Contains(addr, expect) {
+				found = true
+				break
+			}
+		}
+		if !found {
+			res.OK = false
+			res.Error = "monitoring.error.dnsNoAnswer"
+		}
+	}
+	return res, nil
+}
+
+func checkRedis(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {
+	host := strings.TrimSpace(m.Host)
+	if host == "" {
+		return CheckResult{}, errors.New("empty host")
+	}
+	if err := guardTarget(ctx, host, settings.AllowPrivateNetworks); err != nil {
+		return CheckResult{}, err
+	}
+	port := m.Port
+	if port <= 0 {
+		port = 6379
+	}
+	addr := net.JoinHostPort(host, strconv.Itoa(port))
+	dialer := &net.Dialer{Timeout: timeout}
+	conn, err := dialer.DialContext(ctx, "tcp", addr)
+	if err != nil {
+		return CheckResult{}, err
+	}
+	defer conn.Close()
+	_ = conn.SetDeadline(time.Now().Add(timeout))
+	if _, err := conn.Write([]byte("*1\r\n$4\r\nPING\r\n")); err != nil {
+		return CheckResult{}, err
+	}
+	buf := make([]byte, 256)
+	n, err := conn.Read(buf)
+	if err != nil {
+		return CheckResult{}, err
+	}
+	res := strings.ToUpper(strings.TrimSpace(string(buf[:n])))
+	if !strings.Contains(res, "PONG") {
+		return CheckResult{OK: false, Error: "monitoring.error.requestFailed"}, nil
+	}
+	return CheckResult{OK: true}, nil
+}
+
+func checkPostgres(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {
+	parsed, err := url.Parse(strings.TrimSpace(m.URL))
+	if err != nil || parsed.Hostname() == "" {
+		return CheckResult{}, ErrInvalidURL
+	}
+	if err := guardTarget(ctx, parsed.Hostname(), settings.AllowPrivateNetworks); err != nil {
+		return CheckResult{}, err
+	}
+	checkCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	conn, err := pgx.Connect(checkCtx, strings.TrimSpace(m.URL))
+	if err != nil {
+		return CheckResult{}, err
+	}
+	defer conn.Close(checkCtx)
+	if err := conn.Ping(checkCtx); err != nil {
+		return CheckResult{}, err
+	}
 	return CheckResult{OK: true}, nil
 }
 
@@ -309,6 +461,20 @@ func parseStatusRanges(raw []string) []statusRange {
 		}
 	}
 	return out
+}
+
+func expectsRedirectStatus(allowed []string) bool {
+	ranges := parseStatusRanges(allowed)
+	if len(ranges) == 0 {
+		return false
+	}
+	for _, r := range ranges {
+		if r.max < 300 || r.min > 399 {
+			continue
+		}
+		return true
+	}
+	return false
 }
 
 func failedResult(res CheckResult, err error) CheckResult {

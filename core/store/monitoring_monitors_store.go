@@ -200,17 +200,14 @@ func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused
 			}
 		}
 	}
-	res, err := tx.ExecContext(ctx, `UPDATE monitor_state SET status=?, maintenance_active=? WHERE monitor_id=?`, status, maintenanceActive, id)
-	if err != nil {
+	if _, err := tx.ExecContext(ctx, `
+		INSERT INTO monitor_state(monitor_id, status, maintenance_active)
+		VALUES(?,?,?)
+		ON CONFLICT (monitor_id)
+		DO UPDATE SET status=excluded.status, maintenance_active=excluded.maintenance_active
+	`, id, status, maintenanceActive); err != nil {
 		tx.Rollback()
 		return err
-	}
-	affected, _ := res.RowsAffected()
-	if affected == 0 {
-		if _, err := tx.ExecContext(ctx, `INSERT INTO monitor_state(monitor_id, status) VALUES(?,?)`, id, status); err != nil {
-			tx.Rollback()
-			return err
-		}
 	}
 	return tx.Commit()
 }

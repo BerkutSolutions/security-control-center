@@ -1,43 +1,57 @@
 ﻿# Runbook (start and recovery)
 
-## 1. Local start (docker run)
-```bash
-docker rm -f berkut-scc || true
-docker build -t berkut-scc -f docker/Dockerfile .
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
-```
-
-## 2. Start with docker compose
+## 1. Start with Docker Compose
 ```bash
 docker compose up -d --build
 ```
 
-## 3. Common error: readonly SQLite
-Symptom: `attempt to write a readonly database (8)`.
-
-Fix volume ownership:
+Check status:
 ```bash
-docker rm -f berkut-scc || true
-docker run --rm --user 0 --entrypoint sh -v berkut-data:/app/data berkut-scc -c "chown -R berkut:berkut /app/data"
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
+docker compose ps
 ```
 
-## 4. Default secrets error outside dev
+## 2. View logs
+```bash
+docker compose logs -f berkut
+docker compose logs -f postgres
+```
+
+## 3. Common issues
+
+### 3.1 Port 8080 already in use
+Symptom: `Bind for 0.0.0.0:8080 failed`.
+
+Fix:
+- free the port on host, or
+- change `PORT` in `.env` and restart compose.
+
+### 3.2 Migration/startup errors after failed update
+Try explicit migration run first:
+```bash
+docker compose run --rm berkut /usr/local/bin/berkut-migrate
+docker compose up -d berkut
+```
+
+Recovery (destructive):
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+### 3.3 Default secrets error outside dev
 Symptom: `default secrets are not allowed outside APP_ENV=dev`.
 
 Fix:
-- Dev mode: set `ENV=dev` and `APP_ENV=dev`.
-- Prod mode: replace all default secrets.
+- for dev: `ENV=dev`, `APP_ENV=dev`;
+- for prod: set real values for `CSRF_KEY`, `PEPPER`, `DOCS_ENCRYPTION_KEY`.
 
-## 5. Full recovery (recreate data)
-WARNING: this removes DB data.
+## 4. Full recovery
+WARNING: removes PostgreSQL and file storage data.
 ```bash
-docker rm -f berkut-scc || true
-docker volume rm berkut-data
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
+docker compose down -v
+docker compose up -d --build
 ```
 
-## 6. Logs
-```bash
-docker logs -f berkut-scc
-```
+## 5. Availability checks
+- UI: `http://localhost:8080/login`
+- Container health: `docker compose ps`

@@ -10,7 +10,6 @@ import (
 
 	"berkut-scc/core/docs"
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 type reportBuildPayload struct {
@@ -108,13 +107,13 @@ func (h *ReportsHandler) Build(w http.ResponseWriter, r *http.Request) {
 	payloadBytes, _ := json.Marshal(snapshotPayload)
 	sum := sha256.Sum256(payloadBytes)
 	snapshot := &store.ReportSnapshot{
-		ReportID:      doc.ID,
-		CreatedAt:     time.Now().UTC(),
-		CreatedBy:     user.ID,
-		Reason:        payload.Reason,
-		Snapshot:      snapshotPayload,
-		SnapshotJSON:  string(payloadBytes),
-		Sha256:        hex.EncodeToString(sum[:]),
+		ReportID:     doc.ID,
+		CreatedAt:    time.Now().UTC(),
+		CreatedBy:    user.ID,
+		Reason:       payload.Reason,
+		Snapshot:     snapshotPayload,
+		SnapshotJSON: string(payloadBytes),
+		Sha256:       hex.EncodeToString(sum[:]),
 	}
 	if _, err := h.reports.CreateReportSnapshot(r.Context(), snapshot, snapshotItems); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -149,7 +148,7 @@ func (h *ReportsHandler) GetSnapshot(w http.ResponseWriter, r *http.Request) {
 	}
 	id := parseInt64Default(r.URL.Query().Get("snapshot_id"), 0)
 	if id == 0 {
-		if idStr := mux.Vars(r)["snapshot_id"]; idStr != "" {
+		if idStr := pathParams(r)["snapshot_id"]; idStr != "" {
 			id = parseInt64Default(idStr, 0)
 		}
 	}

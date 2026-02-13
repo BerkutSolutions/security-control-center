@@ -12,7 +12,7 @@ import (
 
 	cstore "berkut-scc/core/store"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListTemplates(w http.ResponseWriter, r *http.Request) {
@@ -180,7 +180,7 @@ func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if id == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -313,7 +313,7 @@ func (h *Handler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if id == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -351,7 +351,7 @@ func (h *Handler) CreateTaskFromTemplate(w http.ResponseWriter, r *http.Request)
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	id := parseInt64Default(mux.Vars(r)["id"], 0)
+	id := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if id == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

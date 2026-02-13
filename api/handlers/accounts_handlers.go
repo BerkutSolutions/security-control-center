@@ -4,9 +4,9 @@ import (
 	"bytes"
 	"context"
 	"database/sql"
-	"errors"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"sort"
@@ -21,7 +21,6 @@ import (
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
 	"berkut-scc/gui"
-	"github.com/gorilla/mux"
 )
 
 type AccountsHandler struct {
@@ -133,19 +132,19 @@ func (h *AccountsHandler) Dashboard(w http.ResponseWriter, r *http.Request) {
 		onlineList = onlineList[:onlineLimit]
 	}
 	payload := map[string]any{
-		"total":                len(users),
-		"active":               active,
-		"disabled":             disabled,
-		"blocked":              blocked,
-		"online":               len(onlineUsers),
-		"online_count":         len(onlineUsers),
-		"online_users":         onlineList,
-		"without_password":     withoutPassword,
-		"require_change":       requireChange,
-		"without_2fa":          without2FA,
-		"last_logins":          lastLogins,
+		"total":                  len(users),
+		"active":                 active,
+		"disabled":               disabled,
+		"blocked":                blocked,
+		"online":                 len(onlineUsers),
+		"online_count":           len(onlineUsers),
+		"online_users":           onlineList,
+		"without_password":       withoutPassword,
+		"require_change":         requireChange,
+		"without_2fa":            without2FA,
+		"last_logins":            lastLogins,
 		"last_blocked_usernames": lastBlocks,
-		"online_window_sec":    windowSec,
+		"online_window_sec":      windowSec,
 	}
 	writeJSON(w, http.StatusOK, payload)
 }
@@ -278,7 +277,9 @@ func (h *AccountsHandler) BulkUsers(w http.ResponseWriter, r *http.Request) {
 		}
 		switch action {
 		case "assign_role":
-			var p struct{ RoleID string `json:"role_id"` }
+			var p struct {
+				RoleID string `json:"role_id"`
+			}
 			if err := decodePayload(req.Payload, &p); err != nil || strings.TrimSpace(p.RoleID) == "" {
 				failures = append(failures, bulkFailure{UserID: id, Reason: "invalid_payload"})
 				continue
@@ -307,7 +308,9 @@ func (h *AccountsHandler) BulkUsers(w http.ResponseWriter, r *http.Request) {
 			h.audits.Log(ctx, currentUser(r), "accounts.bulk.assign_role", fmt.Sprintf("%d|%s", target.ID, role.Name))
 			success++
 		case "assign_group":
-			var p struct{ GroupID int64 `json:"group_id"` }
+			var p struct {
+				GroupID int64 `json:"group_id"`
+			}
 			if err := decodePayload(req.Payload, &p); err != nil || p.GroupID <= 0 {
 				failures = append(failures, bulkFailure{UserID: id, Reason: "invalid_payload"})
 				continue
@@ -425,7 +428,9 @@ func (h *AccountsHandler) BulkUsers(w http.ResponseWriter, r *http.Request) {
 			h.audits.Log(ctx, currentUser(r), "accounts.bulk.lock", fmt.Sprintf("%d|%s", target.ID, target.LockReason))
 			success++
 		case "unlock":
-			var p struct{ Reason string `json:"reason"` }
+			var p struct {
+				Reason string `json:"reason"`
+			}
 			_ = decodePayload(req.Payload, &p)
 			target.LockedUntil = nil
 			target.LockReason = ""
@@ -441,7 +446,9 @@ func (h *AccountsHandler) BulkUsers(w http.ResponseWriter, r *http.Request) {
 			success++
 		case "disable", "enable":
 			enable := action == "enable"
-			var p struct{ Reason string `json:"reason"` }
+			var p struct {
+				Reason string `json:"reason"`
+			}
 			_ = decodePayload(req.Payload, &p)
 			if !enable && containsRole(roles, "superadmin") && h.isLastSuperadmin(ctx, target.ID) {
 				failures = append(failures, bulkFailure{UserID: id, Reason: "last_superadmin"})
@@ -478,20 +485,20 @@ func (h *AccountsHandler) BulkUsers(w http.ResponseWriter, r *http.Request) {
 }
 
 type accountPayload struct {
-	Username   string   `json:"username"`
-	Email      string   `json:"email"`
-	Password   string   `json:"password"`
-	Role       string   `json:"role"`
-	Roles      []string `json:"roles"`
-	Groups     []int64  `json:"groups"`
-	FullName   string   `json:"full_name"`
-	Department string   `json:"department"`
-	Position   string   `json:"position"`
-	ClearanceLevel int  `json:"clearance_level"`
-	ClearanceTags  []string `json:"clearance_tags"`
-	Status     string   `json:"status"`
-	Active     *bool    `json:"active,omitempty"`
-	RequirePasswordChange bool `json:"require_password_change"`
+	Username              string   `json:"username"`
+	Email                 string   `json:"email"`
+	Password              string   `json:"password"`
+	Role                  string   `json:"role"`
+	Roles                 []string `json:"roles"`
+	Groups                []int64  `json:"groups"`
+	FullName              string   `json:"full_name"`
+	Department            string   `json:"department"`
+	Position              string   `json:"position"`
+	ClearanceLevel        int      `json:"clearance_level"`
+	ClearanceTags         []string `json:"clearance_tags"`
+	Status                string   `json:"status"`
+	Active                *bool    `json:"active,omitempty"`
+	RequirePasswordChange bool     `json:"require_password_change"`
 }
 
 func sanitizeRoles(in []string, fallback string) []string {
@@ -633,18 +640,18 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	u := &store.User{
-		Username:     p.Username,
-		Email:        email,
-		FullName:     fullName,
-		Department:   dept,
-		Position:     pos,
-		PasswordHash: hash,
-		Salt:         salt,
-		PasswordSet:  passwordSet,
-		Active:       active,
-		DisabledAt:   disabledAt,
-		ClearanceLevel: clearanceLevel,
-		ClearanceTags: tags,
+		Username:              p.Username,
+		Email:                 email,
+		FullName:              fullName,
+		Department:            dept,
+		Position:              pos,
+		PasswordHash:          hash,
+		Salt:                  salt,
+		PasswordSet:           passwordSet,
+		Active:                active,
+		DisabledAt:            disabledAt,
+		ClearanceLevel:        clearanceLevel,
+		ClearanceTags:         tags,
 		RequirePasswordChange: p.RequirePasswordChange || !passwordSet,
 	}
 	id, err := h.users.Create(r.Context(), u, roles)
@@ -680,7 +687,7 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountsHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, roles, err := h.users.Get(r.Context(), id)
 	if err != nil {
@@ -834,7 +841,7 @@ func (h *AccountsHandler) ResetPassword(w http.ResponseWriter, r *http.Request) 
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, _, err := h.users.Get(ctx, id)
 	if err != nil {
@@ -849,8 +856,8 @@ func (h *AccountsHandler) ResetPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	var payload struct {
-		Password string `json:"password"`
-		RequireChange bool `json:"require_change"`
+		Password      string `json:"password"`
+		RequireChange bool   `json:"require_change"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -886,7 +893,7 @@ func (h *AccountsHandler) ResetPassword(w http.ResponseWriter, r *http.Request) 
 func (h *AccountsHandler) LockUser(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	user, _, err := h.users.Get(ctx, id)
 	if err != nil {
@@ -907,8 +914,8 @@ func (h *AccountsHandler) LockUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Reason string `json:"reason"`
-		Minutes int   `json:"minutes"`
+		Reason  string `json:"reason"`
+		Minutes int    `json:"minutes"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&payload)
 	now := time.Now().UTC()
@@ -942,7 +949,7 @@ func (h *AccountsHandler) LockUser(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	user, _, err := h.users.Get(ctx, id)
 	if err != nil {
@@ -953,7 +960,9 @@ func (h *AccountsHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	var payload struct{ Reason string `json:"reason"` }
+	var payload struct {
+		Reason string `json:"reason"`
+	}
 	_ = json.NewDecoder(r.Body).Decode(&payload)
 	user.LockedUntil = nil
 	user.LockReason = ""
@@ -972,7 +981,7 @@ func (h *AccountsHandler) UnlockUser(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	sess, err := h.sessions.ListByUser(ctx, id)
 	if err != nil {
@@ -985,7 +994,7 @@ func (h *AccountsHandler) ListSessions(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) KillSession(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	sessID := mux.Vars(r)["session_id"]
+	sessID := pathParams(r)["session_id"]
 	if sessID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1007,7 +1016,7 @@ func (h *AccountsHandler) KillSession(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) KillAllSessions(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	if id <= 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -1033,14 +1042,14 @@ func (h *AccountsHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	var payload struct {
-		Name        string   `json:"name"`
-		Description string   `json:"description"`
-		ClearanceLevel int   `json:"clearance_level"`
-		ClearanceTags []string `json:"clearance_tags"`
+		Name            string   `json:"name"`
+		Description     string   `json:"description"`
+		ClearanceLevel  int      `json:"clearance_level"`
+		ClearanceTags   []string `json:"clearance_tags"`
 		MenuPermissions []string `json:"menu_permissions"`
-		Roles       []string `json:"roles"`
-		Users       []int64  `json:"users"`
-		IsSystem    bool     `json:"is_system"`
+		Roles           []string `json:"roles"`
+		Users           []int64  `json:"users"`
+		IsSystem        bool     `json:"is_system"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -1087,7 +1096,7 @@ func (h *AccountsHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, members, _, err := h.groups.Get(ctx, id)
 	if err != nil {
@@ -1107,14 +1116,14 @@ func (h *AccountsHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	originalRoles := append([]string{}, existing.Roles...)
 	originalMembers := append([]int64{}, members...)
 	var payload struct {
-		Name        string   `json:"name"`
-		Description string   `json:"description"`
-		ClearanceLevel int   `json:"clearance_level"`
-		ClearanceTags []string `json:"clearance_tags"`
+		Name            string   `json:"name"`
+		Description     string   `json:"description"`
+		ClearanceLevel  int      `json:"clearance_level"`
+		ClearanceTags   []string `json:"clearance_tags"`
 		MenuPermissions []string `json:"menu_permissions"`
-		Roles       []string `json:"roles"`
-		Users       []int64  `json:"users"`
-		IsSystem    *bool    `json:"is_system"`
+		Roles           []string `json:"roles"`
+		Users           []int64  `json:"users"`
+		IsSystem        *bool    `json:"is_system"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -1202,7 +1211,7 @@ func (h *AccountsHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountsHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	ctx := r.Context()
 	group, members, roles, err := h.groups.Get(ctx, id)
@@ -1246,7 +1255,7 @@ func (h *AccountsHandler) DeleteGroup(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	group, members, _, err := h.groups.Get(ctx, id)
 	if err != nil {
@@ -1268,7 +1277,7 @@ func (h *AccountsHandler) GetGroup(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) AddGroupMember(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	group, _, _, err := h.groups.Get(ctx, id)
 	if err != nil {
@@ -1283,7 +1292,9 @@ func (h *AccountsHandler) AddGroupMember(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	var payload struct{ UserID int64 `json:"user_id"` }
+	var payload struct {
+		UserID int64 `json:"user_id"`
+	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || payload.UserID <= 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1312,8 +1323,8 @@ func (h *AccountsHandler) AddGroupMember(w http.ResponseWriter, r *http.Request)
 func (h *AccountsHandler) RemoveGroupMember(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
-	userStr := mux.Vars(r)["user_id"]
+	idStr := pathParams(r)["id"]
+	userStr := pathParams(r)["user_id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	userID, _ := strconv.ParseInt(userStr, 10, 64)
 	group, _, roles, err := h.groups.Get(ctx, id)
@@ -1347,7 +1358,7 @@ func (h *AccountsHandler) RemoveGroupMember(w http.ResponseWriter, r *http.Reque
 func (h *AccountsHandler) ListUserGroups(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	groups, err := h.users.UserGroups(ctx, id)
 	if err != nil {
@@ -1385,7 +1396,12 @@ func (h *AccountsHandler) CreateRole(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "name required", http.StatusBadRequest)
 		return
 	}
-	payload.Permissions = sanitizeTags(payload.Permissions)
+	perms, invalidPerms := rbac.NormalizePermissionNames(payload.Permissions)
+	if len(invalidPerms) > 0 {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	payload.Permissions = perms
 	payload.BuiltIn = false
 	id, err := h.roles.Create(ctx, &payload)
 	if err != nil {
@@ -1403,8 +1419,8 @@ func (h *AccountsHandler) CreateRoleFromTemplate(w http.ResponseWriter, r *http.
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
 	var payload struct {
-		TemplateID string `json:"template_id"`
-		Name       string `json:"name"`
+		TemplateID  string `json:"template_id"`
+		Name        string `json:"name"`
 		Description string `json:"description"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -1424,10 +1440,16 @@ func (h *AccountsHandler) CreateRoleFromTemplate(w http.ResponseWriter, r *http.
 	role := &store.Role{
 		Name:        name,
 		Description: strings.TrimSpace(payload.Description),
-		Permissions: tpl.Permissions,
+		Permissions: nil,
 		BuiltIn:     false,
 		Template:    true,
 	}
+	perms, invalidPerms := rbac.NormalizePermissionNames(tpl.Permissions)
+	if len(invalidPerms) > 0 {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	role.Permissions = perms
 	id, err := h.roles.Create(ctx, role)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -1443,7 +1465,7 @@ func (h *AccountsHandler) CreateRoleFromTemplate(w http.ResponseWriter, r *http.
 func (h *AccountsHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	rid, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, err := h.roles.FindByID(ctx, rid)
 	if err != nil || existing == nil {
@@ -1460,7 +1482,12 @@ func (h *AccountsHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	existing.Description = payload.Description
-	existing.Permissions = sanitizeTags(payload.Permissions)
+	perms, invalidPerms := rbac.NormalizePermissionNames(payload.Permissions)
+	if len(invalidPerms) > 0 {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	existing.Permissions = perms
 	if err := h.roles.Update(ctx, existing); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -1475,7 +1502,7 @@ func (h *AccountsHandler) UpdateRole(w http.ResponseWriter, r *http.Request) {
 func (h *AccountsHandler) DeleteRole(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 	defer cancel()
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	rid, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, err := h.roles.FindByID(ctx, rid)
 	if err != nil || existing == nil {
@@ -1514,8 +1541,7 @@ func (h *AccountsHandler) ImportUsers(w http.ResponseWriter, r *http.Request) {
 	actor, actorRoles, _ := h.users.FindByUsername(ctx, currentUser(r))
 	actorEff, _ := h.effectiveAccess(ctx, actor, actorRoles)
 	actorPerms := permissionSet(actorEff.Permissions)
-	if err := r.ParseMultipartForm(10 << 20); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := parseMultipartFormLimited(w, r, 10<<20); err != nil {
 		return
 	}
 	file, _, err := r.FormFile("file")
@@ -1581,15 +1607,15 @@ func (h *AccountsHandler) ImportUsers(w http.ResponseWriter, r *http.Request) {
 			continue
 		}
 		u := &store.User{
-			Username: username,
-			FullName: fullName,
-			Department: dept,
-			Position: pos,
-			PasswordHash: ph.Hash,
-			Salt: ph.Salt,
-			PasswordSet: true,
+			Username:              username,
+			FullName:              fullName,
+			Department:            dept,
+			Position:              pos,
+			PasswordHash:          ph.Hash,
+			Salt:                  ph.Salt,
+			PasswordSet:           true,
 			RequirePasswordChange: forceChange,
-			Active: true,
+			Active:                true,
 		}
 		_, err = h.users.Create(ctx, u, sanitizeRoles(nil, role))
 		if err == nil {
@@ -1609,7 +1635,7 @@ func (h *AccountsHandler) Enable(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountsHandler) setActive(w http.ResponseWriter, r *http.Request, active bool, action string) {
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, existingRoles, err := h.users.Get(r.Context(), id)
 	if err != nil {
@@ -1639,7 +1665,7 @@ func (h *AccountsHandler) setActive(w http.ResponseWriter, r *http.Request, acti
 }
 
 func (h *AccountsHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	existing, roles, err := h.users.Get(r.Context(), id)
 	if err != nil {
@@ -1668,7 +1694,7 @@ func (h *AccountsHandler) Delete(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *AccountsHandler) Copy(w http.ResponseWriter, r *http.Request) {
-	idStr := mux.Vars(r)["id"]
+	idStr := pathParams(r)["id"]
 	id, _ := strconv.ParseInt(idStr, 10, 64)
 	u, roles, err := h.users.Get(r.Context(), id)
 	if err != nil || u == nil {

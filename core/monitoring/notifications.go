@@ -85,7 +85,7 @@ func (e *Engine) TestTLSNotification(ctx context.Context, monitorID int64) error
 	}
 	mon, err := e.store.GetMonitor(ctx, monitorID)
 	if err != nil || mon == nil {
-		return errors.New("not found")
+		return errors.New("common.notFound")
 	}
 	channels, err := e.resolveNotificationChannels(ctx, monitorID)
 	if err != nil || len(channels) == 0 {
@@ -372,5 +372,4 @@ func NotifyTestMessage(lang string) string {
 	}
 	return strings.Join(lines, "\n")
 }
-
 

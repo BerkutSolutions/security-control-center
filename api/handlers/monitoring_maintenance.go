@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 type maintenancePayload struct {
@@ -38,7 +37,7 @@ func (h *MonitoringHandler) ListMaintenance(w http.ResponseWriter, r *http.Reque
 	}
 	items, err := h.store.ListMaintenance(r.Context(), filter)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -47,7 +46,7 @@ func (h *MonitoringHandler) ListMaintenance(w http.ResponseWriter, r *http.Reque
 func (h *MonitoringHandler) CreateMaintenance(w http.ResponseWriter, r *http.Request) {
 	var payload maintenancePayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	item, err := payloadToMaintenance(payload, sessionUserID(r))
@@ -57,32 +56,32 @@ func (h *MonitoringHandler) CreateMaintenance(w http.ResponseWriter, r *http.Req
 	}
 	id, err := h.store.CreateMaintenance(r.Context(), item)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	item.ID = id
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.maintenance.create", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMaintenanceCreate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusCreated, item)
 }
 
 func (h *MonitoringHandler) UpdateMaintenance(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	existing, err := h.store.GetMaintenance(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if existing == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	var payload maintenancePayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	item, err := mergeMaintenance(existing, payload)
@@ -91,37 +90,37 @@ func (h *MonitoringHandler) UpdateMaintenance(w http.ResponseWriter, r *http.Req
 		return
 	}
 	if err := h.store.UpdateMaintenance(r.Context(), item); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.maintenance.update", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMaintenanceUpdate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, item)
 }
 
 func (h *MonitoringHandler) DeleteMaintenance(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if err := h.store.DeleteMaintenance(r.Context(), id); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.maintenance.delete", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMaintenanceDelete, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func payloadToMaintenance(payload maintenancePayload, createdBy int64) (*store.MonitorMaintenance, error) {
 	item := &store.MonitorMaintenance{
-		Name:        strings.TrimSpace(payload.Name),
-		MonitorID:   payload.MonitorID,
-		Tags:        payload.Tags,
-		StartsAt:    payload.StartsAt.UTC(),
-		EndsAt:      payload.EndsAt.UTC(),
-		Timezone:    strings.TrimSpace(payload.Timezone),
-		RRuleText:   strings.TrimSpace(payload.RRuleText),
-		CreatedBy:   createdBy,
+		Name:      strings.TrimSpace(payload.Name),
+		MonitorID: payload.MonitorID,
+		Tags:      payload.Tags,
+		StartsAt:  payload.StartsAt.UTC(),
+		EndsAt:    payload.EndsAt.UTC(),
+		Timezone:  strings.TrimSpace(payload.Timezone),
+		RRuleText: strings.TrimSpace(payload.RRuleText),
+		CreatedBy: createdBy,
 	}
 	if payload.IsRecurring != nil {
 		item.IsRecurring = *payload.IsRecurring

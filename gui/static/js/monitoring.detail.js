@@ -1,5 +1,6 @@
 (() => {
   const els = {};
+  const HOST_TARGET_TYPES = new Set(['tcp', 'ping', 'dns', 'docker', 'steam', 'gamedig', 'mqtt', 'kafka_producer', 'mssql', 'mysql', 'mongodb', 'radius', 'redis', 'tailscale_ping']);
   const detailState = {
     metricsRange: '1h',
     eventsRange: '1h',
@@ -125,8 +126,8 @@
     els.empty.hidden = true;
     els.detail.hidden = false;
     if (els.title) els.title.textContent = mon.name || `#${mon.id}`;
-    if (els.target) els.target.textContent = mon.type === 'tcp'
-      ? `${mon.host}:${mon.port}`
+    if (els.target) els.target.textContent = HOST_TARGET_TYPES.has((mon.type || '').toLowerCase())
+      ? (mon.port ? `${mon.host}:${mon.port}` : (mon.host || '-'))
       : (mon.url || mon.host || '-');
     if (els.dot) els.dot.className = `status-dot ${statusClass(state?.status || mon.status)}`;
     renderMaintenanceInfo(mon, state, maintenance);
@@ -376,6 +377,10 @@
     els.pause.textContent = paused
       ? MonitoringPage.t('monitoring.actions.resume')
       : MonitoringPage.t('monitoring.actions.pause');
+    if (els.checkNow) {
+      els.checkNow.disabled = paused || !MonitoringPage.hasPermission('monitoring.manage');
+      els.checkNow.classList.toggle('disabled', paused || !MonitoringPage.hasPermission('monitoring.manage'));
+    }
   }
 
   function toggleActionAccess() {
@@ -435,11 +440,30 @@
   async function handleCheckNow() {
     const mon = MonitoringPage.selectedMonitor();
     if (!mon) return;
+    if (mon.is_paused) return;
+    if (els.checkNow) {
+      els.checkNow.disabled = true;
+      els.checkNow.classList.add('disabled');
+    }
     try {
       await Api.post(`/api/monitoring/monitors/${mon.id}/check-now`, {});
       setTimeout(() => loadDetail(mon.id), 1200);
     } catch (err) {
+      const msg = (err && err.message) ? String(err.message).trim() : '';
+      if (msg.includes('monitoring.error.busy')) {
+        setTimeout(() => loadDetail(mon.id), 1200);
+        return;
+      }
       console.error('check now', err);
+    } finally {
+      setTimeout(() => {
+        if (els.checkNow) {
+          const canManage = MonitoringPage.hasPermission('monitoring.manage');
+          const paused = !!(MonitoringPage.selectedMonitor() || {}).is_paused;
+          els.checkNow.disabled = !canManage || paused;
+          els.checkNow.classList.toggle('disabled', !canManage || paused);
+        }
+      }, 800);
     }
   }
 

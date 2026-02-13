@@ -1,4 +1,19 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-berkut}
+      POSTGRES_USER: ${POSTGRES_USER:-berkut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-berkut}
+    volumes:
+      - berkut_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-berkut} -d ${POSTGRES_DB:-berkut}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
   berkut:
     build:
       context: .
@@ -6,6 +21,9 @@ services:
     image: ${IMAGE_NAME:-berkut-scc}:${IMAGE_TAG:-latest}
     env_file:
       - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
     environment:
       APP_CONFIG: ${APP_CONFIG:-/app/config/app.yaml}
       ENV: ${ENV:-prod}
@@ -13,7 +31,8 @@ services:
       PORT: ${PORT:-8080}
       DATA_PATH: ${DATA_PATH:-/app/data}
       BERKUT_LISTEN_ADDR: ${BERKUT_LISTEN_ADDR:-0.0.0.0:8080}
-      BERKUT_DB_PATH: ${BERKUT_DB_PATH:-/app/data/berkut.db}
+      BERKUT_DB_DRIVER: ${BERKUT_DB_DRIVER:-postgres}
+      BERKUT_DB_URL: ${BERKUT_DB_URL:-postgres://berkut:berkut@postgres:5432/berkut?sslmode=disable}
       BERKUT_DOCS_STORAGE_DIR: ${BERKUT_DOCS_STORAGE_DIR:-/app/data/docs}
       BERKUT_INCIDENTS_STORAGE_DIR: ${BERKUT_INCIDENTS_STORAGE_DIR:-/app/data/incidents}
       BERKUT_TLS_ENABLED: ${BERKUT_TLS_ENABLED:-false}
@@ -48,3 +67,4 @@ services:
 
 volumes:
   berkut_data:
+  berkut_pgdata:

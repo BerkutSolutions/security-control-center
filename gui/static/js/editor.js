@@ -135,15 +135,15 @@ const DocEditor = (() => {
     if (els.classification) els.classification.value = code;
     const tags = (doc.classification_tags || []).map(t => t.toUpperCase());
     renderEditorTags(tags);
-    if (els.status) els.status.value = DocUI.statusLabel(doc.status);
-    if (els.owner) els.owner.value = UserDirectory ? UserDirectory.name(doc.created_by) : (doc.created_by || '');
-    if (els.reg) els.reg.value = doc.reg_number || '';
+    if (els.status) els.status.textContent = DocUI.statusLabel(doc.status) || '-';
+    if (els.owner) els.owner.textContent = (UserDirectory ? UserDirectory.name(doc.created_by) : (doc.created_by || '')) || '-';
+    if (els.reg) els.reg.textContent = doc.reg_number || '-';
     if (els.folder) {
       if (doc.folder_id) {
         const folder = (window.DocsPage && DocsPage.state && DocsPage.state.folders || []).find(f => f.id === doc.folder_id);
-        els.folder.value = folder ? folder.name : `#${doc.folder_id}`;
+        els.folder.textContent = folder ? folder.name : `#${doc.folder_id}`;
       } else {
-        els.folder.value = '';
+        els.folder.textContent = '-';
       }
     }
   }
@@ -532,7 +532,10 @@ const DocEditor = (() => {
       const arrayBuffer = await res.arrayBuffer();
       const result = await window.mammoth.convertToHtml({ arrayBuffer });
       els.mdView.hidden = false;
-      els.mdView.innerHTML = `<div class="docx-view">${result.value || ''}</div>`;
+      const sanitize = (typeof DocsPage !== 'undefined' && DocsPage.sanitizeHtmlFragment)
+        ? DocsPage.sanitizeHtmlFragment
+        : (html) => String(html || '').replace(/<[^>]*>/g, '');
+      els.mdView.innerHTML = `<div class="docx-view">${sanitize(result.value || '')}</div>`;
       if (result.messages && result.messages.length) {
         console.warn('docx render warnings', result.messages);
       }

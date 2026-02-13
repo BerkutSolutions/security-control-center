@@ -16,7 +16,7 @@ import (
 	"berkut-scc/core/rbac"
 	cstore "berkut-scc/core/store"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 type Handler struct {
@@ -65,7 +65,7 @@ func (h *Handler) currentUser(r *http.Request) (*cstore.User, []string, []cstore
 }
 
 func (h *Handler) getTaskWithBoardAccess(w http.ResponseWriter, r *http.Request, user *cstore.User, roles []string, groups []cstore.Group, required string) (*tasks.Task, bool) {
-	taskID := parseInt64Default(mux.Vars(r)["id"], 0)
+	taskID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if taskID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return nil, false
@@ -221,6 +221,20 @@ func respondJSON(w http.ResponseWriter, status int, v interface{}) {
 
 func respondError(w http.ResponseWriter, status int, msg string) {
 	http.Error(w, msg, status)
+}
+
+func parseMultipartFormLimited(w http.ResponseWriter, r *http.Request, maxBytes int64) error {
+	r.Body = http.MaxBytesReader(w, r.Body, maxBytes+1)
+	if err := r.ParseMultipartForm(maxBytes); err != nil {
+		var tooLarge *http.MaxBytesError
+		if errors.As(err, &tooLarge) {
+			respondError(w, http.StatusRequestEntityTooLarge, "payload too large")
+			return err
+		}
+		respondError(w, http.StatusBadRequest, "bad request")
+		return err
+	}
+	return nil
 }
 
 func parseIntDefault(val string, def int) int {

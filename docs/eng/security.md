@@ -2,20 +2,25 @@
 
 ## Authentication
 - Password hashing: Argon2id + salt + pepper.
-- Session cookies: `berkut_session` + `berkut_csrf`.
+- Sessions: `berkut_session` and CSRF cookie `berkut_csrf`.
 - Login rate limiting.
 
 ## Authorization
-- RBAC (deny-by-default).
-- Object ACL checks in domain handlers.
-- Classification/clearance checks.
+- Server-side zero-trust model: permission checks on every endpoint.
+- RBAC (Casbin, deny-by-default).
+- ACL and classification/clearance checks in domain modules.
 
 ## Data protection
-- SQLite for metadata/state.
-- Encrypted sensitive content and attachments at rest.
-- Critical operations logged in `audit_log`.
+- Runtime storage: PostgreSQL.
+- Encryption for sensitive content and attachments.
+- Critical audit records in `audit_log`.
 
-## HTTPS
-- Recommended: reverse proxy TLS termination.
-- Optional: built-in TLS mode.
-- HTTPS config changes are audited (`settings.https.update`).
+## Web security
+- CSRF protection for state-changing requests.
+- Multipart size limits (`413 Payload Too Large`).
+- HTML/URL sanitization in markdown/docx rendering.
+
+## Network and TLS
+- Reverse-proxy TLS termination is recommended (Nginx/Traefik).
+- Built-in TLS mode is supported.
+- HTTPS configuration changes are audited.

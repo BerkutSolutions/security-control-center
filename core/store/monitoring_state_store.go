@@ -44,21 +44,25 @@ func (s *monitoringStore) ListMonitorStates(ctx context.Context, ids []int64) ([
 }
 
 func (s *monitoringStore) UpsertMonitorState(ctx context.Context, st *MonitorState) error {
-	res, err := s.db.ExecContext(ctx, `
-		UPDATE monitor_state
-		SET status=?, last_result_status=?, maintenance_active=?, last_checked_at=?, last_up_at=?, last_down_at=?, last_latency_ms=?, last_status_code=?, last_error=?, uptime_24h=?, uptime_30d=?, avg_latency_24h=?, tls_days_left=?, tls_not_after=?
-		WHERE monitor_id=?`,
-		st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError, st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter, st.MonitorID)
-	if err != nil {
-		return err
-	}
-	affected, _ := res.RowsAffected()
-	if affected > 0 {
-		return nil
-	}
-	_, err = s.db.ExecContext(ctx, `
+	_, err := s.db.ExecContext(ctx, `
 		INSERT INTO monitor_state(monitor_id, status, last_result_status, maintenance_active, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		ON CONFLICT (monitor_id)
+		DO UPDATE SET
+			status=excluded.status,
+			last_result_status=excluded.last_result_status,
+			maintenance_active=excluded.maintenance_active,
+			last_checked_at=excluded.last_checked_at,
+			last_up_at=excluded.last_up_at,
+			last_down_at=excluded.last_down_at,
+			last_latency_ms=excluded.last_latency_ms,
+			last_status_code=excluded.last_status_code,
+			last_error=excluded.last_error,
+			uptime_24h=excluded.uptime_24h,
+			uptime_30d=excluded.uptime_30d,
+			avg_latency_24h=excluded.avg_latency_24h,
+			tls_days_left=excluded.tls_days_left,
+			tls_not_after=excluded.tls_not_after`,
 		st.MonitorID, st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError, st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter)
 	return err
 }

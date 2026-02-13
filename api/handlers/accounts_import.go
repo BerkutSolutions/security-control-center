@@ -47,12 +47,12 @@ type importCreatedUser struct {
 }
 
 type importReport struct {
-	TotalRows     int               `json:"total_rows"`
-	CreatedCount  int               `json:"created_count"`
-	UpdatedCount  int               `json:"updated_count"`
-	FailedCount   int               `json:"failed_count"`
-	Failures      []importFailure   `json:"failures"`
-	CreatedUsers  []importCreatedUser `json:"created_users,omitempty"`
+	TotalRows    int                 `json:"total_rows"`
+	CreatedCount int                 `json:"created_count"`
+	UpdatedCount int                 `json:"updated_count"`
+	FailedCount  int                 `json:"failed_count"`
+	Failures     []importFailure     `json:"failures"`
+	CreatedUsers []importCreatedUser `json:"created_users,omitempty"`
 }
 
 type userImportSession struct {
@@ -126,8 +126,7 @@ func (h *AccountsHandler) ImportUpload(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
 	defer cancel()
 
-	if err := r.ParseMultipartForm(20 << 20); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := parseMultipartFormLimited(w, r, 20<<20); err != nil {
 		return
 	}
 	file, hdr, err := r.FormFile("file")
@@ -400,19 +399,19 @@ func (h *AccountsHandler) ImportCommit(w http.ResponseWriter, r *http.Request) {
 		}
 
 		user := &store.User{
-			Username:             login,
-			Email:                email,
-			FullName:             fullName,
-			Department:           department,
-			Position:             position,
-			ClearanceLevel:       clearanceLevel,
-			ClearanceTags:        tags,
-			PasswordHash:         hash,
-			Salt:                 salt,
-			PasswordSet:          passwordSet,
+			Username:              login,
+			Email:                 email,
+			FullName:              fullName,
+			Department:            department,
+			Position:              position,
+			ClearanceLevel:        clearanceLevel,
+			ClearanceTags:         tags,
+			PasswordHash:          hash,
+			Salt:                  salt,
+			PasswordSet:           passwordSet,
 			RequirePasswordChange: requireChange || !passwordSet,
-			Active:               active,
-			DisabledAt:           disabledAt,
+			Active:                active,
+			DisabledAt:            disabledAt,
 		}
 		userID, err := h.users.Create(ctx, user, roles)
 		if err != nil {

@@ -41,9 +41,9 @@ func TestMonitoringHTTPCheckOKDown(t *testing.T) {
 	defer srv.Close()
 
 	settings := store.MonitorSettings{
-		DefaultTimeoutSec:  2,
-		DefaultIntervalSec: 60,
-		EngineEnabled:      true,
+		DefaultTimeoutSec:    2,
+		DefaultIntervalSec:   60,
+		EngineEnabled:        true,
 		AllowPrivateNetworks: true,
 	}
 	okMon := store.Monitor{

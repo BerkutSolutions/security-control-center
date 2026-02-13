@@ -9,7 +9,7 @@ import (
 
 	cstore "berkut-scc/core/store"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListLinks(w http.ResponseWriter, r *http.Request) {
@@ -215,7 +215,7 @@ func (h *Handler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	linkID := parseInt64Default(mux.Vars(r)["link_id"], 0)
+	linkID := parseInt64Default(chi.URLParam(r, "link_id"), 0)
 	if linkID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

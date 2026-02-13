@@ -10,7 +10,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateSpace(ctx context.Context, space *tasks.Space, acl []tasks.ACLRule) (int64, error) {
+func (s *SQLStore) CreateSpace(ctx context.Context, space *tasks.Space, acl []tasks.ACLRule) (int64, error) {
 	now := time.Now().UTC()
 	layout := strings.TrimSpace(space.Layout)
 	if layout == "" {
@@ -37,7 +37,7 @@ func (s *SQLiteStore) CreateSpace(ctx context.Context, space *tasks.Space, acl [
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateSpace(ctx context.Context, space *tasks.Space) error {
+func (s *SQLStore) UpdateSpace(ctx context.Context, space *tasks.Space) error {
 	layout := strings.TrimSpace(space.Layout)
 	if layout == "" {
 		layout = "row"
@@ -49,12 +49,12 @@ func (s *SQLiteStore) UpdateSpace(ctx context.Context, space *tasks.Space) error
 	return err
 }
 
-func (s *SQLiteStore) DeleteSpace(ctx context.Context, spaceID int64) error {
+func (s *SQLStore) DeleteSpace(ctx context.Context, spaceID int64) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE task_spaces SET is_active=0, updated_at=? WHERE id=?`, time.Now().UTC(), spaceID)
 	return err
 }
 
-func (s *SQLiteStore) GetSpace(ctx context.Context, spaceID int64) (*tasks.Space, error) {
+func (s *SQLStore) GetSpace(ctx context.Context, spaceID int64) (*tasks.Space, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, organization_id, name, description, layout, created_by, created_at, updated_at, is_active
 		FROM task_spaces WHERE id=?`, spaceID)
@@ -74,7 +74,7 @@ func (s *SQLiteStore) GetSpace(ctx context.Context, spaceID int64) (*tasks.Space
 	return &sp, nil
 }
 
-func (s *SQLiteStore) ListSpaces(ctx context.Context, filter tasks.SpaceFilter) ([]tasks.Space, error) {
+func (s *SQLStore) ListSpaces(ctx context.Context, filter tasks.SpaceFilter) ([]tasks.Space, error) {
 	query := `
 		SELECT id, organization_id, name, description, layout, created_by, created_at, updated_at, is_active
 		FROM task_spaces`
@@ -104,7 +104,7 @@ func (s *SQLiteStore) ListSpaces(ctx context.Context, filter tasks.SpaceFilter) 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) SetSpaceACL(ctx context.Context, spaceID int64, acl []tasks.ACLRule) error {
+func (s *SQLStore) SetSpaceACL(ctx context.Context, spaceID int64, acl []tasks.ACLRule) error {
 	return withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM task_space_acl WHERE space_id=?`, spaceID); err != nil {
 			return err
@@ -119,7 +119,7 @@ func (s *SQLiteStore) SetSpaceACL(ctx context.Context, spaceID int64, acl []task
 	})
 }
 
-func (s *SQLiteStore) GetSpaceACL(ctx context.Context, spaceID int64) ([]tasks.ACLRule, error) {
+func (s *SQLStore) GetSpaceACL(ctx context.Context, spaceID int64) ([]tasks.ACLRule, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT subject_type, subject_id, permission FROM task_space_acl WHERE space_id=?`, spaceID)
 	if err != nil {
 		return nil, err
@@ -135,3 +135,4 @@ func (s *SQLiteStore) GetSpaceACL(ctx context.Context, spaceID int64) ([]tasks.A
 	}
 	return res, rows.Err()
 }
+

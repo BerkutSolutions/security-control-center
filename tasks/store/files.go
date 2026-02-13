@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) ListTaskFiles(ctx context.Context, taskID int64) ([]tasks.TaskFile, error) {
+func (s *SQLStore) ListTaskFiles(ctx context.Context, taskID int64) ([]tasks.TaskFile, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, task_id, name, stored_name, content_type, size_bytes, uploaded_by, uploaded_at
 		FROM task_files WHERE task_id=? ORDER BY uploaded_at DESC, id DESC`, taskID)
@@ -32,7 +32,7 @@ func (s *SQLiteStore) ListTaskFiles(ctx context.Context, taskID int64) ([]tasks.
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) AddTaskFile(ctx context.Context, file *tasks.TaskFile) (int64, error) {
+func (s *SQLStore) AddTaskFile(ctx context.Context, file *tasks.TaskFile) (int64, error) {
 	if file == nil {
 		return 0, errors.New("missing file")
 	}
@@ -50,7 +50,7 @@ func (s *SQLiteStore) AddTaskFile(ctx context.Context, file *tasks.TaskFile) (in
 	return id, nil
 }
 
-func (s *SQLiteStore) GetTaskFile(ctx context.Context, taskID, fileID int64) (*tasks.TaskFile, error) {
+func (s *SQLStore) GetTaskFile(ctx context.Context, taskID, fileID int64) (*tasks.TaskFile, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, task_id, name, stored_name, content_type, size_bytes, uploaded_by, uploaded_at
 		FROM task_files WHERE id=? AND task_id=?`, fileID, taskID)
@@ -68,7 +68,8 @@ func (s *SQLiteStore) GetTaskFile(ctx context.Context, taskID, fileID int64) (*t
 	return &f, nil
 }
 
-func (s *SQLiteStore) DeleteTaskFile(ctx context.Context, taskID, fileID int64) error {
+func (s *SQLStore) DeleteTaskFile(ctx context.Context, taskID, fileID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM task_files WHERE id=? AND task_id=?`, fileID, taskID)
 	return err
 }
+

@@ -76,24 +76,24 @@ func (h *ReportsHandler) buildReportSections(ctx context.Context, doc *store.Doc
 	for _, res := range results {
 		sec := res.Section
 		sectionsPayload = append(sectionsPayload, map[string]any{
-			"type":        sec.SectionType,
-			"title":       sec.Title,
-			"enabled":     sec.IsEnabled,
-			"denied":      res.Denied,
-			"error":       res.Error,
-			"summary":     res.Summary,
-			"item_count":  res.ItemCount,
+			"type":       sec.SectionType,
+			"title":      sec.Title,
+			"enabled":    sec.IsEnabled,
+			"denied":     res.Denied,
+			"error":      res.Error,
+			"summary":    res.Summary,
+			"item_count": res.ItemCount,
 		})
 		if len(res.Items) > 0 {
 			items = append(items, res.Items...)
 		}
 	}
 	snapshot := map[string]any{
-		"report_id":   doc.ID,
+		"report_id":    doc.ID,
 		"generated_at": now.Format(time.RFC3339),
-		"period_from": formatPeriodTime(periodFrom),
-		"period_to":   formatPeriodTime(periodTo),
-		"sections":    sectionsPayload,
+		"period_from":  formatPeriodTime(periodFrom),
+		"period_to":    formatPeriodTime(periodTo),
+		"sections":     sectionsPayload,
 	}
 	return results, items, snapshot, nil
 }

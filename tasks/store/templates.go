@@ -10,7 +10,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateTaskTemplate(ctx context.Context, tpl *tasks.TaskTemplate) (int64, error) {
+func (s *SQLStore) CreateTaskTemplate(ctx context.Context, tpl *tasks.TaskTemplate) (int64, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(ctx, `
 		INSERT INTO task_templates(board_id, column_id, title_template, description_template, priority, default_assignees, default_due_days, checklist_template, links_template, is_active, created_by, created_at, updated_at)
@@ -28,7 +28,7 @@ func (s *SQLiteStore) CreateTaskTemplate(ctx context.Context, tpl *tasks.TaskTem
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateTaskTemplate(ctx context.Context, tpl *tasks.TaskTemplate) error {
+func (s *SQLStore) UpdateTaskTemplate(ctx context.Context, tpl *tasks.TaskTemplate) error {
 	now := time.Now().UTC()
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE task_templates SET board_id=?, column_id=?, title_template=?, description_template=?, priority=?, default_assignees=?, default_due_days=?, checklist_template=?, links_template=?, is_active=?, updated_at=? WHERE id=?`,
@@ -41,19 +41,19 @@ func (s *SQLiteStore) UpdateTaskTemplate(ctx context.Context, tpl *tasks.TaskTem
 	return err
 }
 
-func (s *SQLiteStore) DeleteTaskTemplate(ctx context.Context, id int64) error {
+func (s *SQLStore) DeleteTaskTemplate(ctx context.Context, id int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM task_templates WHERE id=?`, id)
 	return err
 }
 
-func (s *SQLiteStore) GetTaskTemplate(ctx context.Context, id int64) (*tasks.TaskTemplate, error) {
+func (s *SQLStore) GetTaskTemplate(ctx context.Context, id int64) (*tasks.TaskTemplate, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, board_id, column_id, title_template, description_template, priority, default_assignees, default_due_days, checklist_template, links_template, is_active, created_by, created_at, updated_at
 		FROM task_templates WHERE id=?`, id)
 	return scanTaskTemplate(row)
 }
 
-func (s *SQLiteStore) ListTaskTemplates(ctx context.Context, filter tasks.TaskTemplateFilter) ([]tasks.TaskTemplate, error) {
+func (s *SQLStore) ListTaskTemplates(ctx context.Context, filter tasks.TaskTemplateFilter) ([]tasks.TaskTemplate, error) {
 	clauses := []string{}
 	args := []any{}
 	if filter.BoardID > 0 {
@@ -140,3 +140,4 @@ func scanTaskTemplateRow(rows *sql.Rows) (tasks.TaskTemplate, error) {
 	tpl.IsActive = active == 1
 	return tpl, nil
 }
+

@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateColumn(ctx context.Context, column *tasks.Column) (int64, error) {
+func (s *SQLStore) CreateColumn(ctx context.Context, column *tasks.Column) (int64, error) {
 	if column.Position <= 0 {
 		pos, err := s.NextColumnPosition(ctx, column.BoardID)
 		if err != nil {
@@ -32,7 +32,7 @@ func (s *SQLiteStore) CreateColumn(ctx context.Context, column *tasks.Column) (i
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateColumn(ctx context.Context, column *tasks.Column) error {
+func (s *SQLStore) UpdateColumn(ctx context.Context, column *tasks.Column) error {
 	now := time.Now().UTC()
 	return withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `
@@ -48,7 +48,7 @@ func (s *SQLiteStore) UpdateColumn(ctx context.Context, column *tasks.Column) er
 	})
 }
 
-func (s *SQLiteStore) MoveColumn(ctx context.Context, columnID int64, position int) (*tasks.Column, error) {
+func (s *SQLStore) MoveColumn(ctx context.Context, columnID int64, position int) (*tasks.Column, error) {
 	var column *tasks.Column
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -97,12 +97,12 @@ func (s *SQLiteStore) MoveColumn(ctx context.Context, columnID int64, position i
 	return column, nil
 }
 
-func (s *SQLiteStore) DeleteColumn(ctx context.Context, columnID int64) error {
+func (s *SQLStore) DeleteColumn(ctx context.Context, columnID int64) error {
 	_, err := s.db.ExecContext(ctx, `UPDATE task_columns SET is_active=0, updated_at=? WHERE id=?`, time.Now().UTC(), columnID)
 	return err
 }
 
-func (s *SQLiteStore) GetColumn(ctx context.Context, columnID int64) (*tasks.Column, error) {
+func (s *SQLStore) GetColumn(ctx context.Context, columnID int64) (*tasks.Column, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, board_id, name, position, is_final, wip_limit, default_template_id, is_active, created_at, updated_at
 		FROM task_columns WHERE id=?`, columnID)
@@ -129,7 +129,7 @@ func (s *SQLiteStore) GetColumn(ctx context.Context, columnID int64) (*tasks.Col
 	return &c, nil
 }
 
-func (s *SQLiteStore) ListColumns(ctx context.Context, boardID int64, includeInactive bool) ([]tasks.Column, error) {
+func (s *SQLStore) ListColumns(ctx context.Context, boardID int64, includeInactive bool) ([]tasks.Column, error) {
 	query := `
 		SELECT id, board_id, name, position, is_final, wip_limit, default_template_id, is_active, created_at, updated_at
 		FROM task_columns WHERE board_id=?`
@@ -167,7 +167,7 @@ func (s *SQLiteStore) ListColumns(ctx context.Context, boardID int64, includeIna
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) NextColumnPosition(ctx context.Context, boardID int64) (int, error) {
+func (s *SQLStore) NextColumnPosition(ctx context.Context, boardID int64) (int, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) FROM task_columns WHERE board_id=?`, boardID)
 	var max int
 	if err := row.Scan(&max); err != nil {
@@ -176,7 +176,7 @@ func (s *SQLiteStore) NextColumnPosition(ctx context.Context, boardID int64) (in
 	return max + 1, nil
 }
 
-func (s *SQLiteStore) getColumnTx(ctx context.Context, tx *sql.Tx, columnID int64) (*tasks.Column, error) {
+func (s *SQLStore) getColumnTx(ctx context.Context, tx *sql.Tx, columnID int64) (*tasks.Column, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, board_id, name, position, is_final, wip_limit, default_template_id, is_active, created_at, updated_at
 		FROM task_columns WHERE id=?`, columnID)
@@ -202,3 +202,4 @@ func (s *SQLiteStore) getColumnTx(ctx context.Context, tx *sql.Tx, columnID int6
 	c.IsActive = active == 1
 	return &c, nil
 }
+

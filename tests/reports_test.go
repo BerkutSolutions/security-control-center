@@ -129,10 +129,10 @@ func TestReportTemplateCRUD(t *testing.T) {
 	ctx, _, _, _, rs, _, cleanup := setupReports(t)
 	defer cleanup()
 	tpl := &store.ReportTemplate{
-		Name:            "Template 1",
-		Description:     "Desc",
+		Name:             "Template 1",
+		Description:      "Desc",
 		TemplateMarkdown: "# Title",
-		CreatedBy:       1,
+		CreatedBy:        1,
 	}
 	if err := rs.SaveReportTemplate(ctx, tpl); err != nil {
 		t.Fatalf("save template: %v", err)

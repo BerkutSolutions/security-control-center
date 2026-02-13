@@ -1,21 +1,26 @@
 ﻿# Безопасность
 
 ## Аутентификация
-- Пароли: Argon2id + salt + pepper.
-- Сессии: cookie `berkut_session` + `berkut_csrf`.
-- Login rate limit.
+- Хеширование паролей: Argon2id + salt + pepper.
+- Сессии: `berkut_session` и CSRF-cookie `berkut_csrf`.
+- Ограничение частоты попыток входа.
 
 ## Авторизация
-- RBAC (deny-by-default).
-- ACL на объекты доменов.
-- Classification/clearance проверки.
+- Серверная модель zero-trust: проверка прав на каждом endpoint.
+- RBAC (Casbin, deny-by-default).
+- ACL и проверки классификации/допуска в доменных модулях.
 
-## Данные
-- SQLite для метаданных.
-- Шифрование чувствительных данных/вложений на диске.
+## Защита данных
+- Runtime-хранилище: PostgreSQL.
+- Шифрование чувствительного контента и вложений.
 - Аудит критичных действий в `audit_log`.
 
-## HTTPS
-- Рекомендуется reverse proxy (Nginx/Traefik).
-- Поддерживается built-in TLS.
-- Изменение HTTPS-конфига аудируется (`settings.https.update`).
+## Веб-безопасность
+- CSRF-защита для state-changing запросов.
+- Ограничение размера multipart-запросов (`413 Payload Too Large`).
+- Санитизация HTML/URL при рендеринге markdown/docx.
+
+## Сеть и TLS
+- Рекомендуется TLS-терминация на reverse proxy (Nginx/Traefik).
+- Поддерживается встроенный TLS-режим.
+- Изменения HTTPS-конфигурации аудируются.

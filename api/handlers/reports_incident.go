@@ -116,9 +116,9 @@ func (h *ReportsHandler) CreateFromIncident(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	snapshotPayload := map[string]any{
-		"report_id": docID,
+		"report_id":    docID,
 		"generated_at": time.Now().UTC().Format(time.RFC3339),
-		"incident_id": incident.ID,
+		"incident_id":  incident.ID,
 		"incident_reg": incident.RegNo,
 	}
 	payloadBytes, _ := json.Marshal(snapshotPayload)
@@ -247,9 +247,9 @@ func (h *ReportsHandler) buildIncidentEvidenceSection(ctx context.Context, incid
 				EntityType: "incident_attachment",
 				EntityID:   fmt.Sprintf("%d", att.ID),
 				Entity: map[string]any{
-					"id": att.ID,
-					"filename": att.Filename,
-					"size_bytes": att.SizeBytes,
+					"id":          att.ID,
+					"filename":    att.Filename,
+					"size_bytes":  att.SizeBytes,
 					"uploaded_at": att.UploadedAt.UTC().Format(time.RFC3339),
 				},
 			})
@@ -288,9 +288,9 @@ func (h *ReportsHandler) buildIncidentEvidenceSection(ctx context.Context, incid
 				EntityType: "doc",
 				EntityID:   fmt.Sprintf("%d", doc.ID),
 				Entity: map[string]any{
-					"id": doc.ID,
+					"id":    doc.ID,
 					"title": doc.Title,
-					"type": link.EntityType,
+					"type":  link.EntityType,
 				},
 			})
 		}
@@ -309,11 +309,11 @@ func (h *ReportsHandler) buildIncidentEvidenceSection(ctx context.Context, incid
 					EntityType: "monitor_event",
 					EntityID:   fmt.Sprintf("%d", ev.ID),
 					Entity: map[string]any{
-						"id": ev.ID,
+						"id":         ev.ID,
 						"monitor_id": ev.MonitorID,
 						"event_type": ev.EventType,
-						"message": ev.Message,
-						"ts": ev.TS.UTC().Format(time.RFC3339),
+						"message":    ev.Message,
+						"ts":         ev.TS.UTC().Format(time.RFC3339),
 					},
 				})
 			}
@@ -363,9 +363,9 @@ func (h *ReportsHandler) buildIncidentActionsSection(ctx context.Context, incide
 			EntityType: "task",
 			EntityID:   fmt.Sprintf("%d", task.ID),
 			Entity: map[string]any{
-				"id": task.ID,
-				"title": task.Title,
-				"status": task.Status,
+				"id":       task.ID,
+				"title":    task.Title,
+				"status":   task.Status,
 				"board_id": task.BoardID,
 			},
 		})
@@ -378,11 +378,11 @@ func incidentSnapshotItem(incident *store.Incident) store.ReportSnapshotItem {
 		EntityType: "incident",
 		EntityID:   fmt.Sprintf("%d", incident.ID),
 		Entity: map[string]any{
-			"id": incident.ID,
-			"reg_no": incident.RegNo,
-			"title": incident.Title,
-			"severity": incident.Severity,
-			"status": incident.Status,
+			"id":         incident.ID,
+			"reg_no":     incident.RegNo,
+			"title":      incident.Title,
+			"severity":   incident.Severity,
+			"status":     incident.Status,
 			"created_at": incident.CreatedAt.UTC().Format(time.RFC3339),
 			"updated_at": incident.UpdatedAt.UTC().Format(time.RFC3339),
 		},

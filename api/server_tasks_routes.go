@@ -5,11 +5,11 @@ import (
 	"strconv"
 
 	"berkut-scc/api/handlers"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (s *Server) redirectLegacyTaskLink(w http.ResponseWriter, r *http.Request) {
-	taskID := parsePathInt64(mux.Vars(r)["task_id"])
+	taskID := parsePathInt64(chi.URLParam(r, "task_id"))
 	if taskID <= 0 {
 		http.NotFound(w, r)
 		return
@@ -28,9 +28,8 @@ func (s *Server) redirectLegacyTaskLink(w http.ResponseWriter, r *http.Request) 
 }
 
 func (s *Server) taskSpaceTaskAppShell(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	spaceID := parsePathInt64(vars["space_id"])
-	taskID := parsePathInt64(vars["task_id"])
+	spaceID := parsePathInt64(chi.URLParam(r, "space_id"))
+	taskID := parsePathInt64(chi.URLParam(r, "task_id"))
 	if spaceID <= 0 || taskID <= 0 {
 		http.NotFound(w, r)
 		return

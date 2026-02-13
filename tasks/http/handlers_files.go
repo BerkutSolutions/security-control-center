@@ -11,7 +11,7 @@ import (
 
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListFiles(w http.ResponseWriter, r *http.Request) {
@@ -49,8 +49,7 @@ func (h *Handler) AddFile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusConflict, "tasks.closedReadOnly")
 		return
 	}
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
-		respondError(w, http.StatusBadRequest, "bad request")
+	if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 		return
 	}
 	if r.MultipartForm == nil || len(r.MultipartForm.File["files"]) == 0 {
@@ -87,7 +86,7 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	fileID := parseInt64Default(mux.Vars(r)["file_id"], 0)
+	fileID := parseInt64Default(chi.URLParam(r, "file_id"), 0)
 	if fileID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -117,7 +116,7 @@ func (h *Handler) DeleteFile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusConflict, "tasks.closedReadOnly")
 		return
 	}
-	fileID := parseInt64Default(mux.Vars(r)["file_id"], 0)
+	fileID := parseInt64Default(chi.URLParam(r, "file_id"), 0)
 	if fileID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

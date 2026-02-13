@@ -12,8 +12,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
-	"time"
 	"testing"
+	"time"
 
 	"berkut-scc/api/handlers"
 	"berkut-scc/config"
@@ -23,7 +23,6 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 func setupIncidents(t *testing.T) (context.Context, *config.AppConfig, *store.User, store.IncidentsStore, store.DocsStore, store.UsersStore, *incidents.Service, *docs.Service, func()) {
@@ -140,7 +139,7 @@ func TestIncidentCannotDeleteOverviewStage(t *testing.T) {
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("DELETE", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/stages/"+strconv.FormatInt(stages[0].ID, 10), nil)
-	req = mux.SetURLVars(req, map[string]string{
+	req = withURLParams(req, map[string]string{
 		"id":       strconv.FormatInt(incident.ID, 10),
 		"stage_id": strconv.FormatInt(stages[0].ID, 10),
 	})
@@ -162,7 +161,7 @@ func TestIncidentCompleteStageSetsStatusAndMetadata(t *testing.T) {
 	// create a custom stage via handler to honor ACL/versioning defaults
 	body := bytes.NewBufferString(`{"title":"Stage A"}`)
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/stages", body)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.AddStage(rr, req)
@@ -170,15 +169,15 @@ func TestIncidentCompleteStageSetsStatusAndMetadata(t *testing.T) {
 		t.Fatalf("add stage status: %d", rr.Code)
 	}
 	var created struct {
-		Stage store.IncidentStage       `json:"stage"`
-		Entry store.IncidentStageEntry  `json:"entry"`
+		Stage store.IncidentStage      `json:"stage"`
+		Entry store.IncidentStageEntry `json:"entry"`
 	}
 	if err := json.NewDecoder(rr.Body).Decode(&created); err != nil {
 		t.Fatalf("decode stage: %v", err)
 	}
 
 	completeReq := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/stages/%d/complete", incident.ID, created.Stage.ID), nil)
-	completeReq = mux.SetURLVars(completeReq, map[string]string{
+	completeReq = withURLParams(completeReq, map[string]string{
 		"id":       strconv.FormatInt(incident.ID, 10),
 		"stage_id": strconv.FormatInt(created.Stage.ID, 10),
 	})
@@ -212,7 +211,7 @@ func TestIncidentCompletedStageIsReadOnlyForContent(t *testing.T) {
 
 	body := bytes.NewBufferString(`{"title":"Stage B"}`)
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/stages", body)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.AddStage(rr, req)
@@ -220,14 +219,14 @@ func TestIncidentCompletedStageIsReadOnlyForContent(t *testing.T) {
 		t.Fatalf("add stage status: %d", rr.Code)
 	}
 	var created struct {
-		Stage store.IncidentStage       `json:"stage"`
-		Entry store.IncidentStageEntry  `json:"entry"`
+		Stage store.IncidentStage      `json:"stage"`
+		Entry store.IncidentStageEntry `json:"entry"`
 	}
 	if err := json.NewDecoder(rr.Body).Decode(&created); err != nil {
 		t.Fatalf("decode stage: %v", err)
 	}
 	completeReq := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/stages/%d/complete", incident.ID, created.Stage.ID), nil)
-	completeReq = mux.SetURLVars(completeReq, map[string]string{
+	completeReq = withURLParams(completeReq, map[string]string{
 		"id":       strconv.FormatInt(incident.ID, 10),
 		"stage_id": strconv.FormatInt(created.Stage.ID, 10),
 	})
@@ -248,7 +247,7 @@ func TestIncidentCompletedStageIsReadOnlyForContent(t *testing.T) {
 		t.Fatalf("encode payload: %v", err)
 	}
 	updateReq := httptest.NewRequest("PUT", fmt.Sprintf("/api/incidents/%d/stages/%d/content", incident.ID, created.Stage.ID), buf)
-	updateReq = mux.SetURLVars(updateReq, map[string]string{
+	updateReq = withURLParams(updateReq, map[string]string{
 		"id":       strconv.FormatInt(incident.ID, 10),
 		"stage_id": strconv.FormatInt(created.Stage.ID, 10),
 	})
@@ -343,7 +342,7 @@ func TestIncidentStageCompleteLocksContent(t *testing.T) {
 	}
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/stages/%d/complete", incident.ID, stage.ID), nil)
-	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID), "stage_id": fmt.Sprintf("%d", stage.ID)})
+	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID), "stage_id": fmt.Sprintf("%d", stage.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.CompleteStage(rr, req)
@@ -361,7 +360,7 @@ func TestIncidentStageCompleteLocksContent(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 	updReq := httptest.NewRequest("PUT", fmt.Sprintf("/api/incidents/%d/stages/%d/content", incident.ID, stage.ID), bytes.NewReader(body))
-	updReq = mux.SetURLVars(updReq, map[string]string{"id": fmt.Sprintf("%d", incident.ID), "stage_id": fmt.Sprintf("%d", stage.ID)})
+	updReq = withURLParams(updReq, map[string]string{"id": fmt.Sprintf("%d", incident.ID), "stage_id": fmt.Sprintf("%d", stage.ID)})
 	updReq = updReq.WithContext(context.WithValue(updReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	updRR := httptest.NewRecorder()
 	h.UpdateStageContent(updRR, updReq)
@@ -406,7 +405,7 @@ func TestIncidentCloseRequiresCompletionStage(t *testing.T) {
 	}
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/close", incident.ID), nil)
-	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID)})
+	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.CloseIncident(rr, req)
@@ -423,7 +422,7 @@ func TestIncidentCloseRequiresCompletionStage(t *testing.T) {
 	}
 	body, _ := json.Marshal(payload)
 	tlReq := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/timeline", incident.ID), bytes.NewReader(body))
-	tlReq = mux.SetURLVars(tlReq, map[string]string{"id": fmt.Sprintf("%d", incident.ID)})
+	tlReq = withURLParams(tlReq, map[string]string{"id": fmt.Sprintf("%d", incident.ID)})
 	tlReq = tlReq.WithContext(context.WithValue(tlReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	tlRR := httptest.NewRecorder()
 	h.AddTimeline(tlRR, tlReq)
@@ -468,7 +467,7 @@ func TestIncidentLinksAddRemoveACL(t *testing.T) {
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]string{"target_type": "doc", "target_id": strconv.FormatInt(doc.ID, 10)})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.AddLink(rr, req)
@@ -489,7 +488,7 @@ func TestIncidentLinksAddRemoveACL(t *testing.T) {
 	}
 	body, _ = json.Marshal(map[string]string{"target_type": "doc", "target_id": strconv.FormatInt(doc2.ID, 10)})
 	req = httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr = httptest.NewRecorder()
 	h.AddLink(rr, req)
@@ -501,7 +500,7 @@ func TestIncidentLinksAddRemoveACL(t *testing.T) {
 		t.Fatalf("links missing: %v", err)
 	}
 	req = httptest.NewRequest("DELETE", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links/"+strconv.FormatInt(links[0].ID, 10), nil)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "link_id": strconv.FormatInt(links[0].ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "link_id": strconv.FormatInt(links[0].ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr = httptest.NewRecorder()
 	h.DeleteLink(rr, req)
@@ -523,7 +522,7 @@ func TestIncidentAttachmentEncryptDecryptAndClearance(t *testing.T) {
 	writer.Close()
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/attachments/upload", &buf)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.UploadAttachment(rr, req)
@@ -536,7 +535,7 @@ func TestIncidentAttachmentEncryptDecryptAndClearance(t *testing.T) {
 	}
 	att := attachments[0]
 	req = httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/attachments/"+strconv.FormatInt(att.ID, 10)+"/download", nil)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "att_id": strconv.FormatInt(att.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "att_id": strconv.FormatInt(att.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr = httptest.NewRecorder()
 	h.DownloadAttachment(rr, req)
@@ -568,7 +567,7 @@ func TestIncidentAttachmentEncryptDecryptAndClearance(t *testing.T) {
 		t.Fatalf("acl set: %v", err)
 	}
 	req = httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/attachments/"+strconv.FormatInt(att.ID, 10)+"/download", nil)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "att_id": strconv.FormatInt(att.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "att_id": strconv.FormatInt(att.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: low.ID, Username: low.Username}))
 	rr = httptest.NewRecorder()
 	h.DownloadAttachment(rr, req)
@@ -585,7 +584,7 @@ func TestIncidentTimelineOnStatusChange(t *testing.T) {
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]any{"status": "open", "version": incident.Version})
 	req := httptest.NewRequest("PUT", "/api/incidents/"+strconv.FormatInt(incident.ID, 10), bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.Update(rr, req)
@@ -617,7 +616,7 @@ func TestIncidentExportIncludesStages(t *testing.T) {
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
 	req := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/export?format=md", nil)
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.Export(rr, req)
@@ -636,7 +635,7 @@ func TestIncidentCreateReportDocRequiresDocsCreateAndLink(t *testing.T) {
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/create-report-doc", bytes.NewReader([]byte(`{}`)))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.CreateReportDoc(rr, req)
@@ -661,7 +660,7 @@ func TestIncidentCreateReportDocRequiresDocsCreateAndLink(t *testing.T) {
 	admin.ID = adminID
 	incident2 := createIncident(t, ctx, is, cfg, admin)
 	req = httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident2.ID, 10)+"/create-report-doc", bytes.NewReader([]byte(`{}`)))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident2.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident2.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: admin.ID, Username: admin.Username}))
 	rr = httptest.NewRecorder()
 	h.CreateReportDoc(rr, req)
@@ -691,7 +690,7 @@ func TestIncidentLinkOtherRequiresComment(t *testing.T) {
 	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]string{"target_type": "other", "comment": ""})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.AddLink(rr, req)
@@ -713,7 +712,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 	writer.Close()
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/artifacts/art-1/files", &buf)
 	req.Header.Set("Content-Type", writer.FormDataContentType())
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1"})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1"})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.UploadArtifactFile(rr, req)
@@ -721,7 +720,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 		t.Fatalf("expected 201 upload, got %d", rr.Code)
 	}
 	listReq := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/artifacts/art-1/files", nil)
-	listReq = mux.SetURLVars(listReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1"})
+	listReq = withURLParams(listReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1"})
 	listReq = listReq.WithContext(context.WithValue(listReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	listRR := httptest.NewRecorder()
 	h.ListArtifactFiles(listRR, listReq)
@@ -741,7 +740,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 	}
 	fileID := listPayload.Items[0].ID
 	dlReq := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/artifacts/art-1/files/"+strconv.FormatInt(fileID, 10)+"/download", nil)
-	dlReq = mux.SetURLVars(dlReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
+	dlReq = withURLParams(dlReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
 	dlReq = dlReq.WithContext(context.WithValue(dlReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	dlRR := httptest.NewRecorder()
 	h.DownloadArtifactFile(dlRR, dlReq)
@@ -770,7 +769,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 		t.Fatalf("acl set: %v", err)
 	}
 	lowReq := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/artifacts/art-1/files/"+strconv.FormatInt(fileID, 10)+"/download", nil)
-	lowReq = mux.SetURLVars(lowReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
+	lowReq = withURLParams(lowReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
 	lowReq = lowReq.WithContext(context.WithValue(lowReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: low.ID, Username: low.Username}))
 	lowRR := httptest.NewRecorder()
 	h.DownloadArtifactFile(lowRR, lowReq)
@@ -778,7 +777,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 		t.Fatalf("expected 403 for low clearance, got %d", lowRR.Code)
 	}
 	delReq := httptest.NewRequest("DELETE", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/artifacts/art-1/files/"+strconv.FormatInt(fileID, 10), nil)
-	delReq = mux.SetURLVars(delReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
+	delReq = withURLParams(delReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10), "artifact_id": "art-1", "file_id": strconv.FormatInt(fileID, 10)})
 	delReq = delReq.WithContext(context.WithValue(delReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	delRR := httptest.NewRecorder()
 	h.DeleteArtifactFile(delRR, delReq)
@@ -805,7 +804,7 @@ func TestIncidentActivityEventAt(t *testing.T) {
 	eventAt := time.Now().Add(-2 * time.Hour).UTC()
 	body, _ := json.Marshal(map[string]any{"message": "note", "event_type": "custom", "event_at": eventAt.Format(time.RFC3339)})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/timeline", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	rr := httptest.NewRecorder()
 	h.AddTimeline(rr, req)
@@ -813,7 +812,7 @@ func TestIncidentActivityEventAt(t *testing.T) {
 		t.Fatalf("expected 201, got %d", rr.Code)
 	}
 	actReq := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/activity", nil)
-	actReq = mux.SetURLVars(actReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
+	actReq = withURLParams(actReq, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	actReq = actReq.WithContext(context.WithValue(actReq.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
 	actRR := httptest.NewRecorder()
 	h.ListActivity(actRR, actReq)
@@ -836,4 +835,3 @@ func TestIncidentActivityEventAt(t *testing.T) {
 		t.Fatalf("event_at mismatch got %v want %v", got, eventAt)
 	}
 }
-

@@ -120,6 +120,7 @@
 
     bindAccessControls();
     bindContextMenu();
+    bindSpacePanelsContextMenu();
   }
 
   function bindAccessControls() {
@@ -158,6 +159,26 @@
     });
     document.addEventListener('keydown', (e) => {
       if (e.key === 'Escape') hideContextMenu();
+    });
+  }
+
+  function bindSpacePanelsContextMenu() {
+    const host = document.getElementById('tasks-space-panels');
+    if (!host || host.dataset.ctxBound === '1') return;
+    host.dataset.ctxBound = '1';
+    host.addEventListener('contextmenu', (e) => {
+      if (!hasPermission('tasks.manage')) return;
+      const activePanel = host.querySelector('.tasks-space-view:not([hidden])');
+      if (!activePanel || !activePanel.contains(e.target)) return;
+      if (e.target.closest('.tasks-board-frame') || e.target.closest('.tasks-column') || e.target.closest('.task-card')) {
+        return;
+      }
+      const spaceId = parseInt(activePanel.dataset.spaceId || '0', 10);
+      if (!spaceId) return;
+      e.preventDefault();
+      showContextMenu(e.clientX, e.clientY, [
+        { label: t('tasks.actions.createBoard'), handler: () => openBoardModal('create', null, spaceId) }
+      ]);
     });
   }
 
@@ -457,20 +478,18 @@
   }
 
   function bindSpacePanel(panel, spaceId) {
-    const boardShell = panel.querySelector('[data-space-boards]');
-    const shell = panel.querySelector('.tasks-boards-shell');
-    const onShellContext = (e) => {
+    const onSpaceContext = (e) => {
       if (!hasPermission('tasks.manage')) return;
       if (e.target.closest('.tasks-board-frame') || e.target.closest('.tasks-column') || e.target.closest('.task-card')) {
         return;
       }
       e.preventDefault();
+      e.stopPropagation();
       showContextMenu(e.clientX, e.clientY, [
         { label: t('tasks.actions.createBoard'), handler: () => openBoardModal('create', null, spaceId) }
       ]);
     };
-    boardShell?.addEventListener('contextmenu', onShellContext);
-    shell?.addEventListener('contextmenu', onShellContext);
+    panel.addEventListener('contextmenu', onSpaceContext);
   }
 
   function renderSpaceList() {

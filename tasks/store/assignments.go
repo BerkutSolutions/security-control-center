@@ -8,7 +8,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) SetTaskAssignments(ctx context.Context, taskID int64, userIDs []int64, assignedBy int64) error {
+func (s *SQLStore) SetTaskAssignments(ctx context.Context, taskID int64, userIDs []int64, assignedBy int64) error {
 	return withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `DELETE FROM task_assignments WHERE task_id=?`, taskID); err != nil {
 			return err
@@ -33,7 +33,7 @@ func (s *SQLiteStore) SetTaskAssignments(ctx context.Context, taskID int64, user
 	})
 }
 
-func (s *SQLiteStore) ListTaskAssignments(ctx context.Context, taskID int64) ([]tasks.Assignment, error) {
+func (s *SQLStore) ListTaskAssignments(ctx context.Context, taskID int64) ([]tasks.Assignment, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT task_id, user_id, assigned_at, assigned_by
 		FROM task_assignments WHERE task_id=? ORDER BY assigned_at ASC`, taskID)
@@ -56,7 +56,7 @@ func (s *SQLiteStore) ListTaskAssignments(ctx context.Context, taskID int64) ([]
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListTaskAssignmentsForTasks(ctx context.Context, taskIDs []int64) (map[int64][]tasks.Assignment, error) {
+func (s *SQLStore) ListTaskAssignmentsForTasks(ctx context.Context, taskIDs []int64) (map[int64][]tasks.Assignment, error) {
 	out := map[int64][]tasks.Assignment{}
 	if len(taskIDs) == 0 {
 		return out, nil
@@ -81,3 +81,4 @@ func (s *SQLiteStore) ListTaskAssignmentsForTasks(ctx context.Context, taskIDs [
 	}
 	return out, rows.Err()
 }
+

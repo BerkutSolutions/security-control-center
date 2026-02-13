@@ -88,9 +88,9 @@ func TestMaintenanceEvents(t *testing.T) {
 		t.Fatalf("create monitor: %v", err)
 	}
 	state := &store.MonitorState{
-		MonitorID:        id,
-		Status:           "down",
-		LastResultStatus: "down",
+		MonitorID:         id,
+		Status:            "down",
+		LastResultStatus:  "down",
 		MaintenanceActive: false,
 	}
 	if err := storeSvc.UpsertMonitorState(context.Background(), state); err != nil {

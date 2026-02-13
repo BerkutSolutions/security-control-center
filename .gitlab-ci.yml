@@ -1,4 +1,5 @@
 stages:
+  - verify
   - build
   - deploy
 
@@ -6,6 +7,24 @@ variables:
   DOCKER_DRIVER: overlay2
   DOCKER_TLS_CERTDIR: "/certs"
   IMAGE_NAME: "$CI_REGISTRY_IMAGE/berkut-scc"
+  GOFLAGS: "-mod=readonly"
+
+verify-go:
+  stage: verify
+  image: golang:1.22
+  cache:
+    key: "$CI_COMMIT_REF_SLUG-go"
+    paths:
+      - .cache/go-build
+      - /go/pkg/mod
+  variables:
+    GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
+  script:
+    - go version
+    - make ci
+  only:
+    - branches
+    - tags
 
 build-image:
   stage: build

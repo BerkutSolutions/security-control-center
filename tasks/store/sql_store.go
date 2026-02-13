@@ -6,15 +6,15 @@ import (
 	"time"
 )
 
-type SQLiteStore struct {
+type SQLStore struct {
 	db *sql.DB
 }
 
-func NewSQLite(db *sql.DB) *SQLiteStore {
-	return &SQLiteStore{db: db}
+func NewStore(db *sql.DB) *SQLStore {
+	return &SQLStore{db: db}
 }
 
-func (s *SQLiteStore) DB() *sql.DB {
+func (s *SQLStore) DB() *sql.DB {
 	return s.db
 }
 
@@ -79,3 +79,4 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	}
 	return tx.Commit()
 }
+

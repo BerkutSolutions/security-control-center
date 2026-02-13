@@ -24,7 +24,7 @@ func setupDocs(t *testing.T) (context.Context, *config.AppConfig, *store.User, s
 			VersionLimit:      2,
 			PerFolderSequence: false,
 			Watermark: config.WatermarkConfig{
-				Enabled: false,
+				Enabled:  false,
 				MinLevel: "CONFIDENTIAL",
 			},
 			Converters: config.ConvertersConfig{Enabled: false},
@@ -46,16 +46,16 @@ func setupDocs(t *testing.T) (context.Context, *config.AppConfig, *store.User, s
 		t.Fatalf("svc: %v", err)
 	}
 	u := &store.User{
-		Username:        "user1",
-		FullName:        "User One",
-		Department:      "Sec",
-		Position:        "Analyst",
-		ClearanceLevel:  int(docs.ClassificationTopSecret),
-		ClearanceTags:   docs.TagList,
-		PasswordHash:    "hash",
-		Salt:            "salt",
-		PasswordSet:     true,
-		Active:          true,
+		Username:       "user1",
+		FullName:       "User One",
+		Department:     "Sec",
+		Position:       "Analyst",
+		ClearanceLevel: int(docs.ClassificationTopSecret),
+		ClearanceTags:  docs.TagList,
+		PasswordHash:   "hash",
+		Salt:           "salt",
+		PasswordSet:    true,
+		Active:         true,
 	}
 	uid, err := us.Create(context.Background(), u, []string{"doc_admin"})
 	if err != nil {
@@ -234,7 +234,7 @@ func TestWatermarkAppliedOnExport(t *testing.T) {
 }
 
 func TestConvertersHealthcheck(t *testing.T) {
-	ctx, cfg, user, ds, us, _, cleanup := setupDocs(t)
+	_, cfg, _, ds, us, _, cleanup := setupDocs(t)
 	defer cleanup()
 	cfg.Docs.Converters.Enabled = true
 	cfg.Docs.Converters.PandocPath = "missing-pandoc-binary"

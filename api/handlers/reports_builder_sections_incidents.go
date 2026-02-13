@@ -19,9 +19,9 @@ func (h *ReportsHandler) buildIncidentsSection(ctx context.Context, sec store.Re
 	from, to := periodOverride(sec.Config, fallbackFrom, fallbackTo)
 	limit := configInt(sec.Config, "limit", 20)
 	filter := store.IncidentFilter{
-		Status:    configString(sec.Config, "status"),
-		Severity:  configString(sec.Config, "severity"),
-		Limit:     limit * 5,
+		Status:   configString(sec.Config, "status"),
+		Severity: configString(sec.Config, "severity"),
+		Limit:    limit * 5,
 	}
 	items, err := h.incidents.ListIncidents(ctx, filter)
 	if err != nil {

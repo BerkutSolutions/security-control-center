@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateSubColumn(ctx context.Context, subcolumn *tasks.SubColumn) (int64, error) {
+func (s *SQLStore) CreateSubColumn(ctx context.Context, subcolumn *tasks.SubColumn) (int64, error) {
 	if subcolumn.Position <= 0 {
 		pos, err := s.NextSubColumnPosition(ctx, subcolumn.ColumnID)
 		if err != nil {
@@ -32,7 +32,7 @@ func (s *SQLiteStore) CreateSubColumn(ctx context.Context, subcolumn *tasks.SubC
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateSubColumn(ctx context.Context, subcolumn *tasks.SubColumn) error {
+func (s *SQLStore) UpdateSubColumn(ctx context.Context, subcolumn *tasks.SubColumn) error {
 	now := time.Now().UTC()
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE task_subcolumns SET name=?, position=?, is_active=?, updated_at=? WHERE id=?`,
@@ -44,7 +44,7 @@ func (s *SQLiteStore) UpdateSubColumn(ctx context.Context, subcolumn *tasks.SubC
 	return nil
 }
 
-func (s *SQLiteStore) MoveSubColumn(ctx context.Context, subcolumnID int64, position int) (*tasks.SubColumn, error) {
+func (s *SQLStore) MoveSubColumn(ctx context.Context, subcolumnID int64, position int) (*tasks.SubColumn, error) {
 	var subcolumn *tasks.SubColumn
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -93,7 +93,7 @@ func (s *SQLiteStore) MoveSubColumn(ctx context.Context, subcolumnID int64, posi
 	return subcolumn, nil
 }
 
-func (s *SQLiteStore) DeleteSubColumn(ctx context.Context, subcolumnID int64) error {
+func (s *SQLStore) DeleteSubColumn(ctx context.Context, subcolumnID int64) error {
 	return withTx(ctx, s.db, func(tx *sql.Tx) error {
 		if _, err := tx.ExecContext(ctx, `
 			UPDATE task_subcolumns SET is_active=0, updated_at=? WHERE id=?`, time.Now().UTC(), subcolumnID); err != nil {
@@ -107,7 +107,7 @@ func (s *SQLiteStore) DeleteSubColumn(ctx context.Context, subcolumnID int64) er
 	})
 }
 
-func (s *SQLiteStore) GetSubColumn(ctx context.Context, subcolumnID int64) (*tasks.SubColumn, error) {
+func (s *SQLStore) GetSubColumn(ctx context.Context, subcolumnID int64) (*tasks.SubColumn, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, column_id, name, position, is_active, created_at, updated_at
 		FROM task_subcolumns WHERE id=?`, subcolumnID)
@@ -123,7 +123,7 @@ func (s *SQLiteStore) GetSubColumn(ctx context.Context, subcolumnID int64) (*tas
 	return &sc, nil
 }
 
-func (s *SQLiteStore) ListSubColumns(ctx context.Context, columnID int64, includeInactive bool) ([]tasks.SubColumn, error) {
+func (s *SQLStore) ListSubColumns(ctx context.Context, columnID int64, includeInactive bool) ([]tasks.SubColumn, error) {
 	query := `
 		SELECT id, column_id, name, position, is_active, created_at, updated_at
 		FROM task_subcolumns WHERE column_id=?`
@@ -150,7 +150,7 @@ func (s *SQLiteStore) ListSubColumns(ctx context.Context, columnID int64, includ
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListSubColumnsByBoard(ctx context.Context, boardID int64, includeInactive bool) ([]tasks.SubColumn, error) {
+func (s *SQLStore) ListSubColumnsByBoard(ctx context.Context, boardID int64, includeInactive bool) ([]tasks.SubColumn, error) {
 	query := `
 		SELECT sc.id, sc.column_id, sc.name, sc.position, sc.is_active, sc.created_at, sc.updated_at
 		FROM task_subcolumns sc
@@ -179,7 +179,7 @@ func (s *SQLiteStore) ListSubColumnsByBoard(ctx context.Context, boardID int64, 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) NextSubColumnPosition(ctx context.Context, columnID int64) (int, error) {
+func (s *SQLStore) NextSubColumnPosition(ctx context.Context, columnID int64) (int, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT COALESCE(MAX(position), 0) FROM task_subcolumns WHERE column_id=?`, columnID)
 	var max int
 	if err := row.Scan(&max); err != nil {
@@ -188,7 +188,7 @@ func (s *SQLiteStore) NextSubColumnPosition(ctx context.Context, columnID int64)
 	return max + 1, nil
 }
 
-func (s *SQLiteStore) CountTasksInSubColumn(ctx context.Context, subcolumnID int64) (int, error) {
+func (s *SQLStore) CountTasksInSubColumn(ctx context.Context, subcolumnID int64) (int, error) {
 	row := s.db.QueryRowContext(ctx, `SELECT COUNT(1) FROM tasks WHERE subcolumn_id=? AND is_archived=0`, subcolumnID)
 	var count int
 	if err := row.Scan(&count); err != nil {
@@ -197,7 +197,7 @@ func (s *SQLiteStore) CountTasksInSubColumn(ctx context.Context, subcolumnID int
 	return count, nil
 }
 
-func (s *SQLiteStore) getSubColumnTx(ctx context.Context, tx *sql.Tx, subcolumnID int64) (*tasks.SubColumn, error) {
+func (s *SQLStore) getSubColumnTx(ctx context.Context, tx *sql.Tx, subcolumnID int64) (*tasks.SubColumn, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, column_id, name, position, is_active, created_at, updated_at
 		FROM task_subcolumns WHERE id=?`, subcolumnID)
@@ -212,3 +212,4 @@ func (s *SQLiteStore) getSubColumnTx(ctx context.Context, tx *sql.Tx, subcolumnI
 	sc.IsActive = active == 1
 	return &sc, nil
 }
+

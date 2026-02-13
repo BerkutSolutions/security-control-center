@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 type recurringRuleDTO struct {
@@ -179,7 +179,7 @@ func (h *Handler) UpdateRecurringRule(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	ruleID := parseInt64Default(mux.Vars(r)["id"], 0)
+	ruleID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if ruleID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -260,7 +260,7 @@ func (h *Handler) ToggleRecurringRule(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	ruleID := parseInt64Default(mux.Vars(r)["id"], 0)
+	ruleID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if ruleID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -321,7 +321,7 @@ func (h *Handler) RunRecurringRuleNow(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusForbidden, "forbidden")
 		return
 	}
-	ruleID := parseInt64Default(mux.Vars(r)["id"], 0)
+	ruleID := parseInt64Default(chi.URLParam(r, "id"), 0)
 	if ruleID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

@@ -7,7 +7,7 @@ import (
 	"time"
 )
 
-func (s *SQLiteStore) ListTaskTags(ctx context.Context) ([]string, error) {
+func (s *SQLStore) ListTaskTags(ctx context.Context) ([]string, error) {
 	rows, err := s.db.QueryContext(ctx, `SELECT name FROM task_tags ORDER BY name ASC`)
 	if err != nil {
 		return nil, err
@@ -24,7 +24,7 @@ func (s *SQLiteStore) ListTaskTags(ctx context.Context) ([]string, error) {
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListTaskTagsForTasks(ctx context.Context, taskIDs []int64) (map[int64][]string, error) {
+func (s *SQLStore) ListTaskTagsForTasks(ctx context.Context, taskIDs []int64) (map[int64][]string, error) {
 	result := map[int64][]string{}
 	if len(taskIDs) == 0 {
 		return result, nil
@@ -50,7 +50,7 @@ func (s *SQLiteStore) ListTaskTagsForTasks(ctx context.Context, taskIDs []int64)
 	return result, rows.Err()
 }
 
-func (s *SQLiteStore) SetTaskTags(ctx context.Context, taskID int64, tags []string) error {
+func (s *SQLStore) SetTaskTags(ctx context.Context, taskID int64, tags []string) error {
 	clean := []string{}
 	seen := map[string]struct{}{}
 	for _, tag := range tags {
@@ -104,3 +104,4 @@ func (s *SQLiteStore) SetTaskTags(ctx context.Context, taskID int64, tags []stri
 		return nil
 	})
 }
+

@@ -225,4 +225,3 @@ func (h *ReportsHandler) templateVars(title string, meta *store.ReportMeta, sett
 	}
 	return out
 }
-

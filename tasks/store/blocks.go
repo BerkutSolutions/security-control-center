@@ -9,7 +9,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateTaskBlock(ctx context.Context, block *tasks.TaskBlock) (int64, error) {
+func (s *SQLStore) CreateTaskBlock(ctx context.Context, block *tasks.TaskBlock) (int64, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(ctx, `
 		INSERT INTO task_blocks(task_id, block_type, reason, blocker_task_id, created_by, created_at, is_active)
@@ -25,7 +25,7 @@ func (s *SQLiteStore) CreateTaskBlock(ctx context.Context, block *tasks.TaskBloc
 	return id, nil
 }
 
-func (s *SQLiteStore) ResolveTaskBlock(ctx context.Context, taskID int64, blockID int64, resolvedBy int64) (*tasks.TaskBlock, error) {
+func (s *SQLStore) ResolveTaskBlock(ctx context.Context, taskID int64, blockID int64, resolvedBy int64) (*tasks.TaskBlock, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE task_blocks
@@ -51,7 +51,7 @@ func (s *SQLiteStore) ResolveTaskBlock(ctx context.Context, taskID int64, blockI
 	return block, nil
 }
 
-func (s *SQLiteStore) ListTaskBlocks(ctx context.Context, taskID int64) ([]tasks.TaskBlock, error) {
+func (s *SQLStore) ListTaskBlocks(ctx context.Context, taskID int64) ([]tasks.TaskBlock, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, task_id, block_type, reason, blocker_task_id, created_by, created_at, resolved_by, resolved_at, is_active
 		FROM task_blocks WHERE task_id=?
@@ -71,7 +71,7 @@ func (s *SQLiteStore) ListTaskBlocks(ctx context.Context, taskID int64) ([]tasks
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListActiveTaskBlocksForTasks(ctx context.Context, taskIDs []int64) (map[int64][]tasks.TaskBlock, error) {
+func (s *SQLStore) ListActiveTaskBlocksForTasks(ctx context.Context, taskIDs []int64) (map[int64][]tasks.TaskBlock, error) {
 	res := map[int64][]tasks.TaskBlock{}
 	if len(taskIDs) == 0 {
 		return res, nil
@@ -96,7 +96,7 @@ func (s *SQLiteStore) ListActiveTaskBlocksForTasks(ctx context.Context, taskIDs 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListActiveBlocksByBlocker(ctx context.Context, blockerTaskID int64) ([]tasks.TaskBlock, error) {
+func (s *SQLStore) ListActiveBlocksByBlocker(ctx context.Context, blockerTaskID int64) ([]tasks.TaskBlock, error) {
 	rows, err := s.db.QueryContext(ctx, `
 		SELECT id, task_id, block_type, reason, blocker_task_id, created_by, created_at, resolved_by, resolved_at, is_active
 		FROM task_blocks
@@ -117,7 +117,7 @@ func (s *SQLiteStore) ListActiveBlocksByBlocker(ctx context.Context, blockerTask
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ResolveTaskBlocksByBlocker(ctx context.Context, blockerTaskID int64, resolvedBy int64) ([]tasks.TaskBlock, error) {
+func (s *SQLStore) ResolveTaskBlocksByBlocker(ctx context.Context, blockerTaskID int64, resolvedBy int64) ([]tasks.TaskBlock, error) {
 	var blocks []tasks.TaskBlock
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		rows, err := tx.QueryContext(ctx, `
@@ -160,7 +160,7 @@ func (s *SQLiteStore) ResolveTaskBlocksByBlocker(ctx context.Context, blockerTas
 	return blocks, err
 }
 
-func (s *SQLiteStore) getTaskBlock(ctx context.Context, blockID int64) (*tasks.TaskBlock, error) {
+func (s *SQLStore) getTaskBlock(ctx context.Context, blockID int64) (*tasks.TaskBlock, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, task_id, block_type, reason, blocker_task_id, created_by, created_at, resolved_by, resolved_at, is_active
 		FROM task_blocks WHERE id=?`, blockID)
@@ -238,3 +238,4 @@ func scanTaskBlockRow(rows *sql.Rows) (tasks.TaskBlock, error) {
 	block.IsActive = active == 1
 	return block, nil
 }
+

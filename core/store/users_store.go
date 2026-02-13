@@ -350,7 +350,7 @@ func (s *usersStore) assignRolesTx(ctx context.Context, tx *sql.Tx, userID int64
 		if err != nil {
 			return err
 		}
-		if _, err := tx.ExecContext(ctx, `INSERT OR IGNORE INTO user_roles(user_id, role_id) VALUES(?,?)`, userID, roleID); err != nil {
+		if _, err := tx.ExecContext(ctx, `INSERT INTO user_roles(user_id, role_id) VALUES(?,?) ON CONFLICT DO NOTHING`, userID, roleID); err != nil {
 			return err
 		}
 	}

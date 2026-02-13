@@ -1,5 +1,67 @@
 (() => {
   const state = DocsPage.state;
+  const UNSAFE_URL_PATTERN = /[\u0000-\u001F\u007F\s]+/g;
+
+  function sanitizeUrl(raw, opts = {}) {
+    const val = String(raw || '').trim().replace(UNSAFE_URL_PATTERN, '');
+    if (!val) return null;
+    if (val.startsWith('#') || val.startsWith('/') || val.startsWith('./') || val.startsWith('../') || val.startsWith('?')) {
+      return val;
+    }
+    let parsed;
+    try {
+      parsed = new URL(val, window.location.origin);
+    } catch (_) {
+      return null;
+    }
+    const protocol = (parsed.protocol || '').toLowerCase();
+    const allow = opts.forImage ? ['http:', 'https:'] : ['http:', 'https:', 'mailto:'];
+    if (!allow.includes(protocol)) return null;
+    return parsed.href;
+  }
+
+  function sanitizeHtmlFragment(html) {
+    const tpl = document.createElement('template');
+    tpl.innerHTML = String(html || '');
+    const blocked = new Set(['SCRIPT', 'STYLE', 'IFRAME', 'OBJECT', 'EMBED', 'LINK', 'META', 'BASE', 'FORM', 'INPUT', 'BUTTON', 'TEXTAREA', 'SELECT', 'SVG', 'MATH']);
+    const walker = document.createTreeWalker(tpl.content, NodeFilter.SHOW_ELEMENT);
+    const toRemove = [];
+    while (walker.nextNode()) {
+      const el = walker.currentNode;
+      if (blocked.has(el.tagName)) {
+        toRemove.push(el);
+        continue;
+      }
+      Array.from(el.attributes).forEach(attr => {
+        const name = attr.name.toLowerCase();
+        if (name.startsWith('on') || name === 'style' || name === 'srcdoc') {
+          el.removeAttribute(attr.name);
+        }
+      });
+      if (el.tagName === 'A') {
+        const safeHref = sanitizeUrl(el.getAttribute('href'), { forImage: false });
+        if (!safeHref) {
+          el.removeAttribute('href');
+        } else {
+          el.setAttribute('href', safeHref);
+          el.setAttribute('target', '_blank');
+          el.setAttribute('rel', 'noopener noreferrer');
+        }
+      }
+      if (el.tagName === 'IMG') {
+        const safeSrc = sanitizeUrl(el.getAttribute('src'), { forImage: true });
+        if (!safeSrc) {
+          toRemove.push(el);
+        } else {
+          el.setAttribute('src', safeSrc);
+          el.setAttribute('loading', 'lazy');
+          el.removeAttribute('srcset');
+        }
+      }
+    }
+    toRemove.forEach(el => el.remove());
+    return tpl.innerHTML;
+  }
 
   function exportDoc(docId) {
     const fmt = prompt(BerkutI18n.t('docs.exportPrompt'), 'pdf') || 'pdf';
@@ -7,95 +69,11 @@
   }
 
   async function openViewer(docId) {
-    const legacyModal = document.getElementById('doc-view-modal');
-    if (legacyModal) legacyModal.hidden = true;
     if (DocsPage.openDocTab) {
       DocsPage.openDocTab(docId, 'view');
       return;
     }
-    const alertBox = document.getElementById('doc-view-alert');
-    DocsPage.hideAlert(alertBox);
-    const titleEl = document.getElementById('doc-view-title');
-    const metaEl = document.getElementById('doc-view-meta');
-    const frameWrap = document.getElementById('doc-viewer-frame-wrap');
-    const frame = document.getElementById('doc-viewer-frame');
-    const mdPane = document.getElementById('doc-viewer-md');
-    const frameHint = document.getElementById('doc-viewer-frame-hint');
-    if (mdPane) mdPane.innerHTML = '';
-    if (frame) {
-      frame.src = 'about:blank';
-      frame.hidden = false;
-    }
-    if (frameHint) frameHint.textContent = '';
-    if (frameWrap) frameWrap.hidden = true;
-    if (mdPane) mdPane.hidden = true;
-    state.viewerDoc = null;
-    state.viewerContent = '';
-    state.viewerFormat = 'md';
-    try {
-      if (DocsPage.updateDocsPath) {
-        DocsPage.updateDocsPath(docId, 'view');
-      }
-      const meta = await Api.get(`/api/docs/${docId}`);
-      state.viewerDoc = meta;
-      if (titleEl) titleEl.textContent = `${meta.title || ''} (${meta.reg_number || ''})`;
-      if (metaEl) metaEl.textContent = `${DocUI.levelName(meta.classification_level)} | ${DocUI.statusLabel(meta.status)} | ${DocsPage.formatDate(meta.updated_at || meta.created_at)}`;
-      await renderDocInfo(meta, docId);
-      let cont;
-      try {
-        cont = await Api.get(`/api/docs/${docId}/content`);
-      } catch (err) {
-        const msg = (err && err.message ? err.message : '').toLowerCase();
-        if (msg.includes('not found')) {
-          cont = { format: meta.format || 'md', content: '' };
-        } else {
-          throw err;
-        }
-      }
-      const fmt = (cont.format || meta.format || 'md').toLowerCase();
-      state.viewerFormat = fmt;
-      if (fmt === 'md' || fmt === 'txt') {
-        state.viewerContent = cont.content || '';
-        renderViewerMarkdown(state.viewerContent);
-      } else {
-        const isPdf = fmt === 'pdf';
-        const isDocx = fmt === 'docx';
-        const converters = state.converterStatus || {};
-        const pdfUrl = `/api/docs/${docId}/export?format=pdf&inline=1`;
-        const docxUrl = `/api/docs/${docId}/export?format=docx&inline=1`;
-        const docxDownloadUrl = `/api/docs/${docId}/export?format=docx`;
-        if (isPdf) {
-          if (frame) {
-            frame.src = pdfUrl;
-            frame.hidden = false;
-          }
-          if (frameWrap) frameWrap.hidden = false;
-          if (frameHint) {
-            frameHint.textContent = BerkutI18n.t('docs.view.pdfHint') || '';
-          }
-        } else if (isDocx) {
-          const rendered = await renderViewerDocx(docxUrl);
-          if (!rendered) {
-            if (frameWrap) frameWrap.hidden = false;
-          }
-          if (!rendered && frameHint) {
-            const hint = BerkutI18n.t('docs.view.docxHint') || '';
-            const linkLabel = BerkutI18n.t('docs.view.docxDownload') || 'Download';
-            frameHint.innerHTML = `${hint} <a href="${docxDownloadUrl}" target="_blank" rel="noreferrer">${linkLabel}</a>`;
-          }
-        } else if (converters.enabled && converters.soffice_available) {
-          if (frame) {
-            frame.src = pdfUrl;
-            frame.hidden = false;
-          }
-          if (frameWrap) frameWrap.hidden = false;
-        }
-      }
-      applyZoom(100);
-      resetSearch();
-    } catch (err) {
-      DocsPage.showAlert(alertBox, err.message || 'Failed to open');
-    }
+    window.location.href = `/docs/${encodeURIComponent(docId)}`;
   }
 
   async function renderDocInfo(meta, docId) {
@@ -182,7 +160,7 @@
     if (!mdPane) return;
     mdPane.hidden = false;
     const rendered = renderMarkdown(content || '');
-    mdPane.innerHTML = rendered.html;
+    mdPane.innerHTML = sanitizeHtmlFragment(rendered.html);
     mdPane.querySelectorAll('[data-code-idx]').forEach(btn => {
       btn.onclick = async () => {
         const idx = parseInt(btn.getAttribute('data-code-idx'), 10);
@@ -220,7 +198,7 @@
       }
       if (frameWrap) frameWrap.hidden = true;
       mdPane.hidden = false;
-      mdPane.innerHTML = `<div class="docx-view">${result.value || ''}</div>`;
+      mdPane.innerHTML = `<div class="docx-view">${sanitizeHtmlFragment(result.value || '')}</div>`;
       if (result.messages && result.messages.length) {
         console.warn('docx render warnings', result.messages);
       }
@@ -260,8 +238,15 @@
       .replace(/^### (.*)$/gm, '<h3>$1</h3>')
       .replace(/^## (.*)$/gm, '<h2>$1</h2>')
       .replace(/^# (.*)$/gm, '<h1>$1</h1>')
-      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img alt="$1" src="$2">')
-      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noreferrer">$1</a>')
+      .replace(/!\[([^\]]*)\]\(([^)]+)\)/g, (_, alt, src) => {
+        const safeSrc = sanitizeUrl(src, { forImage: true });
+        return safeSrc ? `<img alt="${esc(alt)}" src="${esc(safeSrc)}">` : '';
+      })
+      .replace(/\[([^\]]+)\]\(([^)]+)\)/g, (_, label, href) => {
+        const safeHref = sanitizeUrl(href, { forImage: false });
+        const safeLabel = esc(label);
+        return safeHref ? `<a href="${esc(safeHref)}" target="_blank" rel="noopener noreferrer">${safeLabel}</a>` : safeLabel;
+      })
       .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
       .replace(/__(.+?)__/g, '<strong>$1</strong>')
       .replace(/\*(.+?)\*/g, '<em>$1</em>')
@@ -303,7 +288,6 @@
     const editBtn = document.getElementById('view-edit-btn');
     if (editBtn) editBtn.onclick = () => {
       if (state.viewerDoc?.id) {
-        DocsPage.closeModal('#doc-view-modal');
         DocsPage.openEditor(state.viewerDoc.id);
       }
     };
@@ -333,7 +317,8 @@
     const mdPane = document.getElementById('doc-viewer-md');
     if (!mdPane) return;
     const regex = new RegExp(`(${term.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')})`, 'gi');
-    mdPane.innerHTML = renderMarkdown(state.viewerContent || '').replace(regex, '<mark>$1</mark>');
+    const rendered = renderMarkdown(state.viewerContent || '');
+    mdPane.innerHTML = sanitizeHtmlFragment((rendered.html || '').replace(regex, '<mark>$1</mark>'));
   }
 
   function resetSearch() {
@@ -347,6 +332,8 @@
   DocsPage.renderDocInfo = renderDocInfo;
   DocsPage.renderViewerMarkdown = renderViewerMarkdown;
   DocsPage.renderMarkdown = renderMarkdown;
+  DocsPage.sanitizeHtmlFragment = sanitizeHtmlFragment;
+  DocsPage.sanitizeUrl = sanitizeUrl;
   DocsPage.bindViewerControls = bindViewerControls;
   DocsPage.applyZoom = applyZoom;
   DocsPage.runSearch = runSearch;

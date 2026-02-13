@@ -10,7 +10,6 @@ import (
 
 	"berkut-scc/config"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
 )
 
 func TestComputeNextRunAt(t *testing.T) {
@@ -84,13 +83,13 @@ func TestRecurringSchedulerCreatesOnce(t *testing.T) {
 	next := time.Now().UTC().Add(-1 * time.Minute)
 	cfg, _ := tasks.NormalizeScheduleConfig(tasks.ScheduleDaily, json.RawMessage(`{}`))
 	rule := &tasks.TaskRecurringRule{
-		TemplateID:    tpl.ID,
-		ScheduleType:  tasks.ScheduleDaily,
+		TemplateID:     tpl.ID,
+		ScheduleType:   tasks.ScheduleDaily,
 		ScheduleConfig: cfg,
-		TimeOfDay:     "09:00",
-		NextRunAt:     &next,
-		IsActive:      true,
-		CreatedBy:     &env.admin.ID,
+		TimeOfDay:      "09:00",
+		NextRunAt:      &next,
+		IsActive:       true,
+		CreatedBy:      &env.admin.ID,
 	}
 	if _, err := env.tasksStore.CreateTaskRecurringRule(env.ctx, rule); err != nil {
 		t.Fatalf("rule create: %v", err)
@@ -132,13 +131,13 @@ func TestRecurringInstanceUnique(t *testing.T) {
 	}
 	cfg, _ := tasks.NormalizeScheduleConfig(tasks.ScheduleWeekly, json.RawMessage(`{"weekdays":[1]}`))
 	rule := &tasks.TaskRecurringRule{
-		TemplateID:    tpl.ID,
-		ScheduleType:  tasks.ScheduleWeekly,
+		TemplateID:     tpl.ID,
+		ScheduleType:   tasks.ScheduleWeekly,
 		ScheduleConfig: cfg,
-		TimeOfDay:     "09:00",
-		NextRunAt:     nil,
-		IsActive:      true,
-		CreatedBy:     &env.admin.ID,
+		TimeOfDay:      "09:00",
+		NextRunAt:      nil,
+		IsActive:       true,
+		CreatedBy:      &env.admin.ID,
 	}
 	if _, err := env.tasksStore.CreateTaskRecurringRule(env.ctx, rule); err != nil {
 		t.Fatalf("rule create: %v", err)
@@ -162,12 +161,12 @@ func TestRecurringPermissions(t *testing.T) {
 	defer env.cleanup()
 
 	payload, _ := json.Marshal(map[string]any{
-		"board_id": env.board.ID,
-		"column_id": env.todo.ID,
-		"title_template": "Template",
-		"priority": "medium",
+		"board_id":         env.board.ID,
+		"column_id":        env.todo.ID,
+		"title_template":   "Template",
+		"priority":         "medium",
 		"default_due_days": 1,
-		"is_active": true,
+		"is_active":        true,
 	})
 	req := authedRequest("POST", "/api/tasks/templates", payload, env.analyst)
 	rr := httptest.NewRecorder()
@@ -188,11 +187,11 @@ func TestRecurringPermissions(t *testing.T) {
 	}
 
 	recPayload, _ := json.Marshal(map[string]any{
-		"template_id": tpl.ID,
-		"schedule_type": "daily",
+		"template_id":     tpl.ID,
+		"schedule_type":   "daily",
 		"schedule_config": map[string]any{},
-		"time_of_day": "09:00",
-		"is_active": true,
+		"time_of_day":     "09:00",
+		"is_active":       true,
 	})
 	recReq := authedRequest("POST", "/api/tasks/recurring", recPayload, env.analyst)
 	recRR := httptest.NewRecorder()
@@ -207,19 +206,19 @@ func TestTemplateDueDateApplied(t *testing.T) {
 	defer env.cleanup()
 
 	tpl := &tasks.TaskTemplate{
-		BoardID:       env.board.ID,
-		ColumnID:      env.todo.ID,
-		TitleTemplate: "Due test",
-		Priority:      tasks.PriorityMedium,
+		BoardID:        env.board.ID,
+		ColumnID:       env.todo.ID,
+		TitleTemplate:  "Due test",
+		Priority:       tasks.PriorityMedium,
 		DefaultDueDays: 3,
-		IsActive:      true,
-		CreatedBy:     &env.admin.ID,
+		IsActive:       true,
+		CreatedBy:      &env.admin.ID,
 	}
 	if _, err := env.tasksStore.CreateTaskTemplate(env.ctx, tpl); err != nil {
 		t.Fatalf("template create: %v", err)
 	}
 	req := authedRequest("POST", "/api/tasks/templates/"+itoa(tpl.ID)+"/create-task", nil, env.admin)
-	req = mux.SetURLVars(req, map[string]string{"id": itoa(tpl.ID)})
+	req = withURLParams(req, map[string]string{"id": itoa(tpl.ID)})
 	rr := httptest.NewRecorder()
 	env.handler.CreateTaskFromTemplate(rr, req)
 	if rr.Code != http.StatusCreated {

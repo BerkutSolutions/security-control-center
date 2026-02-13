@@ -1,5 +1,6 @@
 (() => {
   const els = {};
+  const HOST_TARGET_TYPES = new Set(['tcp', 'ping', 'dns', 'docker', 'steam', 'gamedig', 'mqtt', 'kafka_producer', 'mssql', 'mysql', 'mongodb', 'radius', 'redis', 'tailscale_ping']);
 
   function bindList() {
     const page = document.getElementById('monitoring-page');
@@ -123,8 +124,8 @@
       title.appendChild(name);
       const meta = document.createElement('div');
       meta.className = 'monitor-item-meta';
-      meta.textContent = item.type === 'tcp'
-        ? `${item.host}:${item.port}`
+      meta.textContent = HOST_TARGET_TYPES.has((item.type || '').toLowerCase())
+        ? (item.port ? `${item.host}:${item.port}` : (item.host || '-'))
         : (item.url || item.host || '-');
       if ((item.status || '').toLowerCase() === 'maintenance') {
         const badge = document.createElement('span');

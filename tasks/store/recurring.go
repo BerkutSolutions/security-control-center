@@ -11,7 +11,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateTaskRecurringRule(ctx context.Context, rule *tasks.TaskRecurringRule) (int64, error) {
+func (s *SQLStore) CreateTaskRecurringRule(ctx context.Context, rule *tasks.TaskRecurringRule) (int64, error) {
 	now := time.Now().UTC()
 	config := normalizeJSON(string(rule.ScheduleConfig), "{}")
 	res, err := s.db.ExecContext(ctx, `
@@ -30,7 +30,7 @@ func (s *SQLiteStore) CreateTaskRecurringRule(ctx context.Context, rule *tasks.T
 	return id, nil
 }
 
-func (s *SQLiteStore) UpdateTaskRecurringRule(ctx context.Context, rule *tasks.TaskRecurringRule) error {
+func (s *SQLStore) UpdateTaskRecurringRule(ctx context.Context, rule *tasks.TaskRecurringRule) error {
 	now := time.Now().UTC()
 	config := normalizeJSON(string(rule.ScheduleConfig), "{}")
 	_, err := s.db.ExecContext(ctx, `
@@ -44,14 +44,14 @@ func (s *SQLiteStore) UpdateTaskRecurringRule(ctx context.Context, rule *tasks.T
 	return err
 }
 
-func (s *SQLiteStore) GetTaskRecurringRule(ctx context.Context, id int64) (*tasks.TaskRecurringRule, error) {
+func (s *SQLStore) GetTaskRecurringRule(ctx context.Context, id int64) (*tasks.TaskRecurringRule, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, template_id, schedule_type, schedule_config, time_of_day, next_run_at, last_run_at, is_active, created_by, created_at, updated_at
 		FROM task_recurring_rules WHERE id=?`, id)
 	return scanTaskRecurringRule(row)
 }
 
-func (s *SQLiteStore) ListTaskRecurringRules(ctx context.Context, filter tasks.TaskRecurringRuleFilter) ([]tasks.TaskRecurringRule, error) {
+func (s *SQLStore) ListTaskRecurringRules(ctx context.Context, filter tasks.TaskRecurringRuleFilter) ([]tasks.TaskRecurringRule, error) {
 	clauses := []string{}
 	args := []any{}
 	if filter.TemplateID > 0 {
@@ -84,7 +84,7 @@ func (s *SQLiteStore) ListTaskRecurringRules(ctx context.Context, filter tasks.T
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) ListDueRecurringRules(ctx context.Context, now time.Time, limit int) ([]tasks.TaskRecurringRule, error) {
+func (s *SQLStore) ListDueRecurringRules(ctx context.Context, now time.Time, limit int) ([]tasks.TaskRecurringRule, error) {
 	query := `
 		SELECT id, template_id, schedule_type, schedule_config, time_of_day, next_run_at, last_run_at, is_active, created_by, created_at, updated_at
 		FROM task_recurring_rules
@@ -109,14 +109,14 @@ func (s *SQLiteStore) ListDueRecurringRules(ctx context.Context, now time.Time, 
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) UpdateRecurringRuleRun(ctx context.Context, ruleID int64, lastRunAt, nextRunAt time.Time) error {
+func (s *SQLStore) UpdateRecurringRuleRun(ctx context.Context, ruleID int64, lastRunAt, nextRunAt time.Time) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE task_recurring_rules SET last_run_at=?, next_run_at=?, updated_at=? WHERE id=?`,
 		lastRunAt.UTC(), nextRunAt.UTC(), time.Now().UTC(), ruleID)
 	return err
 }
 
-func (s *SQLiteStore) CreateRecurringInstanceTask(ctx context.Context, rule *tasks.TaskRecurringRule, template *tasks.TaskTemplate, scheduledFor time.Time) (*tasks.Task, bool, error) {
+func (s *SQLStore) CreateRecurringInstanceTask(ctx context.Context, rule *tasks.TaskRecurringRule, template *tasks.TaskTemplate, scheduledFor time.Time) (*tasks.Task, bool, error) {
 	var createdTask *tasks.Task
 	created := false
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
@@ -267,3 +267,4 @@ func isUniqueConstraint(err error) bool {
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "unique constraint failed") || strings.Contains(msg, "unique constraint")
 }
+

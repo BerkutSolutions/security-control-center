@@ -13,7 +13,6 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 func (h *ControlsHandler) ListControlComments(w http.ResponseWriter, r *http.Request) {
@@ -25,7 +24,7 @@ func (h *ControlsHandler) ListControlComments(w http.ResponseWriter, r *http.Req
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -56,7 +55,7 @@ func (h *ControlsHandler) AddControlComment(w http.ResponseWriter, r *http.Reque
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -69,8 +68,7 @@ func (h *ControlsHandler) AddControlComment(w http.ResponseWriter, r *http.Reque
 	var content string
 	var files []*multipart.FileHeader
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-		if err := r.ParseMultipartForm(25 << 20); err != nil {
-			http.Error(w, "bad request", http.StatusBadRequest)
+		if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 			return
 		}
 		content = strings.TrimSpace(r.FormValue("content"))
@@ -121,8 +119,8 @@ func (h *ControlsHandler) UpdateControlComment(w http.ResponseWriter, r *http.Re
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
+	commentID := parseInt64Default(pathParams(r)["comment_id"], 0)
 	if controlID == 0 || commentID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -173,8 +171,8 @@ func (h *ControlsHandler) DeleteControlComment(w http.ResponseWriter, r *http.Re
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
+	commentID := parseInt64Default(pathParams(r)["comment_id"], 0)
 	if controlID == 0 || commentID == 0 {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -215,9 +213,9 @@ func (h *ControlsHandler) DownloadControlCommentFile(w http.ResponseWriter, r *h
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
-	fileID := mux.Vars(r)["file_id"]
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
+	commentID := parseInt64Default(pathParams(r)["comment_id"], 0)
+	fileID := pathParams(r)["file_id"]
 	if controlID == 0 || commentID == 0 || fileID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -263,9 +261,9 @@ func (h *ControlsHandler) DeleteControlCommentFile(w http.ResponseWriter, r *htt
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	controlID := parseInt64Default(mux.Vars(r)["id"], 0)
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
-	fileID := mux.Vars(r)["file_id"]
+	controlID := parseInt64Default(pathParams(r)["id"], 0)
+	commentID := parseInt64Default(pathParams(r)["comment_id"], 0)
+	fileID := pathParams(r)["file_id"]
 	if controlID == 0 || commentID == 0 || fileID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return

@@ -1,43 +1,57 @@
-﻿# Runbook (старт и восстановление)
+﻿# Runbook (запуск и восстановление)
 
-## 1. Старт локально (docker run)
-```bash
-docker rm -f berkut-scc || true
-docker build -t berkut-scc -f docker/Dockerfile .
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
-```
-
-## 2. Старт через docker compose
+## 1. Старт через Docker Compose
 ```bash
 docker compose up -d --build
 ```
 
-## 3. Частая ошибка: readonly SQLite
-Симптом: `attempt to write a readonly database (8)`.
-
-Фикс прав volume:
+Проверка статуса:
 ```bash
-docker rm -f berkut-scc || true
-docker run --rm --user 0 --entrypoint sh -v berkut-data:/app/data berkut-scc -c "chown -R berkut:berkut /app/data"
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
+docker compose ps
 ```
 
-## 4. Ошибка default secrets вне dev
+## 2. Просмотр логов
+```bash
+docker compose logs -f berkut
+docker compose logs -f postgres
+```
+
+## 3. Типовые проблемы
+
+### 3.1 Порт 8080 занят
+Симптом: `Bind for 0.0.0.0:8080 failed`.
+
+Решение:
+- освободить порт на хосте, либо
+- изменить `PORT` в `.env` и перезапустить compose.
+
+### 3.2 Ошибка миграций/старт после неудачного апдейта
+Сначала попробуйте явный запуск миграций:
+```bash
+docker compose run --rm berkut /usr/local/bin/berkut-migrate
+docker compose up -d berkut
+```
+
+Решение (с потерей данных):
+```bash
+docker compose down -v
+docker compose up -d --build
+```
+
+### 3.3 Ошибка default secrets вне dev
 Симптом: `default secrets are not allowed outside APP_ENV=dev`.
 
 Решение:
-- Для dev: поставить `ENV=dev` и `APP_ENV=dev`.
-- Для prod: заменить секреты на собственные значения.
+- для dev: `ENV=dev`, `APP_ENV=dev`;
+- для prod: задать реальные значения `CSRF_KEY`, `PEPPER`, `DOCS_ENCRYPTION_KEY`.
 
-## 5. Полное восстановление с пересозданием данных
-ВНИМАНИЕ: удалит базу.
+## 4. Полное восстановление
+ВНИМАНИЕ: удалит данные PostgreSQL и файловое хранилище.
 ```bash
-docker rm -f berkut-scc || true
-docker volume rm berkut-data
-docker run -d --name berkut-scc -p 8080:8080 -v berkut-data:/app/data --env-file .env berkut-scc
+docker compose down -v
+docker compose up -d --build
 ```
 
-## 6. Проверка логов
-```bash
-docker logs -f berkut-scc
-```
+## 5. Проверка доступности
+- UI: `http://localhost:8080/login`
+- Health статусы контейнеров: `docker compose ps`

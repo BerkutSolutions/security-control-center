@@ -20,15 +20,19 @@ import (
 
 type bulkSessionsMock struct{ killed map[int64]int }
 
-func (m *bulkSessionsMock) SaveSession(ctx context.Context, sess *store.SessionRecord) error { return nil }
+func (m *bulkSessionsMock) SaveSession(ctx context.Context, sess *store.SessionRecord) error {
+	return nil
+}
 func (m *bulkSessionsMock) GetSession(ctx context.Context, id string) (*store.SessionRecord, error) {
 	return nil, nil
 }
 func (m *bulkSessionsMock) ListByUser(ctx context.Context, userID int64) ([]store.SessionRecord, error) {
 	return nil, nil
 }
-func (m *bulkSessionsMock) ListAll(ctx context.Context) ([]store.SessionRecord, error) { return nil, nil }
-func (m *bulkSessionsMock) DeleteSession(ctx context.Context, id string, by string) error        { return nil }
+func (m *bulkSessionsMock) ListAll(ctx context.Context) ([]store.SessionRecord, error) {
+	return nil, nil
+}
+func (m *bulkSessionsMock) DeleteSession(ctx context.Context, id string, by string) error { return nil }
 func (m *bulkSessionsMock) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
 	if m.killed == nil {
 		m.killed = map[int64]int{}
@@ -36,6 +40,7 @@ func (m *bulkSessionsMock) DeleteAllForUser(ctx context.Context, userID int64, b
 	m.killed[userID]++
 	return nil
 }
+func (m *bulkSessionsMock) DeleteAll(ctx context.Context, by string) error { return nil }
 func (m *bulkSessionsMock) UpdateActivity(ctx context.Context, id string, now time.Time, extendBy time.Duration) error {
 	return nil
 }
@@ -123,9 +128,9 @@ func TestBulkLockProtectsLastSuperadmin(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 	var resp struct {
-		Success  int                        `json:"success_count"`
-		Failed   int                        `json:"failed_count"`
-		Failures []map[string]any           `json:"failures"`
+		Success  int              `json:"success_count"`
+		Failed   int              `json:"failed_count"`
+		Failures []map[string]any `json:"failures"`
 	}
 	_ = json.NewDecoder(rr.Body).Decode(&resp)
 	if resp.Success != 0 || resp.Failed != 1 {
@@ -162,8 +167,8 @@ func TestBulkResetPasswordGeneratesAndKillsSessions(t *testing.T) {
 		t.Fatalf("expected 200, got %d", rr.Code)
 	}
 	var resp struct {
-		Success   int                          `json:"success_count"`
-		Passwords []map[string]interface{}     `json:"passwords"`
+		Success   int                      `json:"success_count"`
+		Passwords []map[string]interface{} `json:"passwords"`
 	}
 	if err := json.NewDecoder(rr.Body).Decode(&resp); err != nil {
 		t.Fatalf("decode: %v", err)

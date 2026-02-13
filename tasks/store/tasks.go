@@ -11,7 +11,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) CreateTask(ctx context.Context, task *tasks.Task, assignments []int64) (int64, error) {
+func (s *SQLStore) CreateTask(ctx context.Context, task *tasks.Task, assignments []int64) (int64, error) {
 	var taskID int64
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		id, err := s.createTaskTx(ctx, tx, task, assignments)
@@ -27,14 +27,14 @@ func (s *SQLiteStore) CreateTask(ctx context.Context, task *tasks.Task, assignme
 	return taskID, nil
 }
 
-func (s *SQLiteStore) UpdateTask(ctx context.Context, task *tasks.Task) error {
+func (s *SQLStore) UpdateTask(ctx context.Context, task *tasks.Task) error {
 	_, err := s.db.ExecContext(ctx, `
 		UPDATE tasks SET title=?, description=?, result=?, external_link=?, business_customer=?, size_estimate=?, priority=?, checklist=?, due_date=?, updated_at=? WHERE id=?`,
 		task.Title, task.Description, task.Result, task.ExternalLink, task.BusinessCustomer, nullableInt(task.SizeEstimate), task.Priority, marshalJSON(task.Checklist), nullableTime(task.DueDate), time.Now().UTC(), task.ID)
 	return err
 }
 
-func (s *SQLiteStore) MoveTask(ctx context.Context, taskID int64, columnID int64, subcolumnID *int64, position int) (*tasks.Task, error) {
+func (s *SQLStore) MoveTask(ctx context.Context, taskID int64, columnID int64, subcolumnID *int64, position int) (*tasks.Task, error) {
 	var task *tasks.Task
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -151,7 +151,7 @@ func (s *SQLiteStore) MoveTask(ctx context.Context, taskID int64, columnID int64
 	return task, nil
 }
 
-func (s *SQLiteStore) RelocateTask(ctx context.Context, taskID int64, boardID int64, columnID int64, subcolumnID *int64, position int) (*tasks.Task, error) {
+func (s *SQLStore) RelocateTask(ctx context.Context, taskID int64, boardID int64, columnID int64, subcolumnID *int64, position int) (*tasks.Task, error) {
 	var task *tasks.Task
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -241,7 +241,7 @@ func (s *SQLiteStore) RelocateTask(ctx context.Context, taskID int64, boardID in
 	return task, nil
 }
 
-func (s *SQLiteStore) CloseTask(ctx context.Context, taskID int64, userID int64) (*tasks.Task, error) {
+func (s *SQLStore) CloseTask(ctx context.Context, taskID int64, userID int64) (*tasks.Task, error) {
 	now := time.Now().UTC()
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE tasks SET closed_at=?, updated_at=? WHERE id=? AND closed_at IS NULL`, now, now, taskID)
@@ -254,7 +254,7 @@ func (s *SQLiteStore) CloseTask(ctx context.Context, taskID int64, userID int64)
 	return s.GetTask(ctx, taskID)
 }
 
-func (s *SQLiteStore) ArchiveTask(ctx context.Context, taskID int64, userID int64) (*tasks.Task, error) {
+func (s *SQLStore) ArchiveTask(ctx context.Context, taskID int64, userID int64) (*tasks.Task, error) {
 	var archived *tasks.Task
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		var err error
@@ -267,7 +267,7 @@ func (s *SQLiteStore) ArchiveTask(ctx context.Context, taskID int64, userID int6
 	return archived, nil
 }
 
-func (s *SQLiteStore) ArchiveTasksByColumn(ctx context.Context, columnID int64, userID int64) (int, error) {
+func (s *SQLStore) ArchiveTasksByColumn(ctx context.Context, columnID int64, userID int64) (int, error) {
 	var archivedCount int
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		rows, err := tx.QueryContext(ctx, `SELECT id FROM tasks WHERE column_id=? AND is_archived=0 ORDER BY position ASC, id ASC`, columnID)
@@ -303,7 +303,7 @@ func (s *SQLiteStore) ArchiveTasksByColumn(ctx context.Context, columnID int64, 
 	return archivedCount, nil
 }
 
-func (s *SQLiteStore) RestoreTask(ctx context.Context, taskID int64, boardID int64, columnID int64, subcolumnID *int64, userID int64) (*tasks.Task, error) {
+func (s *SQLStore) RestoreTask(ctx context.Context, taskID int64, boardID int64, columnID int64, subcolumnID *int64, userID int64) (*tasks.Task, error) {
 	var restored *tasks.Task
 	err := withTx(ctx, s.db, func(tx *sql.Tx) error {
 		task, err := s.getTaskTx(ctx, tx, taskID)
@@ -432,7 +432,7 @@ func (s *SQLiteStore) RestoreTask(ctx context.Context, taskID int64, boardID int
 	return restored, nil
 }
 
-func (s *SQLiteStore) ListArchivedTasks(ctx context.Context, filter tasks.TaskFilter) ([]tasks.TaskArchiveEntry, error) {
+func (s *SQLStore) ListArchivedTasks(ctx context.Context, filter tasks.TaskFilter) ([]tasks.TaskArchiveEntry, error) {
 	base := "tasks t JOIN task_archive_entries a ON a.task_id=t.id"
 	clauses := []string{"t.is_archived=1"}
 	args := []any{}
@@ -488,19 +488,19 @@ func (s *SQLiteStore) ListArchivedTasks(ctx context.Context, filter tasks.TaskFi
 	return result, rows.Err()
 }
 
-func (s *SQLiteStore) DeleteTask(ctx context.Context, taskID int64) error {
+func (s *SQLStore) DeleteTask(ctx context.Context, taskID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM tasks WHERE id=?`, taskID)
 	return err
 }
 
-func (s *SQLiteStore) GetTask(ctx context.Context, taskID int64) (*tasks.Task, error) {
+func (s *SQLStore) GetTask(ctx context.Context, taskID int64) (*tasks.Task, error) {
 	row := s.db.QueryRowContext(ctx, `
 		SELECT id, board_id, column_id, subcolumn_id, title, description, result, external_link, business_customer, size_estimate, status, priority, template_id, recurring_rule_id, checklist, created_by, due_date, created_at, updated_at, closed_at, is_archived, position
 		FROM tasks WHERE id=?`, taskID)
 	return s.scanTask(row)
 }
 
-func (s *SQLiteStore) ListTasks(ctx context.Context, filter tasks.TaskFilter) ([]tasks.Task, error) {
+func (s *SQLStore) ListTasks(ctx context.Context, filter tasks.TaskFilter) ([]tasks.Task, error) {
 	clauses := []string{}
 	args := []any{}
 	base := "tasks"
@@ -567,7 +567,7 @@ func (s *SQLiteStore) ListTasks(ctx context.Context, filter tasks.TaskFilter) ([
 	return res, rows.Err()
 }
 
-func (s *SQLiteStore) CountTasksByBoard(ctx context.Context, boardIDs []int64) (map[int64]int, error) {
+func (s *SQLStore) CountTasksByBoard(ctx context.Context, boardIDs []int64) (map[int64]int, error) {
 	result := make(map[int64]int)
 	if len(boardIDs) == 0 {
 		return result, nil
@@ -592,7 +592,7 @@ func (s *SQLiteStore) CountTasksByBoard(ctx context.Context, boardIDs []int64) (
 	return result, rows.Err()
 }
 
-func (s *SQLiteStore) scanTask(row *sql.Row) (*tasks.Task, error) {
+func (s *SQLStore) scanTask(row *sql.Row) (*tasks.Task, error) {
 	var t tasks.Task
 	var createdBy sql.NullInt64
 	var templateID sql.NullInt64
@@ -638,7 +638,7 @@ func (s *SQLiteStore) scanTask(row *sql.Row) (*tasks.Task, error) {
 	return &t, nil
 }
 
-func (s *SQLiteStore) scanTaskRow(rows *sql.Rows) (tasks.Task, error) {
+func (s *SQLStore) scanTaskRow(rows *sql.Rows) (tasks.Task, error) {
 	var t tasks.Task
 	var createdBy sql.NullInt64
 	var templateID sql.NullInt64
@@ -681,7 +681,7 @@ func (s *SQLiteStore) scanTaskRow(rows *sql.Rows) (tasks.Task, error) {
 	return t, nil
 }
 
-func (s *SQLiteStore) getTaskTx(ctx context.Context, tx *sql.Tx, taskID int64) (*tasks.Task, error) {
+func (s *SQLStore) getTaskTx(ctx context.Context, tx *sql.Tx, taskID int64) (*tasks.Task, error) {
 	row := tx.QueryRowContext(ctx, `
 		SELECT id, board_id, column_id, subcolumn_id, title, description, result, external_link, business_customer, size_estimate, status, priority, template_id, recurring_rule_id, checklist, created_by, due_date, created_at, updated_at, closed_at, is_archived, position
 		FROM tasks WHERE id=?`, taskID)
@@ -730,7 +730,7 @@ func (s *SQLiteStore) getTaskTx(ctx context.Context, tx *sql.Tx, taskID int64) (
 	return &t, nil
 }
 
-func (s *SQLiteStore) archiveTaskTx(ctx context.Context, tx *sql.Tx, taskID int64, userID int64) (*tasks.Task, error) {
+func (s *SQLStore) archiveTaskTx(ctx context.Context, tx *sql.Tx, taskID int64, userID int64) (*tasks.Task, error) {
 	task, err := s.getTaskTx(ctx, tx, taskID)
 	if err != nil {
 		return nil, err
@@ -824,3 +824,4 @@ func scanArchivedTaskRow(rows *sql.Rows) (tasks.TaskArchiveEntry, error) {
 	}
 	return entry, nil
 }
+

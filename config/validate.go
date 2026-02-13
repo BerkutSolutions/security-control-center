@@ -15,6 +15,16 @@ func Validate(cfg *AppConfig) error {
 	if cfg == nil {
 		return fmt.Errorf("config is nil")
 	}
+	driver := strings.ToLower(strings.TrimSpace(cfg.DBDriver))
+	if driver == "" {
+		driver = "postgres"
+	}
+	if driver != "postgres" && driver != "pg" {
+		return fmt.Errorf("unsupported db_driver: %s", cfg.DBDriver)
+	}
+	if strings.TrimSpace(cfg.DBURL) == "" {
+		return fmt.Errorf("db_url must be set for postgres driver")
+	}
 	appEnv := strings.ToLower(strings.TrimSpace(cfg.AppEnv))
 	csrk := strings.TrimSpace(cfg.CSRFKey)
 	pep := strings.TrimSpace(cfg.Pepper)

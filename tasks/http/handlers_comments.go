@@ -13,7 +13,7 @@ import (
 
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 )
 
 func (h *Handler) ListComments(w http.ResponseWriter, r *http.Request) {
@@ -58,8 +58,7 @@ func (h *Handler) AddComment(w http.ResponseWriter, r *http.Request) {
 	var content string
 	var files []*multipart.FileHeader
 	if strings.HasPrefix(r.Header.Get("Content-Type"), "multipart/form-data") {
-		if err := r.ParseMultipartForm(25 << 20); err != nil {
-			respondError(w, http.StatusBadRequest, "bad request")
+		if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 			return
 		}
 		content = strings.TrimSpace(r.FormValue("content"))
@@ -114,7 +113,7 @@ func (h *Handler) UpdateComment(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusConflict, "tasks.closedReadOnly")
 		return
 	}
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
+	commentID := parseInt64Default(chi.URLParam(r, "comment_id"), 0)
 	if commentID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -164,7 +163,7 @@ func (h *Handler) DeleteComment(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusConflict, "tasks.closedReadOnly")
 		return
 	}
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
+	commentID := parseInt64Default(chi.URLParam(r, "comment_id"), 0)
 	if commentID == 0 {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -201,8 +200,8 @@ func (h *Handler) DownloadCommentFile(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	commentID, _ := strconv.ParseInt(mux.Vars(r)["comment_id"], 10, 64)
-	fileID := mux.Vars(r)["file_id"]
+	commentID, _ := strconv.ParseInt(chi.URLParam(r, "comment_id"), 10, 64)
+	fileID := chi.URLParam(r, "file_id")
 	if commentID == 0 || fileID == "" {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -247,8 +246,8 @@ func (h *Handler) DeleteCommentFile(w http.ResponseWriter, r *http.Request) {
 		respondError(w, http.StatusConflict, "tasks.closedReadOnly")
 		return
 	}
-	commentID := parseInt64Default(mux.Vars(r)["comment_id"], 0)
-	fileID := mux.Vars(r)["file_id"]
+	commentID := parseInt64Default(chi.URLParam(r, "comment_id"), 0)
+	fileID := chi.URLParam(r, "file_id")
 	if commentID == 0 || fileID == "" {
 		respondError(w, http.StatusBadRequest, "bad request")
 		return

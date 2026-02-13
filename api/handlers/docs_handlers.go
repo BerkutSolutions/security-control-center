@@ -20,21 +20,20 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 type DocsHandler struct {
-	cfg    *config.AppConfig
-	store  store.DocsStore
-	links  store.EntityLinksStore
+	cfg      *config.AppConfig
+	store    store.DocsStore
+	links    store.EntityLinksStore
 	controls store.ControlsStore
-	users  store.UsersStore
-	policy *rbac.Policy
-	svc    *docs.Service
-	audits store.AuditStore
-	logger *utils.Logger
-	uploads map[string]uploadItem
-	mu      sync.Mutex
+	users    store.UsersStore
+	policy   *rbac.Policy
+	svc      *docs.Service
+	audits   store.AuditStore
+	logger   *utils.Logger
+	uploads  map[string]uploadItem
+	mu       sync.Mutex
 }
 
 type uploadItem struct {
@@ -202,8 +201,7 @@ func (h *DocsHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	if err := r.ParseMultipartForm(25 << 20); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+	if err := parseMultipartFormLimited(w, r, 25<<20); err != nil {
 		return
 	}
 	file, header, err := r.FormFile("file")
@@ -412,7 +410,7 @@ func (h *DocsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -448,7 +446,7 @@ func (h *DocsHandler) GetContent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -498,7 +496,7 @@ func (h *DocsHandler) UpdateContent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -554,7 +552,7 @@ func (h *DocsHandler) ListVersions(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -588,7 +586,7 @@ func (h *DocsHandler) GetVersionContent(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	params := mux.Vars(r)
+	params := pathParams(r)
 	id, _ := strconv.ParseInt(params["id"], 10, 64)
 	verNum, _ := strconv.Atoi(params["ver"])
 	doc, err := h.store.GetDocument(r.Context(), id)
@@ -635,7 +633,7 @@ func (h *DocsHandler) RestoreVersion(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	params := mux.Vars(r)
+	params := pathParams(r)
 	id, _ := strconv.ParseInt(params["id"], 10, 64)
 	verNum, _ := strconv.Atoi(params["ver"])
 	doc, err := h.store.GetDocument(r.Context(), id)
@@ -701,7 +699,7 @@ func (h *DocsHandler) Export(w http.ResponseWriter, r *http.Request) {
 	if format == "" {
 		format = docs.FormatMarkdown
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -756,7 +754,7 @@ func (h *DocsHandler) StartApproval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		if h.logger != nil {
@@ -897,7 +895,7 @@ func (h *DocsHandler) GetApproval(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["approval_id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["approval_id"], 10, 64)
 	ap, parts, err := h.store.GetApproval(r.Context(), id)
 	if err != nil || ap == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -924,7 +922,7 @@ func (h *DocsHandler) ApprovalDecision(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["approval_id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["approval_id"], 10, 64)
 	ap, parts, err := h.store.GetApproval(r.Context(), id)
 	if err != nil || ap == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1044,7 +1042,7 @@ func (h *DocsHandler) ListApprovalComments(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["approval_id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["approval_id"], 10, 64)
 	ap, parts, err := h.store.GetApproval(r.Context(), id)
 	if err != nil || ap == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1073,12 +1071,12 @@ func (h *DocsHandler) ListApprovalComments(w http.ResponseWriter, r *http.Reques
 			}
 		}
 		enriched = append(enriched, map[string]any{
-			"id":         c.ID,
+			"id":          c.ID,
 			"approval_id": c.ApprovalID,
-			"user_id":    c.UserID,
-			"author":     username,
-			"comment":    c.Comment,
-			"created_at": c.CreatedAt,
+			"user_id":     c.UserID,
+			"author":      username,
+			"comment":     c.Comment,
+			"created_at":  c.CreatedAt,
 		})
 	}
 	h.svc.Log(r.Context(), user.Username, "approval.comments.view", strconv.FormatInt(id, 10))
@@ -1091,7 +1089,7 @@ func (h *DocsHandler) AddApprovalComment(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["approval_id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["approval_id"], 10, 64)
 	ap, parts, err := h.store.GetApproval(r.Context(), id)
 	if err != nil || ap == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1181,12 +1179,12 @@ func (h *DocsHandler) CreateFolder(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name                 string   `json:"name"`
-		ParentID             *int64   `json:"parent_id"`
-		ClassificationLevel  string   `json:"classification_level"`
-		ClassificationTags   []string `json:"classification_tags"`
-		InheritACL           bool     `json:"inherit_acl"`
-		InheritClassification bool    `json:"inherit_classification"`
+		Name                  string   `json:"name"`
+		ParentID              *int64   `json:"parent_id"`
+		ClassificationLevel   string   `json:"classification_level"`
+		ClassificationTags    []string `json:"classification_tags"`
+		InheritACL            bool     `json:"inherit_acl"`
+		InheritClassification bool     `json:"inherit_classification"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -1226,7 +1224,7 @@ func (h *DocsHandler) UpdateFolder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	f, err := h.store.GetFolder(r.Context(), id)
 	if err != nil || f == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1273,7 +1271,7 @@ func (h *DocsHandler) DeleteFolder(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	if err := h.store.DeleteFolder(r.Context(), id); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -1322,7 +1320,7 @@ func (h *DocsHandler) UpdateClassification(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1444,7 +1442,7 @@ func (h *DocsHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
-	linkID, _ := strconv.ParseInt(mux.Vars(r)["link_id"], 10, 64)
+	linkID, _ := strconv.ParseInt(pathParams(r)["link_id"], 10, 64)
 	items, err := h.store.ListLinks(r.Context(), doc.ID)
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
@@ -1490,14 +1488,14 @@ func (h *DocsHandler) SaveTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		ID                  int64                  `json:"id"`
-		Name                string                 `json:"name"`
-		Description         string                 `json:"description"`
-		Format              string                 `json:"format"`
-		Content             string                 `json:"content"`
+		ID                  int64                    `json:"id"`
+		Name                string                   `json:"name"`
+		Description         string                   `json:"description"`
+		Format              string                   `json:"format"`
+		Content             string                   `json:"content"`
 		Variables           []store.TemplateVariable `json:"variables"`
-		ClassificationLevel string                 `json:"classification_level"`
-		ClassificationTags  []string               `json:"classification_tags"`
+		ClassificationLevel string                   `json:"classification_level"`
+		ClassificationTags  []string                 `json:"classification_tags"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil || strings.TrimSpace(payload.Name) == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -1547,7 +1545,7 @@ func (h *DocsHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	if err := h.store.DeleteTemplate(r.Context(), id); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -1650,7 +1648,7 @@ func (h *DocsHandler) ConvertToMarkdown(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1719,7 +1717,7 @@ func (h *DocsHandler) loadDocForAccess(w http.ResponseWriter, r *http.Request, r
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return nil, nil, false
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)
@@ -1773,7 +1771,7 @@ func (h *DocsHandler) DeleteDocument(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	doc, err := h.store.GetDocument(r.Context(), id)
 	if err != nil || doc == nil {
 		http.Error(w, "not found", http.StatusNotFound)

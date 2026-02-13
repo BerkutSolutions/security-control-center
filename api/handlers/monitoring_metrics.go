@@ -5,18 +5,17 @@ import (
 	"time"
 
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	state, err := h.store.GetMonitorState(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if state == nil {
@@ -36,16 +35,16 @@ func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	rng := r.URL.Query().Get("range")
 	since := rangeSince(rng, 24*time.Hour)
 	items, err := h.store.ListMetrics(r.Context(), id, since)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{
@@ -56,16 +55,16 @@ func (h *MonitoringHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	rng := r.URL.Query().Get("range")
 	since := rangeSince(rng, 24*time.Hour)
 	items, err := h.store.ListEvents(r.Context(), id, since)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{

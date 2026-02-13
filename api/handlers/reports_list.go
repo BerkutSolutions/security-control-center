@@ -16,11 +16,11 @@ func (h *ReportsHandler) List(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := store.ReportFilter{
-		Search:  strings.TrimSpace(r.URL.Query().Get("q")),
-		Status:  strings.TrimSpace(r.URL.Query().Get("status")),
-		Tags:    splitCSV(r.URL.Query().Get("tag")),
-		Limit:   parseIntDefault(r.URL.Query().Get("limit"), 0),
-		Offset:  parseIntDefault(r.URL.Query().Get("offset"), 0),
+		Search:   strings.TrimSpace(r.URL.Query().Get("q")),
+		Status:   strings.TrimSpace(r.URL.Query().Get("status")),
+		Tags:     splitCSV(r.URL.Query().Get("tag")),
+		Limit:    parseIntDefault(r.URL.Query().Get("limit"), 0),
+		Offset:   parseIntDefault(r.URL.Query().Get("offset"), 0),
 		DateFrom: parseDateParam(r.URL.Query().Get("date_from")),
 		DateTo:   parseDateParam(r.URL.Query().Get("date_to")),
 	}

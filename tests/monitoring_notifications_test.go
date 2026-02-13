@@ -1,4 +1,4 @@
-﻿package tests
+package tests
 
 import (
 	"context"
@@ -112,10 +112,10 @@ func TestMonitoringTelegramDownUp(t *testing.T) {
 	if len(sender.sent) < 2 {
 		t.Fatalf("expected 2 notifications, got %d", len(sender.sent))
 	}
-	if !contains(sender.sent[0].Text, "Монитор недоступен") {
+	if !containsText(sender.sent[0].Text, "Монитор недоступен") {
 		t.Fatalf("expected down notification text")
 	}
-	if !contains(sender.sent[1].Text, "Монитор восстановлен") {
+	if !containsText(sender.sent[1].Text, "Монитор восстановлен") {
 		t.Fatalf("expected up notification text")
 	}
 }
@@ -282,8 +282,6 @@ func TestMonitoringMaintenanceSuppression(t *testing.T) {
 	}
 }
 
-func contains(haystack, needle string) bool {
+func containsText(haystack, needle string) bool {
 	return needle != "" && strings.Contains(haystack, needle)
 }
-
-

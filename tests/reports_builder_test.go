@@ -23,19 +23,18 @@ import (
 	"berkut-scc/core/utils"
 	"berkut-scc/tasks"
 	taskstore "berkut-scc/tasks/store"
-	"github.com/gorilla/mux"
 )
 
 type reportEnv struct {
-	cfg    *config.AppConfig
-	user   *store.User
-	handler *handlers.ReportsHandler
-	docsSvc *docs.Service
-	docs   store.DocsStore
-	users  store.UsersStore
-	reports store.ReportsStore
+	cfg       *config.AppConfig
+	user      *store.User
+	handler   *handlers.ReportsHandler
+	docsSvc   *docs.Service
+	docs      store.DocsStore
+	users     store.UsersStore
+	reports   store.ReportsStore
 	incidents store.IncidentsStore
-	cleanup func()
+	cleanup   func()
 }
 
 func setupReportsBuilder(t *testing.T) reportEnv {
@@ -101,18 +100,18 @@ func setupReportsBuilder(t *testing.T) reportEnv {
 	if err != nil {
 		t.Fatalf("inc svc: %v", err)
 	}
-	taskSvc := tasks.NewService(taskstore.NewSQLite(db))
+	taskSvc := tasks.NewService(taskstore.NewStore(db))
 	handler := handlers.NewReportsHandler(cfg, docsStore, reportsStore, users, policy, docsSvc, incStore, incSvc, ctrlStore, monStore, taskSvc, audits, logger)
 	return reportEnv{
-		cfg: cfg,
-		user: u,
-		handler: handler,
-		docsSvc: docsSvc,
-		docs: docsStore,
-		users: users,
-		reports: reportsStore,
+		cfg:       cfg,
+		user:      u,
+		handler:   handler,
+		docsSvc:   docsSvc,
+		docs:      docsStore,
+		users:     users,
+		reports:   reportsStore,
 		incidents: incStore,
-		cleanup: func() { db.Close() },
+		cleanup:   func() { db.Close() },
 	}
 }
 
@@ -162,7 +161,7 @@ func TestReportBuildCreatesSnapshotAndVersion(t *testing.T) {
 	_ = env.docs.UpdateDocument(context.Background(), doc)
 	body, _ := json.Marshal(map[string]any{"reason": "build", "mode": "replace"})
 	req := httptest.NewRequest(http.MethodPost, "/api/reports/1/build", bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", doc.ID)})
+	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", doc.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: env.user.ID, Username: env.user.Username}))
 	rr := httptest.NewRecorder()
 	env.handler.Build(rr, req)
@@ -217,7 +216,9 @@ func TestCreateReportFromIncident(t *testing.T) {
 	if rr.Code != http.StatusOK {
 		t.Fatalf("status %d", rr.Code)
 	}
-	var resp struct{ ReportID int64 `json:"report_id"` }
+	var resp struct {
+		ReportID int64 `json:"report_id"`
+	}
 	_ = json.NewDecoder(rr.Body).Decode(&resp)
 	if resp.ReportID == 0 {
 		t.Fatalf("missing report_id")

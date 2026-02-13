@@ -17,10 +17,10 @@ Reverse proxy (recommended) or built-in TLS.
 Trusted proxies and HTTPS config audit trail.
 
 ## Storage and encryption
-SQLite + encrypted content/attachments + persistent volumes.
+PostgreSQL runtime + encrypted sensitive content/attachments + persistent volumes.
 
 ## Import/export/conversion
 Document/report import-export and local converter pipeline.
 
 ## Deploy and CI/CD
-Docker/compose workflow, GitLab pipeline, rollback.
+Docker/Compose workflow, verify pipeline, rollback.

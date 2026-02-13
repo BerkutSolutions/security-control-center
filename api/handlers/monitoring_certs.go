@@ -7,7 +7,6 @@ import (
 	"strings"
 
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
@@ -23,7 +22,7 @@ func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := h.store.ListCerts(r.Context(), filter)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	settings, _ := h.store.GetSettings(r.Context())
@@ -41,14 +40,14 @@ func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
 
 func (h *MonitoringHandler) TestCertNotification(w http.ResponseWriter, r *http.Request) {
 	if h.engine == nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
 	}
 	var payload struct {
 		MonitorIDs []int64 `json:"monitor_ids"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if len(payload.MonitorIDs) == 0 {
@@ -57,12 +56,12 @@ func (h *MonitoringHandler) TestCertNotification(w http.ResponseWriter, r *http.
 	}
 	for _, id := range payload.MonitorIDs {
 		if err := h.engine.TestTLSNotification(r.Context(), id); err != nil {
-			h.audits.Log(r.Context(), currentUsername(r), "monitoring.certs.notify_test.failed", strconv.FormatInt(id, 10))
+			h.audit(r, monitorAuditCertsNotifyTestFailed, strconv.FormatInt(id, 10))
 			http.Error(w, "monitoring.notifications.testFailed", http.StatusBadRequest)
 			return
 		}
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.certs.notify_test", strings.TrimSpace(strings.Join(int64SliceToStrings(payload.MonitorIDs), ",")))
+	h.audit(r, monitorAuditCertsNotifyTest, strings.TrimSpace(strings.Join(int64SliceToStrings(payload.MonitorIDs), ",")))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -78,18 +77,18 @@ func int64SliceToStrings(items []int64) []string {
 }
 
 func (h *MonitoringHandler) GetTLS(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	item, err := h.store.GetTLS(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if item == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, item)

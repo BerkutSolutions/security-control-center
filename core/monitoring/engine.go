@@ -13,22 +13,23 @@ import (
 )
 
 type Engine struct {
-	store          store.MonitoringStore
-	incidents      store.IncidentsStore
-	audits         store.AuditStore
-	encryptor      *utils.Encryptor
-	sender         TelegramSender
+	store             store.MonitoringStore
+	incidents         store.IncidentsStore
+	audits            store.AuditStore
+	encryptor         *utils.Encryptor
+	sender            TelegramSender
 	incidentRegFormat string
-	logger         *utils.Logger
-	stopCh         chan struct{}
-	doneCh         chan struct{}
-	mu             sync.Mutex
-	inFlight       map[int64]struct{}
-	sem            chan struct{}
-	maxConcurrent  int
-	lastSettingsAt time.Time
-	settings       store.MonitorSettings
-	lastCleanupAt  time.Time
+	logger            *utils.Logger
+	cancel            context.CancelFunc
+	running           bool
+	wg                sync.WaitGroup
+	mu                sync.Mutex
+	inFlight          map[int64]struct{}
+	sem               chan struct{}
+	maxConcurrent     int
+	lastSettingsAt    time.Time
+	settings          store.MonitorSettings
+	lastCleanupAt     time.Time
 	lastMaintenanceAt time.Time
 }
 
@@ -38,47 +39,72 @@ func NewEngine(store store.MonitoringStore, logger *utils.Logger) *Engine {
 
 func NewEngineWithDeps(store store.MonitoringStore, incidents store.IncidentsStore, audits store.AuditStore, regFormat string, encryptor *utils.Encryptor, sender TelegramSender, logger *utils.Logger) *Engine {
 	return &Engine{
-		store:            store,
-		incidents:        incidents,
-		audits:           audits,
+		store:             store,
+		incidents:         incidents,
+		audits:            audits,
 		incidentRegFormat: regFormat,
-		encryptor:        encryptor,
-		sender:           sender,
-		logger:           logger,
-		inFlight:         map[int64]struct{}{},
+		encryptor:         encryptor,
+		sender:            sender,
+		logger:            logger,
+		inFlight:          map[int64]struct{}{},
 	}
 }
 
 func (e *Engine) Start() {
+	e.StartWithContext(context.Background())
+}
+
+func (e *Engine) StartWithContext(ctx context.Context) {
 	e.mu.Lock()
-	if e.stopCh != nil {
+	if e.running {
 		e.mu.Unlock()
 		return
 	}
-	e.stopCh = make(chan struct{})
-	e.doneCh = make(chan struct{})
+	runCtx, cancel := context.WithCancel(ctx)
+	e.cancel = cancel
+	e.running = true
+	e.wg.Add(1)
 	e.mu.Unlock()
-	go e.loop()
+	go e.loop(runCtx)
 }
 
 func (e *Engine) Stop() {
+	_ = e.StopWithContext(context.Background())
+}
+
+func (e *Engine) StopWithContext(ctx context.Context) error {
 	e.mu.Lock()
-	if e.stopCh == nil {
+	if e.cancel == nil || !e.running {
 		e.mu.Unlock()
-		return
+		return nil
 	}
-	close(e.stopCh)
-	done := e.doneCh
-	e.stopCh = nil
-	e.doneCh = nil
+	cancel := e.cancel
+	e.cancel = nil
 	e.mu.Unlock()
-	<-done
+	cancel()
+	waitDone := make(chan struct{})
+	go func() {
+		e.wg.Wait()
+		close(waitDone)
+	}()
+	select {
+	case <-waitDone:
+		e.mu.Lock()
+		e.running = false
+		e.mu.Unlock()
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
 }
 
 func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 	m, err := e.store.GetMonitor(ctx, monitorID)
 	if err != nil || m == nil {
-		return errors.New("not found")
+		return errors.New("common.notFound")
+	}
+	if TypeIsPassive(m.Type) {
+		return errors.New("monitoring.error.passiveMonitor")
 	}
 	if m.IsPaused {
 		return errors.New("monitoring.error.paused")
@@ -94,18 +120,13 @@ func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 	return e.runCheck(ctx, *m, settings)
 }
 
-func (e *Engine) loop() {
+func (e *Engine) loop(ctx context.Context) {
+	defer e.wg.Done()
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
-	defer func() {
-		if e.doneCh != nil {
-			close(e.doneCh)
-		}
-	}()
 	for {
 		select {
 		case <-ticker.C:
-			ctx := context.Background()
 			settings := e.currentSettings(ctx)
 			if !settings.EngineEnabled {
 				continue
@@ -114,7 +135,7 @@ func (e *Engine) loop() {
 			e.runDueChecks(ctx, settings)
 			e.runMaintenance(ctx, settings)
 			e.runRetention(ctx, settings)
-		case <-e.stopCh:
+		case <-ctx.Done():
 			return
 		}
 	}
@@ -159,12 +180,15 @@ func (e *Engine) runDueChecks(ctx context.Context, settings store.MonitorSetting
 		return
 	}
 	for _, m := range list {
+		if TypeIsPassive(m.Type) {
+			continue
+		}
 		if !e.acquireSlot(m.ID) {
 			continue
 		}
 		go func(mon store.Monitor) {
 			defer e.releaseSlot(mon.ID)
-			_ = e.runCheck(context.Background(), mon, settings)
+			_ = e.runCheck(ctx, mon, settings)
 		}(m)
 	}
 }
@@ -273,12 +297,12 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		status = "maintenance"
 	}
 	next := &store.MonitorState{
-		MonitorID:     m.ID,
-		Status:        status,
-		LastResultStatus: rawStatus,
+		MonitorID:         m.ID,
+		Status:            status,
+		LastResultStatus:  rawStatus,
 		MaintenanceActive: maintenanceActive,
-		LastCheckedAt: &now,
-		LastError:     result.Error,
+		LastCheckedAt:     &now,
+		LastError:         result.Error,
 	}
 	if result.StatusCode != nil {
 		val := *result.StatusCode
@@ -450,10 +474,11 @@ func (e *Engine) runMaintenance(ctx context.Context, settings store.MonitorSetti
 }
 
 func (e *Engine) updateTLS(ctx context.Context, m store.Monitor, result CheckResult, settings store.MonitorSettings) *store.MonitorTLS {
-	if strings.ToLower(strings.TrimSpace(m.Type)) != "http" {
+	kind := strings.ToLower(strings.TrimSpace(m.Type))
+	if !TypeSupportsTLSMetadata(kind) {
 		return nil
 	}
-	if !strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.URL)), "https://") {
+	if !(strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.URL)), "https://") || strings.HasPrefix(strings.ToLower(strings.TrimSpace(m.URL)), "grpcs://")) {
 		return nil
 	}
 	now := result.CheckedAt

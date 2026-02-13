@@ -13,7 +13,6 @@ import (
 	"berkut-scc/core/docs"
 	"berkut-scc/core/reports/charts"
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func TestReportChartsUpdateRequiresEdit(t *testing.T) {
@@ -60,7 +59,7 @@ func TestReportChartsUpdateRequiresEdit(t *testing.T) {
 	payload := map[string]any{"charts": charts.DefaultCharts()}
 	body, _ := json.Marshal(payload)
 	req := httptest.NewRequest(http.MethodPut, fmt.Sprintf("/api/reports/%d/charts", doc.ID), bytes.NewReader(body))
-	req = mux.SetURLVars(req, map[string]string{"id": fmt.Sprintf("%d", doc.ID)})
+	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", doc.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: manager.ID, Username: manager.Username}))
 	rr := httptest.NewRecorder()
 	env.handler.UpdateCharts(rr, req)

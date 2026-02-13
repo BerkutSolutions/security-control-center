@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"berkut-scc/core/store"
-	"github.com/gorilla/mux"
 )
 
 func (h *ReportsHandler) ListTemplates(w http.ResponseWriter, r *http.Request) {
@@ -78,7 +77,7 @@ func (h *ReportsHandler) DeleteTemplate(w http.ResponseWriter, r *http.Request) 
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	id, _ := strconv.ParseInt(mux.Vars(r)["id"], 10, 64)
+	id, _ := strconv.ParseInt(pathParams(r)["id"], 10, 64)
 	if err := h.reports.DeleteReportTemplate(r.Context(), id); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return

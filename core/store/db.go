@@ -1,9 +1,10 @@
 package store
 
 import (
+	"flag"
 	"database/sql"
-	"os"
-	"path/filepath"
+	"errors"
+	"strings"
 
 	"berkut-scc/config"
 	"berkut-scc/core/utils"
@@ -11,30 +12,56 @@ import (
 )
 
 func NewDB(cfg *config.AppConfig, logger *utils.Logger) (*sql.DB, error) {
-	if err := ensureDBDir(cfg.DBPath); err != nil {
-		if logger != nil {
-			logger.Errorf("db dir create failed: %v", err)
+	driver := strings.ToLower(strings.TrimSpace(cfg.DBDriver))
+	if driver == "" {
+		switch {
+		case strings.TrimSpace(cfg.DBURL) != "":
+			driver = "postgres"
+		case isTestRuntime() && strings.TrimSpace(cfg.DBPath) != "":
+			driver = "sqlite"
+		default:
+			driver = "postgres"
 		}
-		return nil, err
 	}
-	db, err := sql.Open("sqlite", cfg.DBPath+"?_pragma=busy_timeout(5000)")
-	if err != nil {
-		if logger != nil {
-			logger.Errorf("db open failed: %v", err)
+	switch driver {
+	case "postgres", "pg":
+		if strings.TrimSpace(cfg.DBURL) == "" {
+			return nil, errors.New("BERKUT_DB_URL is required for postgres")
 		}
-		return nil, err
+		db, err := sql.Open(postgresDriverName, cfg.DBURL)
+		if err != nil {
+			if logger != nil {
+				logger.Errorf("db open failed: %v", err)
+			}
+			return nil, err
+		}
+		if logger != nil {
+			logger.Printf("db open postgres")
+		}
+		return db, nil
+	case "sqlite":
+		if !isTestRuntime() {
+			return nil, errors.New("sqlite driver is supported only in go test runtime")
+		}
+		if strings.TrimSpace(cfg.DBPath) == "" {
+			return nil, errors.New("DBPath is required for sqlite")
+		}
+		db, err := sql.Open("sqlite", cfg.DBPath)
+		if err != nil {
+			if logger != nil {
+				logger.Errorf("db open failed: %v", err)
+			}
+			return nil, err
+		}
+		if logger != nil {
+			logger.Printf("db open sqlite (test runtime)")
+		}
+		return db, nil
+	default:
+		return nil, errors.New("unsupported db driver: " + driver)
 	}
-	db.SetMaxOpenConns(1)
-	if logger != nil {
-		logger.Printf("db open at %s", cfg.DBPath)
-	}
-	return db, nil
 }
 
-func ensureDBDir(path string) error {
-	dir := filepath.Dir(path)
-	if dir == "" || dir == "." {
-		return nil
-	}
-	return os.MkdirAll(dir, 0o755)
+func isTestRuntime() bool {
+	return flag.Lookup("test.v") != nil
 }

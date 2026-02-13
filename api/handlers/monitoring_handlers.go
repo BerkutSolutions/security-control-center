@@ -11,14 +11,13 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
-	"github.com/gorilla/mux"
 )
 
 type MonitoringHandler struct {
-	store   store.MonitoringStore
-	audits  store.AuditStore
-	engine  *monitoring.Engine
-	policy  *rbac.Policy
+	store     store.MonitoringStore
+	audits    store.AuditStore
+	engine    *monitoring.Engine
+	policy    *rbac.Policy
 	encryptor *utils.Encryptor
 }
 
@@ -39,7 +38,7 @@ func (h *MonitoringHandler) ListMonitors(w http.ResponseWriter, r *http.Request)
 	}
 	items, err := h.store.ListMonitors(r.Context(), filter)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": items})
@@ -48,7 +47,7 @@ func (h *MonitoringHandler) ListMonitors(w http.ResponseWriter, r *http.Request)
 func (h *MonitoringHandler) CreateMonitor(w http.ResponseWriter, r *http.Request) {
 	var payload monitorPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if requiresIncidentLink(payload) && !hasPermission(r, h.policy, "monitoring.incidents.link") {
@@ -63,55 +62,55 @@ func (h *MonitoringHandler) CreateMonitor(w http.ResponseWriter, r *http.Request
 	}
 	id, err := h.store.CreateMonitor(r.Context(), mon)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	mon.ID = id
 	_ = h.store.UpsertMonitorState(r.Context(), &store.MonitorState{
-		MonitorID: mon.ID,
-		Status:    initialStatus(mon.IsPaused),
+		MonitorID:        mon.ID,
+		Status:           initialStatus(mon.IsPaused),
 		LastResultStatus: "down",
 	})
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.monitor.create", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMonitorCreate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusCreated, mon)
 }
 
 func (h *MonitoringHandler) GetMonitor(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	mon, err := h.store.GetMonitor(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if mon == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	writeJSON(w, http.StatusOK, mon)
 }
 
 func (h *MonitoringHandler) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	existing, err := h.store.GetMonitor(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if existing == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	var payload monitorPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if requiresIncidentLink(payload) && !hasPermission(r, h.policy, "monitoring.incidents.link") {
@@ -131,86 +130,86 @@ func (h *MonitoringHandler) UpdateMonitor(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := h.store.UpdateMonitor(r.Context(), mon); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if existing.IsPaused != mon.IsPaused {
 		_ = h.store.SetMonitorPaused(r.Context(), id, mon.IsPaused)
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.monitor.update", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMonitorUpdate, strconv.FormatInt(id, 10))
 	if slaChanged {
-		h.audits.Log(r.Context(), currentUsername(r), "monitoring.sla.update", strconv.FormatInt(id, 10))
+		h.audit(r, monitorAuditSLAUpdate, strconv.FormatInt(id, 10))
 	}
 	writeJSON(w, http.StatusOK, mon)
 }
 
 func (h *MonitoringHandler) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if err := h.store.DeleteMonitor(r.Context(), id); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.monitor.delete", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMonitorDelete, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) PauseMonitor(w http.ResponseWriter, r *http.Request) {
-	h.setPaused(w, r, true, "monitoring.monitor.pause")
+	h.setPaused(w, r, true, monitorAuditMonitorPause)
 }
 
 func (h *MonitoringHandler) ResumeMonitor(w http.ResponseWriter, r *http.Request) {
-	h.setPaused(w, r, false, "monitoring.monitor.resume")
+	h.setPaused(w, r, false, monitorAuditMonitorResume)
 }
 
 func (h *MonitoringHandler) setPaused(w http.ResponseWriter, r *http.Request, paused bool, audit string) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if err := h.store.SetMonitorPaused(r.Context(), id, paused); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), audit, strconv.FormatInt(id, 10))
+	h.audit(r, audit, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) CheckNow(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	if h.engine == nil {
-		http.Error(w, "engine unavailable", http.StatusServiceUnavailable)
+		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
 	}
 	if err := h.engine.CheckNow(r.Context(), id); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.monitor.check_now", strconv.FormatInt(id, 10))
+	h.audit(r, monitorAuditMonitorCheckNow, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) CloneMonitor(w http.ResponseWriter, r *http.Request) {
-	id, err := parseID(mux.Vars(r)["id"])
+	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
-		http.Error(w, "bad request", http.StatusBadRequest)
+		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
 	existing, err := h.store.GetMonitor(r.Context(), id)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	if existing == nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		http.Error(w, errNotFound, http.StatusNotFound)
 		return
 	}
 	clone := *existing
@@ -221,15 +220,15 @@ func (h *MonitoringHandler) CloneMonitor(w http.ResponseWriter, r *http.Request)
 	clone.UpdatedAt = time.Time{}
 	newID, err := h.store.CreateMonitor(r.Context(), &clone)
 	if err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
+		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	clone.ID = newID
 	_ = h.store.UpsertMonitorState(r.Context(), &store.MonitorState{
-		MonitorID: clone.ID,
-		Status:    initialStatus(clone.IsPaused),
+		MonitorID:        clone.ID,
+		Status:           initialStatus(clone.IsPaused),
 		LastResultStatus: "down",
 	})
-	h.audits.Log(r.Context(), currentUsername(r), "monitoring.monitor.clone", strconv.FormatInt(newID, 10))
+	h.audit(r, monitorAuditMonitorClone, strconv.FormatInt(newID, 10))
 	writeJSON(w, http.StatusCreated, clone)
 }

@@ -79,12 +79,12 @@ func (h *ReportsHandler) buildControlsSection(ctx context.Context, sec store.Rep
 			EntityType: "control",
 			EntityID:   fmt.Sprintf("%d", c.ID),
 			Entity: map[string]any{
-				"id": c.ID,
-				"code": c.Code,
-				"title": c.Title,
-				"status": c.Status,
+				"id":         c.ID,
+				"code":       c.Code,
+				"title":      c.Title,
+				"status":     c.Status,
 				"risk_level": c.RiskLevel,
-				"domain": c.Domain,
+				"domain":     c.Domain,
 				"created_at": c.CreatedAt.UTC().Format(time.RFC3339),
 				"updated_at": c.UpdatedAt.UTC().Format(time.RFC3339),
 			},
@@ -152,9 +152,9 @@ func (h *ReportsHandler) buildMonitoringSection(ctx context.Context, sec store.R
 	}
 	res.ItemCount = len(rows)
 	res.Summary = map[string]any{
-		"monitors": len(rows),
+		"monitors":      len(rows),
 		"monitors_down": downCount,
-		"tls_expiring": tlsExpiring,
+		"tls_expiring":  tlsExpiring,
 	}
 	totals["monitors"] += len(rows)
 	var b strings.Builder
@@ -200,15 +200,15 @@ func (h *ReportsHandler) buildMonitoringSection(ctx context.Context, sec store.R
 			EntityType: "monitor",
 			EntityID:   fmt.Sprintf("%d", m.ID),
 			Entity: map[string]any{
-				"id": m.ID,
-				"name": m.Name,
-				"status": m.Status,
+				"id":                m.ID,
+				"name":              m.Name,
+				"status":            m.Status,
 				"incident_severity": m.IncidentSeverity,
-				"last_down_at": lastDown,
-				"last_error": lastErr,
-				"uptime_24h": uptime24,
-				"uptime_30d": uptime30,
-				"tls_days_left": tlsLeft,
+				"last_down_at":      lastDown,
+				"last_error":        lastErr,
+				"uptime_24h":        uptime24,
+				"uptime_30d":        uptime30,
+				"tls_days_left":     tlsLeft,
 			},
 		})
 	}
@@ -241,11 +241,11 @@ func (h *ReportsHandler) buildMonitoringSection(ctx context.Context, sec store.R
 					EntityType: "monitor_event",
 					EntityID:   fmt.Sprintf("%d", ev.ID),
 					Entity: map[string]any{
-						"id": ev.ID,
+						"id":         ev.ID,
 						"monitor_id": ev.MonitorID,
 						"event_type": ev.EventType,
-						"message": ev.Message,
-						"ts": ev.TS.UTC().Format(time.RFC3339),
+						"message":    ev.Message,
+						"ts":         ev.TS.UTC().Format(time.RFC3339),
 					},
 				})
 			}
@@ -311,10 +311,10 @@ func (h *ReportsHandler) buildAuditSection(ctx context.Context, sec store.Report
 			EntityType: "audit",
 			EntityID:   fmt.Sprintf("%d", rec.ID),
 			Entity: map[string]any{
-				"id": rec.ID,
-				"username": rec.Username,
-				"action": rec.Action,
-				"details": rec.Details,
+				"id":         rec.ID,
+				"username":   rec.Username,
+				"action":     rec.Action,
+				"details":    rec.Details,
 				"created_at": rec.CreatedAt.UTC().Format(time.RFC3339),
 			},
 		})

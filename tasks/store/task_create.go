@@ -10,7 +10,7 @@ import (
 	"berkut-scc/tasks"
 )
 
-func (s *SQLiteStore) createTaskTx(ctx context.Context, tx *sql.Tx, task *tasks.Task, assignments []int64) (int64, error) {
+func (s *SQLStore) createTaskTx(ctx context.Context, tx *sql.Tx, task *tasks.Task, assignments []int64) (int64, error) {
 	var colBoardID int64
 	var colName string
 	if err := tx.QueryRowContext(ctx, `SELECT board_id, name FROM task_columns WHERE id=?`, task.ColumnID).Scan(&colBoardID, &colName); err != nil {
@@ -93,3 +93,4 @@ func addEntityLinkTx(ctx context.Context, tx *sql.Tx, link *tasks.Link, createdA
 	link.CreatedAt = createdAt
 	return id, nil
 }
+

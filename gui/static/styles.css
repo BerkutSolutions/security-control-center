@@ -721,6 +721,29 @@
     box-sizing: border-box;
   }
 
+  .form-field select:not([multiple]):not([size]),
+  .select:not([multiple]):not([size]),
+  select.select-compact:not([multiple]):not([size]) {
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    background-image:
+      linear-gradient(45deg, transparent 50%, rgba(186, 203, 255, 0.85) 50%),
+      linear-gradient(135deg, rgba(186, 203, 255, 0.85) 50%, transparent 50%);
+    background-position:
+      calc(100% - 16px) calc(50% - 2px),
+      calc(100% - 11px) calc(50% - 2px);
+    background-size: 6px 6px, 6px 6px;
+    background-repeat: no-repeat;
+    padding-right: 36px;
+  }
+
+  select option,
+  select optgroup {
+    background: #0f1524;
+    color: #f5f7ff;
+  }
+
   .input:focus,
   .select:focus,
   .textarea:focus {
@@ -2175,7 +2198,12 @@
 }
 
 .monitoring-toolbar {
-  margin-bottom: 16px;
+  margin-bottom: 10px;
+}
+
+.monitoring-toolbar .card-body {
+  padding-top: 10px;
+  padding-bottom: 10px;
 }
 
 .monitoring-toolbar-title h3 {
@@ -2185,21 +2213,21 @@
 .monitoring-toolbar-row {
   display: grid;
   grid-template-columns: minmax(340px, 1.4fr) minmax(240px, 1fr);
-  gap: 12px;
+  gap: 10px;
   align-items: start;
 }
 
 .monitoring-toolbar-main {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
 .monitoring-toolbar-filters {
   display: grid;
   grid-template-columns: repeat(2, minmax(140px, 1fr));
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
 }
 
@@ -2211,9 +2239,9 @@
 .monitoring-toolbar-tags select {
   width: 100%;
   max-width: 100%;
-  min-height: 108px;
-  height: 108px;
-  max-height: 108px;
+  min-height: 84px;
+  height: 84px;
+  max-height: 84px;
 }
 
 .monitoring-search {
@@ -3641,6 +3669,28 @@ body.auth-locked #main-screen {
   .editor-panel.view-only #report-editor-toolbar,
   .editor-panel.view-only #report-editor-meta-save {
     display: none;
+  }
+
+  #docs-page #doc-editor.editor-panel {
+    position: static;
+    top: auto;
+    left: auto;
+    right: auto;
+    bottom: auto;
+    z-index: 1;
+    margin: 0;
+    min-height: 640px;
+  }
+
+  #docs-page #doc-editor .editor-meta .meta-text {
+    background: rgba(5, 6, 11, 0.72);
+    border: 1px solid rgba(96, 121, 187, 0.28);
+    border-radius: 8px;
+    min-height: 18px;
+    padding: 10px 12px;
+    color: rgba(242, 246, 255, 0.96);
+    line-height: 1.35;
+    word-break: break-word;
   }
 
   .editor-actions input {
@@ -6516,6 +6566,14 @@ body.auth-locked #main-screen {
   display: block;
 }
 
+#tasks-page #tasks-space-panels {
+  min-height: clamp(360px, 56vh, 720px);
+}
+
+#tasks-page .tasks-space-view {
+  min-height: inherit;
+}
+
 #tasks-page #tasks-tab-home .tasks-home-card + .tasks-home-card {
   margin-top: 16px;
   border-top: 1px solid rgba(96, 121, 187, 0.22);
@@ -6655,7 +6713,7 @@ body.auth-locked #main-screen {
     scrollbar-gutter: stable both-edges;
     padding: 4px 4px 8px;
     --tasks-board-gap: 4px;
-    min-height: 160px;
+    min-height: clamp(280px, 46vh, 620px);
     min-width: 100%;
   }
 
@@ -6670,7 +6728,7 @@ body.auth-locked #main-screen {
     border-radius: 16px;
     padding: 0;
     background: transparent;
-    min-height: 150px;
+    min-height: clamp(320px, 52vh, 680px);
     display: flex;
     flex-direction: column;
     align-items: stretch;

@@ -37,6 +37,7 @@ const MonitoringPage = (() => {
     if (MonitoringPage.bindEventsCenter) MonitoringPage.bindEventsCenter();
     if (MonitoringPage.bindMaintenance) MonitoringPage.bindMaintenance();
     if (MonitoringPage.bindNotifications) MonitoringPage.bindNotifications();
+    if (MonitoringPage.bindSLA) MonitoringPage.bindSLA();
     await MonitoringPage.loadMonitors?.();
   }
 
@@ -166,6 +167,9 @@ const MonitoringPage = (() => {
   }
 
   function sanitizeErrorMessage(msg) {
+    if (!msg) return t('common.error');
+    msg = String(msg).trim();
+    if (msg.endsWith(':')) msg = msg.slice(0, -1).trim();
     if (!msg) return t('common.error');
     if (msg.startsWith('status_')) {
       const code = msg.replace('status_', '');

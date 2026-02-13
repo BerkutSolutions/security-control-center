@@ -114,6 +114,9 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
+	if h.engine != nil {
+		h.engine.InvalidateSettings()
+	}
 	h.audit(r, monitorAuditSettingsUpdate, settingsDetails(current))
 	if prevTLSRefresh != current.TLSRefreshHours || prevTLSExpiring != current.TLSExpiringDays {
 		h.audit(r, monitorAuditCertsSettingsUpdate, settingsDetails(current))

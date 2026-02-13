@@ -171,45 +171,91 @@ func (s *monitoringStore) ListDueMonitors(ctx context.Context, now time.Time) ([
 }
 
 func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused bool) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	now := time.Now().UTC()
+	res, err := s.db.ExecContext(ctx, `UPDATE monitors SET is_paused=?, updated_at=? WHERE id=?`, boolToInt(paused), now, id)
 	if err != nil {
 		return err
 	}
-	if _, err := tx.ExecContext(ctx, `UPDATE monitors SET is_paused=?, updated_at=? WHERE id=?`, boolToInt(paused), time.Now().UTC(), id); err != nil {
-		tx.Rollback()
+	affected, _ := res.RowsAffected()
+	if affected == 0 {
+		return sql.ErrNoRows
+	}
+
+	current, err := s.GetMonitorState(ctx, id)
+	if err != nil {
 		return err
 	}
 	status := "paused"
 	maintenanceActive := 0
+	lastResult := "down"
+	var lastChecked *time.Time
+	var lastUp *time.Time
+	var lastDown *time.Time
+	var lastLatency *int
+	var lastStatusCode *int
+	lastError := ""
+	var uptime24h float64
+	var uptime30d float64
+	var avg24h float64
+	var tlsDaysLeft *int
+	var tlsNotAfter *time.Time
+	if current != nil {
+		if strings.TrimSpace(current.LastResultStatus) != "" {
+			lastResult = strings.TrimSpace(current.LastResultStatus)
+		}
+		lastChecked = current.LastCheckedAt
+		lastUp = current.LastUpAt
+		lastDown = current.LastDownAt
+		lastLatency = current.LastLatencyMs
+		lastStatusCode = current.LastStatusCode
+		lastError = current.LastError
+		uptime24h = current.Uptime24h
+		uptime30d = current.Uptime30d
+		avg24h = current.AvgLatency24h
+		tlsDaysLeft = current.TLSDaysLeft
+		tlsNotAfter = current.TLSNotAfter
+	}
 	if !paused {
-		var lastUp, lastDown sql.NullTime
-		var lastResult sql.NullString
-		_ = tx.QueryRowContext(ctx, `SELECT last_result_status, last_up_at, last_down_at FROM monitor_state WHERE monitor_id=?`, id).Scan(&lastResult, &lastUp, &lastDown)
-		status = strings.ToLower(strings.TrimSpace(lastResult.String))
+		status = strings.ToLower(strings.TrimSpace(lastResult))
 		if status != "up" && status != "down" {
-			if lastUp.Valid && (!lastDown.Valid || lastUp.Time.After(lastDown.Time)) {
+			if lastUp != nil && (lastDown == nil || lastUp.After(*lastDown)) {
 				status = "up"
 			} else {
 				status = "down"
 			}
 		}
-		if mon, err := s.GetMonitor(ctx, id); err == nil && mon != nil {
-			if list, err := s.ActiveMaintenanceFor(ctx, id, mon.Tags, time.Now().UTC()); err == nil && len(list) > 0 {
+		mon, err := s.GetMonitor(ctx, id)
+		if err != nil {
+			return err
+		}
+		if mon != nil {
+			list, err := s.ActiveMaintenanceFor(ctx, id, mon.Tags, now)
+			if err != nil {
+				return err
+			}
+			if len(list) > 0 {
 				status = "maintenance"
 				maintenanceActive = 1
 			}
 		}
 	}
-	if _, err := tx.ExecContext(ctx, `
-		INSERT INTO monitor_state(monitor_id, status, maintenance_active)
-		VALUES(?,?,?)
-		ON CONFLICT (monitor_id)
-		DO UPDATE SET status=excluded.status, maintenance_active=excluded.maintenance_active
-	`, id, status, maintenanceActive); err != nil {
-		tx.Rollback()
-		return err
-	}
-	return tx.Commit()
+	return s.UpsertMonitorState(ctx, &MonitorState{
+		MonitorID:         id,
+		Status:            status,
+		LastResultStatus:  lastResult,
+		MaintenanceActive: maintenanceActive == 1,
+		LastCheckedAt:     lastChecked,
+		LastUpAt:          lastUp,
+		LastDownAt:        lastDown,
+		LastLatencyMs:     lastLatency,
+		LastStatusCode:    lastStatusCode,
+		LastError:         lastError,
+		Uptime24h:         uptime24h,
+		Uptime30d:         uptime30d,
+		AvgLatency24h:     avg24h,
+		TLSDaysLeft:       tlsDaysLeft,
+		TLSNotAfter:       tlsNotAfter,
+	})
 }
 
 func scanMonitor(row interface {

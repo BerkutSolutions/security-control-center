@@ -7,6 +7,7 @@ import (
 	"io"
 	"net"
 	"net/http"
+	"runtime/debug"
 	"strings"
 	"sync"
 	"time"
@@ -15,6 +16,20 @@ import (
 	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 )
+
+func (s *Server) recoverMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		defer func() {
+			if rec := recover(); rec != nil {
+				if s.logger != nil {
+					s.logger.Errorf("PANIC %s %s: %v\n%s", r.Method, r.URL.Path, rec, string(debug.Stack()))
+				}
+				http.Error(w, "internal server error", http.StatusInternalServerError)
+			}
+		}()
+		next.ServeHTTP(w, r)
+	})
+}
 
 const (
 	sessionCookie               = "berkut_session"
@@ -148,6 +163,37 @@ func (s *Server) jsonMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+func (s *Server) maintenanceModeMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if s == nil || s.backupsSvc == nil || !strings.HasPrefix(r.URL.Path, "/api/") {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if isMaintenanceAllowedPath(r.URL.Path) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		if !s.backupsSvc.IsMaintenanceMode(r.Context()) {
+			next.ServeHTTP(w, r)
+			return
+		}
+		writeJSON(w, http.StatusServiceUnavailable, map[string]any{
+			"error": map[string]string{
+				"code":     "app.maintenance_mode",
+				"i18n_key": "common.error.maintenanceMode",
+			},
+		})
+	})
+}
+
+func isMaintenanceAllowedPath(path string) bool {
+	p := strings.TrimSpace(path)
+	if strings.HasPrefix(p, "/api/auth/") {
+		return true
+	}
+	return strings.HasPrefix(p, "/api/backups/restores/")
+}
+
 func (s *Server) loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
@@ -257,8 +303,18 @@ func (s *Server) requirePermission(perm rbac.Permission) func(http.HandlerFunc) 
 			}
 			sess := val.(*store.SessionRecord)
 			if !s.policy.Allowed(sess.Roles, perm) {
+				s.logBackupsDenied(r, sess.Username)
 				if s.logger != nil {
 					s.logger.Printf("PERM fail %s %s user=%s roles=%v need=%s", r.Method, r.URL.Path, sess.Username, sess.Roles, perm)
+				}
+				if strings.HasPrefix(r.URL.Path, "/api/backups") {
+					writeJSON(w, http.StatusForbidden, map[string]any{
+						"error": map[string]string{
+							"code":     "backups.forbidden",
+							"i18n_key": "backups.error.permissionDenied",
+						},
+					})
+					return
 				}
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return

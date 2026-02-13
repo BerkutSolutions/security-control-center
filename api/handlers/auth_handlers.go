@@ -249,6 +249,7 @@ func buildMenu(eff store.EffectiveAccess) []map[string]string {
 		{Perm: "tasks.view", Name: "tasks", Path: "tasks"},
 		{Perm: "incidents.view", Name: "incidents", Path: "incidents"},
 		{Perm: "reports.view", Name: "reports", Path: "reports"},
+		{Perm: "backups.read", Name: "backups", Path: "backups"},
 		{Perm: "docs.view", Name: "docs", Path: "docs"},
 		{Perm: "docs.approval.view", Name: "approvals", Path: "approvals"},
 		{Perm: "accounts.view", Name: "accounts", Path: "accounts"},

@@ -1,8 +1,43 @@
 (() => {
+  const U = (typeof MonitoringMaintenanceUtils !== 'undefined') ? MonitoringMaintenanceUtils : null;
   const els = {};
   const state = { editingId: null, items: [] };
 
   function bindMaintenance() {
+    bindElements();
+    const canView = MonitoringPage.hasPermission('monitoring.maintenance.view') || MonitoringPage.hasPermission('monitoring.maintenance.manage');
+    if (!canView) {
+      const panel = document.getElementById('monitoring-tab-maintenance');
+      if (panel) panel.hidden = true;
+      return;
+    }
+    const canManage = MonitoringPage.hasPermission('monitoring.maintenance.manage');
+    if (els.newBtn) {
+      els.newBtn.disabled = !canManage;
+      els.newBtn.classList.toggle('disabled', !canManage);
+      els.newBtn.addEventListener('click', () => openModal());
+    }
+    els.save?.addEventListener('click', submitForm);
+    els.strategy?.addEventListener('change', toggleStrategyFields);
+    if (els.monitors) {
+      els.monitors.multiple = true;
+      els.monitors.size = 8;
+      els.monitors.addEventListener('mousedown', onMonitorToggle);
+      els.monitors.addEventListener('change', renderMonitorHint);
+    }
+    document.querySelectorAll('[data-close="#maintenance-modal"]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (els.modal) els.modal.hidden = true;
+      });
+    });
+    U?.buildMonthDayList(els.monthdays);
+    populateMonitors([]);
+    populateTimezones();
+    toggleStrategyFields();
+    loadMaintenance();
+  }
+
+  function bindElements() {
     els.list = document.getElementById('monitoring-maintenance-list');
     els.alert = document.getElementById('monitoring-maintenance-alert');
     els.newBtn = document.getElementById('monitoring-maintenance-new');
@@ -10,347 +45,329 @@
     els.title = document.getElementById('maintenance-modal-title');
     els.form = document.getElementById('maintenance-form');
     els.save = document.getElementById('maintenance-save');
+    els.modalAlert = document.getElementById('maintenance-modal-alert');
     els.name = document.getElementById('maintenance-name');
-    els.monitor = document.getElementById('maintenance-monitor');
-    els.tags = document.getElementById('maintenance-tags');
-    els.tagsHint = document.querySelector('[data-tag-hint="maintenance-tags"]');
-    els.tagInput = document.getElementById('maintenance-tags-new');
-    els.tagAdd = document.getElementById('maintenance-tags-add');
+    els.description = document.getElementById('maintenance-description');
+    els.monitors = document.getElementById('maintenance-monitors');
+    els.monitorsHint = document.getElementById('maintenance-monitors-hint');
+    els.strategy = document.getElementById('maintenance-strategy');
+    els.timezone = document.getElementById('maintenance-timezone');
+    els.active = document.getElementById('maintenance-active');
     els.startsAt = document.getElementById('maintenance-starts-at');
     els.endsAt = document.getElementById('maintenance-ends-at');
-    els.timezone = document.getElementById('maintenance-timezone');
-    els.recurring = document.getElementById('maintenance-recurring');
-    els.rrule = document.getElementById('maintenance-rrule');
-    els.active = document.getElementById('maintenance-active');
-    els.modalAlert = document.getElementById('maintenance-modal-alert');
-
-    const canView = MonitoringPage.hasPermission('monitoring.maintenance.view')
-      || MonitoringPage.hasPermission('monitoring.maintenance.manage');
-    if (!canView) {
-      const card = els.list?.closest('.card');
-      if (card) card.hidden = true;
-      return;
-    }
-    if (els.newBtn) {
-      els.newBtn.addEventListener('click', () => openModal());
-      const canManage = MonitoringPage.hasPermission('monitoring.maintenance.manage');
-      els.newBtn.disabled = !canManage;
-      els.newBtn.classList.toggle('disabled', !canManage);
-    }
-    if (els.save) {
-      els.save.addEventListener('click', submitForm);
-    }
-    if (els.tagAdd) {
-      els.tagAdd.addEventListener('click', (e) => {
-        e.preventDefault();
-        addTagOption();
-      });
-    }
-    if (els.recurring) {
-      els.recurring.addEventListener('change', () => toggleRecurring());
-    }
-    [els.startsAt, els.endsAt].forEach(input => {
-      if (input) input.inputMode = 'numeric';
-    });
-    document.querySelectorAll('[data-close="#maintenance-modal"]').forEach(btn => {
-      btn.addEventListener('click', () => {
-        if (els.modal) els.modal.hidden = true;
-      });
-    });
-    populateMonitorOptions();
-    populateTagOptions();
-    populateTimezoneOptions();
-    enhanceMultiSelect(els.tags);
-    if (MonitoringPage.bindTagHint) {
-      MonitoringPage.bindTagHint(els.tags, els.tagsHint);
-    }
-    loadMaintenance();
+    els.cron = document.getElementById('maintenance-cron');
+    els.duration = document.getElementById('maintenance-duration');
+    els.intervalDays = document.getElementById('maintenance-interval-days');
+    els.intervalStart = document.getElementById('maintenance-window-start');
+    els.intervalEnd = document.getElementById('maintenance-window-end');
+    els.weekdayStart = document.getElementById('maintenance-weekday-start');
+    els.weekdayEnd = document.getElementById('maintenance-weekday-end');
+    els.monthdayStart = document.getElementById('maintenance-monthday-start');
+    els.monthdayEnd = document.getElementById('maintenance-monthday-end');
+    els.weekdays = document.getElementById('maintenance-weekdays');
+    els.monthdays = document.getElementById('maintenance-monthdays');
+    els.lastDay = document.getElementById('maintenance-last-day');
   }
 
   async function loadMaintenance() {
-    if (!MonitoringPage.hasPermission('monitoring.maintenance.view')) return;
     try {
       const res = await Api.get('/api/monitoring/maintenance');
-      state.items = res.items || [];
-      renderList(state.items);
+      state.items = Array.isArray(res.items) ? res.items : [];
+      renderList();
     } catch (err) {
-      console.error('maintenance list', err);
+      showError(MonitoringPage.sanitizeErrorMessage(err.message || err));
     }
   }
 
-  function renderList(items) {
+  function renderList() {
     if (!els.list) return;
     els.list.innerHTML = '';
-    const header = document.createElement('div');
-    header.className = 'monitoring-table-row header maintenance-header';
-    header.innerHTML = `
+    const h = document.createElement('div');
+    h.className = 'monitoring-table-row header maintenance-header';
+    h.innerHTML = `
       <div>${MonitoringPage.t('monitoring.maintenance.field.name')}</div>
-      <div>${MonitoringPage.t('monitoring.maintenance.field.scope')}</div>
+      <div>${MonitoringPage.t('monitoring.maintenance.field.monitors')}</div>
+      <div>${MonitoringPage.t('monitoring.maintenance.field.strategy')}</div>
       <div>${MonitoringPage.t('monitoring.maintenance.field.window')}</div>
-      <div>${MonitoringPage.t('monitoring.maintenance.field.recurring')}</div>
-      <div>${MonitoringPage.t('monitoring.maintenance.field.active')}</div>
-      <div></div>
-    `;
-    els.list.appendChild(header);
-    if (!items.length) {
+      <div>${MonitoringPage.t('monitoring.maintenance.field.state')}</div>
+      <div></div>`;
+    els.list.appendChild(h);
+    if (!state.items.length) {
       const empty = document.createElement('div');
       empty.className = 'muted';
       empty.textContent = MonitoringPage.t('monitoring.maintenance.empty');
       els.list.appendChild(empty);
       return;
     }
-    items.forEach(item => {
+    state.items.forEach((item) => {
       const row = document.createElement('div');
       row.className = 'monitoring-table-row';
       row.innerHTML = `
-        <div>${item.name || '-'}</div>
-        <div>${scopeLabel(item)}</div>
-        <div>${MonitoringPage.formatDate(item.starts_at)} - ${MonitoringPage.formatDate(item.ends_at)}</div>
-        <div>${item.is_recurring ? MonitoringPage.t('common.yes') : MonitoringPage.t('common.no')}</div>
-        <div>${item.is_active ? MonitoringPage.t('common.enable') : MonitoringPage.t('common.disabled')}</div>
-        <div class="row-actions"></div>
-      `;
+        <div><strong>${U?.escapeHtml(item.name || '-') || '-'}</strong></div>
+        <div>${U?.escapeHtml(U?.monitorsLabel(item, MonitoringPage.state.monitors)) || '-'}</div>
+        <div>${U?.escapeHtml(U?.strategyLabel(item.strategy, MonitoringPage.t)) || '-'}</div>
+        <div>${U?.escapeHtml(U?.windowLabel(item, MonitoringPage.formatDate)) || '-'}</div>
+        <div>${item.is_active ? MonitoringPage.t('monitoring.maintenance.state.enabled') : MonitoringPage.t('monitoring.maintenance.state.stopped')}</div>
+        <div class="row-actions"></div>`;
       const actions = row.querySelector('.row-actions');
       if (actions && MonitoringPage.hasPermission('monitoring.maintenance.manage')) {
-        const edit = document.createElement('button');
-        edit.className = 'btn ghost';
-        edit.textContent = MonitoringPage.t('common.edit');
-        edit.addEventListener('click', () => openModal(item));
-        const del = document.createElement('button');
-        del.className = 'btn ghost danger';
-        del.textContent = MonitoringPage.t('common.delete');
-        del.addEventListener('click', () => deleteItem(item));
-        actions.appendChild(edit);
-        actions.appendChild(del);
+        addRowAction(actions, MonitoringPage.t('common.edit'), 'btn ghost', () => openModal(item));
+        addRowAction(
+          actions,
+          item.is_active ? MonitoringPage.t('monitoring.maintenance.stop') : MonitoringPage.t('monitoring.maintenance.resume'),
+          'btn ghost',
+          () => toggleItemState(item),
+        );
+        addRowAction(actions, MonitoringPage.t('common.delete'), 'btn ghost danger', () => deleteItem(item));
       }
       els.list.appendChild(row);
     });
   }
 
+  function addRowAction(root, text, cls, handler, disabled = false) {
+    const btn = document.createElement('button');
+    btn.className = cls;
+    btn.textContent = text;
+    btn.disabled = !!disabled;
+    btn.addEventListener('click', handler);
+    root.appendChild(btn);
+  }
+
   function openModal(item) {
     if (!els.modal) return;
     state.editingId = item?.id || null;
-    MonitoringPage.hideAlert(els.modalAlert);
     els.form?.reset();
-    populateMonitorOptions();
-    populateTagOptions(item?.tags || []);
-    populateTimezoneOptions();
+    MonitoringPage.hideAlert(els.modalAlert);
+    populateMonitors(item?.monitor_ids || []);
+    populateTimezones(item?.timezone || U?.defaultTimezone());
     if (item) {
+      fillForm(item);
       els.title.textContent = MonitoringPage.t('monitoring.maintenance.editTitle');
-      els.name.value = item.name || '';
-      els.monitor.value = item.monitor_id || '';
-      setSelectedOptions(els.tags, item.tags || []);
-      els.startsAt.value = toInputValue(item.starts_at);
-      els.endsAt.value = toInputValue(item.ends_at);
-      els.timezone.value = item.timezone || defaultTimezone();
-      els.recurring.checked = !!item.is_recurring;
-      els.rrule.value = item.rrule_text || '';
-      els.active.checked = !!item.is_active;
     } else {
       els.title.textContent = MonitoringPage.t('monitoring.maintenance.createTitle');
-      els.timezone.value = defaultTimezone();
-      els.recurring.checked = false;
+      els.strategy.value = 'single';
       els.active.checked = true;
+      els.duration.value = 60;
+      els.intervalDays.value = 1;
+      ['intervalStart', 'weekdayStart', 'monthdayStart'].forEach((key) => { if (els[key]) els[key].value = '02:00'; });
+      ['intervalEnd', 'weekdayEnd', 'monthdayEnd'].forEach((key) => { if (els[key]) els[key].value = '03:00'; });
+      U?.markDays(els.weekdays, []);
+      U?.markDays(els.monthdays, []);
+      if (els.lastDay) els.lastDay.checked = false;
     }
-    toggleRecurring();
+    renderMonitorHint();
+    toggleStrategyFields();
     els.modal.hidden = false;
   }
 
+  function fillForm(item) {
+    const schedule = item.schedule || {};
+    els.name.value = item.name || '';
+    els.description.value = item.description_md || '';
+    els.strategy.value = item.strategy || 'single';
+    els.active.checked = !!item.is_active;
+    els.cron.value = schedule.cron_expression || '';
+    els.duration.value = schedule.duration_min || 60;
+    els.intervalDays.value = schedule.interval_days || 1;
+    els.intervalStart.value = schedule.window_start || '02:00';
+    els.intervalEnd.value = schedule.window_end || '03:00';
+    els.weekdayStart.value = schedule.window_start || '02:00';
+    els.weekdayEnd.value = schedule.window_end || '03:00';
+    els.monthdayStart.value = schedule.window_start || '02:00';
+    els.monthdayEnd.value = schedule.window_end || '03:00';
+    const rangeStart = schedule.active_from || item.starts_at;
+    const rangeEnd = schedule.active_until || item.ends_at;
+    els.startsAt.value = U?.toInputValue(rangeStart) || '';
+    els.endsAt.value = U?.toInputValue(rangeEnd) || '';
+    U?.markDays(els.weekdays, schedule.weekdays || []);
+    U?.markDays(els.monthdays, schedule.month_days || []);
+    if (els.lastDay) els.lastDay.checked = !!schedule.use_last_day;
+  }
+
   async function submitForm() {
-    MonitoringPage.hideAlert(els.modalAlert);
     const payload = buildPayload();
     if (!payload) return;
+    MonitoringPage.hideAlert(els.modalAlert);
     try {
-      if (state.editingId) {
-        await Api.put(`/api/monitoring/maintenance/${state.editingId}`, payload);
-      } else {
-        await Api.post('/api/monitoring/maintenance', payload);
-      }
+      if (state.editingId) await Api.put(`/api/monitoring/maintenance/${state.editingId}`, payload);
+      else await Api.post('/api/monitoring/maintenance', payload);
       els.modal.hidden = true;
       state.editingId = null;
       await loadMaintenance();
       MonitoringPage.refreshEventsCenter?.();
+      MonitoringPage.refreshSLA?.();
     } catch (err) {
       MonitoringPage.showAlert(els.modalAlert, MonitoringPage.sanitizeErrorMessage(err.message || err), false);
     }
   }
 
-  async function deleteItem(item) {
+  function buildPayload() {
+    const strategy = (els.strategy?.value || 'single').toLowerCase();
+    const monitorIDs = Array.from(els.monitors?.selectedOptions || []).map((opt) => Number(opt.value)).filter((v) => Number.isInteger(v) && v > 0);
+    if (!monitorIDs.length) return modalError('monitoring.maintenance.error.monitorRequired');
+    const payload = {
+      name: (els.name?.value || '').trim(),
+      description_md: (els.description?.value || '').trim(),
+      monitor_ids: monitorIDs,
+      timezone: els.timezone?.value || U?.defaultTimezone() || 'UTC',
+      strategy,
+      is_active: !!els.active?.checked,
+      schedule: {},
+    };
+    if (!payload.name) return modalError('monitoring.error.nameRequired');
+    const rangeStart = U?.fromInputValue(els.startsAt.value) || '';
+    const rangeEnd = U?.fromInputValue(els.endsAt.value) || '';
+    if (!rangeStart || !rangeEnd) return modalError('monitoring.error.invalidWindow');
+    if (strategy === 'single') {
+      payload.starts_at = rangeStart;
+      payload.ends_at = rangeEnd;
+      return payload;
+    }
+    payload.schedule.active_from = rangeStart;
+    payload.schedule.active_until = rangeEnd;
+    if (strategy === 'cron') {
+      payload.schedule.cron_expression = (els.cron.value || '').trim();
+      payload.schedule.duration_min = parseInt(els.duration.value, 10) || 0;
+      if (!payload.schedule.cron_expression || payload.schedule.duration_min <= 0) return modalError('monitoring.maintenance.error.invalidCron');
+    }
+    if (strategy === 'interval') {
+      payload.schedule.interval_days = parseInt(els.intervalDays.value, 10) || 0;
+      payload.schedule.window_start = els.intervalStart.value || '';
+      payload.schedule.window_end = els.intervalEnd.value || '';
+      if (payload.schedule.interval_days <= 0 || !payload.schedule.window_start || !payload.schedule.window_end) return modalError('monitoring.maintenance.error.invalidInterval');
+    }
+    if (strategy === 'weekday') {
+      payload.schedule.weekdays = U?.getCheckedInts(els.weekdays) || [];
+      payload.schedule.window_start = els.weekdayStart.value || '';
+      payload.schedule.window_end = els.weekdayEnd.value || '';
+      if (!payload.schedule.weekdays.length || !payload.schedule.window_start || !payload.schedule.window_end) return modalError('monitoring.maintenance.error.invalidWeekday');
+    }
+    if (strategy === 'monthday') {
+      payload.schedule.month_days = U?.getCheckedInts(els.monthdays) || [];
+      payload.schedule.use_last_day = !!els.lastDay?.checked;
+      payload.schedule.window_start = els.monthdayStart.value || '';
+      payload.schedule.window_end = els.monthdayEnd.value || '';
+      if ((!payload.schedule.month_days.length && !payload.schedule.use_last_day) || !payload.schedule.window_start || !payload.schedule.window_end) return modalError('monitoring.maintenance.error.invalidMonthday');
+    }
+    payload.starts_at = rangeStart;
+    payload.ends_at = rangeEnd;
+    return payload;
+  }
+
+  function modalError(key) {
+    MonitoringPage.showAlert(els.modalAlert, MonitoringPage.t(key), false);
+    return null;
+  }
+
+  async function stopItem(item) {
     if (!item?.id) return;
-    const confirmed = window.confirm(MonitoringPage.t('monitoring.maintenance.confirmDelete'));
-    if (!confirmed) return;
+    try {
+      await Api.post(`/api/monitoring/maintenance/${item.id}/stop`, {});
+      await loadMaintenance();
+      MonitoringPage.refreshEventsCenter?.();
+      MonitoringPage.refreshSLA?.();
+    } catch (err) { showError(MonitoringPage.sanitizeErrorMessage(err.message || err)); }
+  }
+
+  async function resumeItem(item) {
+    if (!item?.id) return;
+    try {
+      await Api.put(`/api/monitoring/maintenance/${item.id}`, { is_active: true });
+      await loadMaintenance();
+      MonitoringPage.refreshEventsCenter?.();
+      MonitoringPage.refreshSLA?.();
+    } catch (err) { showError(MonitoringPage.sanitizeErrorMessage(err.message || err)); }
+  }
+
+  function toggleItemState(item) {
+    if (!item?.id) return;
+    if (item.is_active) {
+      stopItem(item);
+      return;
+    }
+    resumeItem(item);
+  }
+
+  async function deleteItem(item) {
+    if (!item?.id || !window.confirm(MonitoringPage.t('monitoring.maintenance.confirmDelete'))) return;
     try {
       await Api.del(`/api/monitoring/maintenance/${item.id}`);
       await loadMaintenance();
       MonitoringPage.refreshEventsCenter?.();
-    } catch (err) {
-      MonitoringPage.showAlert(els.alert, MonitoringPage.sanitizeErrorMessage(err.message || err), false);
-    }
+      MonitoringPage.refreshSLA?.();
+    } catch (err) { showError(MonitoringPage.sanitizeErrorMessage(err.message || err)); }
   }
 
-  function buildPayload() {
-    const startsAt = fromInputValue(els.startsAt.value);
-    const endsAt = fromInputValue(els.endsAt.value);
-    if (!startsAt || !endsAt) {
-      MonitoringPage.showAlert(els.modalAlert, MonitoringPage.t('monitoring.error.invalidWindow'), false);
-      return null;
-    }
-    const payload = {
-      name: els.name.value.trim(),
-      monitor_id: els.monitor.value ? parseInt(els.monitor.value, 10) : null,
-      tags: getSelectedOptions(els.tags),
-      starts_at: startsAt,
-      ends_at: endsAt,
-      timezone: els.timezone.value.trim() || defaultTimezone(),
-      is_recurring: !!els.recurring.checked,
-      rrule_text: els.rrule.value.trim(),
-      is_active: !!els.active.checked,
-    };
-    if (!payload.name) {
-      MonitoringPage.showAlert(els.modalAlert, MonitoringPage.t('monitoring.error.nameRequired'), false);
-      return null;
-    }
-    if (payload.is_recurring && !payload.rrule_text) {
-      MonitoringPage.showAlert(els.modalAlert, MonitoringPage.t('monitoring.error.invalidRRule'), false);
-      return null;
-    }
-    return payload;
+  function toggleStrategyFields() {
+    const strategy = (els.strategy?.value || 'single').toLowerCase();
+    document.querySelectorAll('#maintenance-form .maintenance-strategy-block').forEach((node) => {
+      node.hidden = node.dataset.strategy !== strategy;
+    });
   }
 
-  function toggleRecurring() {
-    if (!els.rrule) return;
-    els.rrule.disabled = !els.recurring.checked;
+  function onMonitorToggle(event) {
+    const option = event.target;
+    if (!(option instanceof HTMLOptionElement)) return;
+    event.preventDefault();
+    option.selected = !option.selected;
+    renderMonitorHint();
   }
 
-  function scopeLabel(item) {
-    if (item.monitor_id) {
-      const mon = (MonitoringPage.state.monitors || []).find(m => m.id === item.monitor_id);
-      return mon?.name || `#${item.monitor_id}`;
-    }
-    if (item.tags && item.tags.length) {
-      return `${MonitoringPage.t('monitoring.maintenance.tagsScope')}: ${item.tags.join(', ')}`;
-    }
-    return MonitoringPage.t('monitoring.maintenance.allMonitors');
+  function renderMonitorHint() {
+    if (!els.monitorsHint || !els.monitors) return;
+    els.monitorsHint.innerHTML = '';
+    Array.from(els.monitors.selectedOptions).forEach((opt) => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = opt.textContent;
+      const remove = document.createElement('button');
+      remove.type = 'button';
+      remove.className = 'tag-remove';
+      remove.textContent = 'x';
+      remove.addEventListener('click', () => {
+        opt.selected = false;
+        renderMonitorHint();
+      });
+      tag.appendChild(remove);
+      els.monitorsHint.appendChild(tag);
+    });
   }
 
-  function populateMonitorOptions() {
-    if (!els.monitor) return;
-    els.monitor.innerHTML = '';
-    const all = document.createElement('option');
-    all.value = '';
-    all.textContent = MonitoringPage.t('monitoring.maintenance.allMonitors');
-    els.monitor.appendChild(all);
-    (MonitoringPage.state.monitors || []).forEach(mon => {
+  function populateMonitors(selectedIds) {
+    if (!els.monitors) return;
+    const selected = new Set((selectedIds || []).map((v) => Number(v)));
+    els.monitors.innerHTML = '';
+    (MonitoringPage.state.monitors || []).forEach((mon) => {
       const opt = document.createElement('option');
       opt.value = mon.id;
       opt.textContent = mon.name || `#${mon.id}`;
-      els.monitor.appendChild(opt);
+      opt.selected = selected.has(Number(mon.id));
+      els.monitors.appendChild(opt);
     });
   }
 
-  function populateTagOptions(selected = []) {
-    if (!els.tags) return;
-    const existing = new Set(selected || []);
-    if (typeof TagDirectory !== 'undefined' && TagDirectory.all) {
-      TagDirectory.all().forEach(tag => existing.add(tag.code || tag));
-    }
-    els.tags.innerHTML = '';
-    Array.from(existing).sort().forEach(tag => {
-      const opt = document.createElement('option');
-      opt.value = tag;
-      opt.textContent = (typeof TagDirectory !== 'undefined' && TagDirectory.label)
-        ? (TagDirectory.label(tag) || tag)
-        : tag;
-      opt.dataset.label = opt.textContent;
-      els.tags.appendChild(opt);
-    });
-    if (MonitoringPage.bindTagHint) {
-      MonitoringPage.bindTagHint(els.tags, els.tagsHint);
-    }
-  }
-
-  function defaultTimezone() {
-    if (typeof AppTime !== 'undefined' && AppTime.getTimeZone) {
-      return AppTime.getTimeZone();
-    }
-    return 'Europe/Moscow';
-  }
-
-  function populateTimezoneOptions() {
+  function populateTimezones(current) {
     if (!els.timezone) return;
-    const zones = (typeof AppTime !== 'undefined' && AppTime.timeZones)
-      ? AppTime.timeZones()
-      : ['Europe/Moscow', 'UTC'];
-    const current = els.timezone.value || defaultTimezone();
+    const zones = (typeof AppTime !== 'undefined' && AppTime.timeZones) ? AppTime.timeZones() : ['UTC'];
+    const selected = current || U?.defaultTimezone() || 'UTC';
     els.timezone.innerHTML = '';
-    zones.forEach(zone => {
+    zones.forEach((zone) => {
       const opt = document.createElement('option');
       opt.value = zone;
       opt.textContent = zone;
-      opt.selected = zone === current;
+      opt.selected = zone === selected;
       els.timezone.appendChild(opt);
     });
-    if (!els.timezone.value) {
-      els.timezone.value = current;
-    }
+    if (!els.timezone.value) els.timezone.value = selected;
   }
 
-  function addTagOption() {
-    const val = (els.tagInput.value || '').trim();
-    if (!val) return;
-    const opt = document.createElement('option');
-    opt.value = val;
-    opt.textContent = val;
-    opt.selected = true;
-    els.tags.appendChild(opt);
-    els.tagInput.value = '';
-  }
-
-  function enhanceMultiSelect(select) {
-    if (!select) return;
-    select.multiple = true;
-    if (!select.size || select.size < 4) select.size = 4;
-  }
-
-  function getSelectedOptions(select) {
-    if (!select) return [];
-    return Array.from(select.selectedOptions).map(o => o.value);
-  }
-
-  function setSelectedOptions(select, values) {
-    if (!select) return;
-    const set = new Set(values || []);
-    Array.from(select.options).forEach(opt => {
-      opt.selected = set.has(opt.value);
-    });
-  }
-
-  function toInputValue(value) {
-    if (!value) return '';
-    if (typeof AppTime !== 'undefined' && AppTime.formatDateTime) {
-      return AppTime.formatDateTime(value);
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    const pad = (num) => `${num}`.padStart(2, '0');
-    return `${pad(date.getDate())}.${pad(date.getMonth() + 1)}.${date.getFullYear()} ${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  }
-
-  function fromInputValue(value) {
-    if (!value) return '';
-    if (typeof AppTime !== 'undefined' && AppTime.toISODateTime) {
-      return AppTime.toISODateTime(value);
-    }
-    const date = new Date(value);
-    if (Number.isNaN(date.getTime())) return '';
-    return date.toISOString();
+  function showError(message) {
+    MonitoringPage.showAlert(els.alert, message, false);
   }
 
   if (typeof MonitoringPage !== 'undefined') {
     MonitoringPage.bindMaintenance = bindMaintenance;
-    MonitoringPage.refreshMaintenanceOptions = () => {
-      populateMonitorOptions();
-      populateTagOptions();
-    };
+    MonitoringPage.refreshMaintenanceOptions = () => populateMonitors([]);
+    MonitoringPage.refreshMaintenanceList = loadMaintenance;
   }
 })();

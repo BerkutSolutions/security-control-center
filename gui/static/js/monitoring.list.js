@@ -201,5 +201,6 @@
   if (typeof MonitoringPage !== 'undefined') {
     MonitoringPage.bindList = bindList;
     MonitoringPage.loadMonitors = loadMonitors;
+    MonitoringPage.renderMonitorList = () => renderList(MonitoringPage.state.monitors || []);
   }
 })();

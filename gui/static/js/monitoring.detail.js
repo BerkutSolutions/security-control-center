@@ -14,6 +14,7 @@
     els.title = document.getElementById('monitor-detail-title');
     els.target = document.getElementById('monitor-detail-target');
     els.maintenance = document.getElementById('monitor-maintenance-info');
+    els.detailAlert = document.getElementById('monitor-detail-alert');
     els.dot = document.getElementById('monitor-status-dot');
     els.strip = document.getElementById('monitor-status-strip');
     els.stats = document.getElementById('monitor-stats');
@@ -24,9 +25,9 @@
     els.edit = document.getElementById('monitor-edit');
     els.clone = document.getElementById('monitor-clone');
     els.remove = document.getElementById('monitor-delete');
-    els.checkNow = document.getElementById('monitor-check-now');
     els.eventsRange = document.getElementById('monitor-events-range');
     els.clearStats = document.getElementById('monitor-events-clear');
+    ensureChartTooltip();
 
     if (els.latencyRange) {
       els.latencyRange.value = detailState.metricsRange;
@@ -82,7 +83,6 @@
     if (els.edit) els.edit.addEventListener('click', () => MonitoringPage.openMonitorModal?.(MonitoringPage.selectedMonitor()));
     if (els.clone) els.clone.addEventListener('click', handleClone);
     if (els.remove) els.remove.addEventListener('click', handleDelete);
-    if (els.checkNow) els.checkNow.addEventListener('click', handleCheckNow);
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) return;
       const id = MonitoringPage.state.selectedId;
@@ -109,15 +109,21 @@
       const [mon, state, metrics, events, maintenance] = await Promise.all(requests);
       const current = MonitoringPage.state.monitors.find(m => m.id === id);
       if (current) Object.assign(current, mon);
-      renderDetail(mon, state, metrics.items || [], events.items || [], maintenance.items || []);
+      const metricsItems = metrics.items || [];
+      renderDetail(mon, state, metricsItems, events.items || [], maintenance.items || [], {
+        from: metrics.from || null,
+        to: metrics.to || null,
+      });
+      return { mon, state, metrics: metricsItems, events: events.items || [], maintenance: maintenance.items || [] };
     } catch (err) {
       console.error('monitor detail', err);
       const fallback = MonitoringPage.state.monitors.find(m => m.id === id);
       if (fallback) scheduleDetailRefresh(fallback);
+      return null;
     }
   }
 
-  function renderDetail(mon, state, metrics, events, maintenance) {
+  function renderDetail(mon, state, metrics, events, maintenance, metricsMeta) {
     if (!els.detail || !els.empty) return;
     if (!mon) {
       clearDetail();
@@ -130,10 +136,19 @@
       ? (mon.port ? `${mon.host}:${mon.port}` : (mon.host || '-'))
       : (mon.url || mon.host || '-');
     if (els.dot) els.dot.className = `status-dot ${statusClass(state?.status || mon.status)}`;
+    const current = MonitoringPage.state.monitors.find(m => m.id === mon.id);
+    if (current) {
+      current.status = state?.status || mon.status || current.status;
+      current.last_checked_at = state?.last_checked_at || current.last_checked_at || null;
+      current.last_status_code = state?.last_status_code ?? current.last_status_code ?? null;
+      current.last_error = state?.last_error || current.last_error || '';
+      current.last_latency_ms = state?.last_latency_ms ?? current.last_latency_ms ?? null;
+      MonitoringPage.renderMonitorList?.();
+    }
     renderMaintenanceInfo(mon, state, maintenance);
     renderStatusStrip(metrics);
     renderStats(mon, state);
-    renderLatencyChart(metrics);
+    renderLatencyChart(metrics, metricsMeta || null);
     renderEvents(events);
     updateActionLabels(mon);
     toggleActionAccess();
@@ -181,27 +196,126 @@
     }
   }
 
-  function renderLatencyChart(metrics) {
+  function pointsFromMetrics(metrics, scaleX) {
+    return metrics.map((m, idx) => {
+      const tsRaw = m.timestamp || m.ts;
+      const tsMs = Number.isFinite(Date.parse(tsRaw)) ? Date.parse(tsRaw) : Date.now();
+      return {
+        x: scaleX(tsMs, idx),
+        ok: !!m.ok,
+        ts: tsRaw,
+        tsMs,
+        latency: m.latency_ms || 0,
+        statusCode: m.status_code ?? m.statusCode ?? null,
+        error: m.error || '',
+      };
+    });
+  }
+
+  function renderXAxisLabels(svg, domainFrom, domainTo, scaleX, pad, height, intervalMs, rangeKey) {
+    if (!intervalMs || !Number.isFinite(domainFrom) || !Number.isFinite(domainTo) || domainTo <= domainFrom) return;
+    const ticks = [];
+    const start = Math.floor(domainFrom / intervalMs) * intervalMs;
+    for (let ts = start; ts <= domainTo + 1; ts += intervalMs) {
+      ticks.push(ts);
+    }
+    ticks.forEach((ts, n) => {
+      if (ts < domainFrom || ts > domainTo) return;
+      const x = scaleX(ts, n);
+      const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+      label.setAttribute('x', `${x}`);
+      label.setAttribute('y', `${height - 8}`);
+      label.setAttribute('font-size', '11');
+      label.setAttribute('fill', 'rgba(255, 255, 255, 0.62)');
+      if (n === 0) {
+        label.setAttribute('text-anchor', 'start');
+      } else if (n === ticks.length - 1) {
+        label.setAttribute('text-anchor', 'end');
+      } else {
+        label.setAttribute('text-anchor', 'middle');
+      }
+      label.textContent = formatXAxisTick(ts, rangeKey);
+      svg.appendChild(label);
+
+      const vline = document.createElementNS('http://www.w3.org/2000/svg', 'line');
+      vline.setAttribute('x1', `${x}`);
+      vline.setAttribute('x2', `${x}`);
+      vline.setAttribute('y1', `${pad.top}`);
+      vline.setAttribute('y2', `${height - pad.bottom}`);
+      vline.setAttribute('stroke', 'rgba(255, 255, 255, 0.06)');
+      vline.setAttribute('stroke-width', '1');
+      svg.appendChild(vline);
+    });
+  }
+
+  function ensureChartTooltip() {
+    if (!els.chart) return;
+    if (els.chartTip && els.chartTip.parentElement) return;
+    const tip = document.createElement('div');
+    tip.className = 'monitoring-chart-tooltip';
+    tip.hidden = true;
+    els.chart.appendChild(tip);
+    els.chartTip = tip;
+  }
+
+  function showChartTooltip(text) {
+    if (!els.chartTip) return;
+    els.chartTip.textContent = text;
+    els.chartTip.hidden = false;
+  }
+
+  function moveChartTooltip(evt) {
+    if (!els.chartTip || els.chartTip.hidden || !els.chart) return;
+    const rect = els.chart.getBoundingClientRect();
+    const x = Math.max(8, Math.min(rect.width - 8, evt.clientX - rect.left + 10));
+    const y = Math.max(8, Math.min(rect.height - 8, evt.clientY - rect.top + 10));
+    els.chartTip.style.left = `${x}px`;
+    els.chartTip.style.top = `${y}px`;
+  }
+
+  function hideChartTooltip() {
+    if (!els.chartTip) return;
+    els.chartTip.hidden = true;
+  }
+
+  function renderLatencyChart(metrics, metricsMeta) {
     if (!els.chart) return;
     els.chart.innerHTML = '';
+    ensureChartTooltip();
     if (!metrics.length) {
       els.chart.textContent = MonitoringPage.t('monitoring.noMetrics');
       return;
     }
-    const values = metrics.map(m => Math.max(0, m.latency_ms || 0));
-    const maxVal = Math.max(...values, 0);
-    const step = niceStep(Math.max(1, maxVal / 5));
-    const maxTick = Math.max(step, Math.ceil(maxVal / step) * step);
-    const width = 980;
+    const toTs = Number.isFinite(Date.parse(metricsMeta?.to || '')) ? Date.parse(metricsMeta.to) : Date.now();
+    const fromTs = Number.isFinite(Date.parse(metricsMeta?.from || '')) ? Date.parse(metricsMeta.from) : (toTs - inferRangeMs(detailState.metricsRange));
+    const domainFrom = Math.min(fromTs, toTs - 1000);
+    const domainTo = Math.max(toTs, domainFrom + 1000);
+    const bucketMs = aggregationBucketMs(detailState.metricsRange);
+    const plottedMetrics = bucketMs > 0
+      ? aggregateMetrics(metrics, bucketMs, domainFrom, domainTo)
+      : metrics;
+
+    const upValues = plottedMetrics.filter(m => !!m.ok).map(m => Math.max(0, m.latency_ms || 0));
+    const maxUp = Math.max(...upValues, 0);
+    const scaleMax = computeLatencyScaleMax(maxUp);
+    const step = niceStep(Math.max(1, scaleMax / 5));
+    const maxTick = Math.max(step, Math.ceil(scaleMax / step) * step);
+    const width = Math.max(640, Math.floor(els.chart.getBoundingClientRect().width || els.chart.clientWidth || 980));
     const height = 260;
-    const pad = { left: 54, right: 14, top: 14, bottom: 28 };
+    const pad = { left: 54, right: 14, top: 14, bottom: 34 };
     const chartWidth = width - pad.left - pad.right;
     const chartHeight = height - pad.top - pad.bottom;
-    const scaleX = (idx) => pad.left + (idx / Math.max(values.length - 1, 1)) * chartWidth;
+    const scaleX = (tsMs, idx) => {
+      if (Number.isFinite(tsMs)) {
+        const ratio = (tsMs - domainFrom) / Math.max(1, (domainTo - domainFrom));
+        return pad.left + Math.max(0, Math.min(1, ratio)) * chartWidth;
+      }
+      return pad.left + (idx / Math.max(plottedMetrics.length - 1, 1)) * chartWidth;
+    };
     const scaleY = (val) => pad.top + (1 - (val / maxTick)) * chartHeight;
     const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     svg.setAttribute('viewBox', `0 0 ${width} ${height}`);
-    svg.setAttribute('preserveAspectRatio', 'xMidYMid meet');
+    svg.setAttribute('preserveAspectRatio', 'none');
 
     const ticks = [];
     for (let v = 0; v <= maxTick; v += step) ticks.push(v);
@@ -224,53 +338,216 @@
       label.textContent = `${val}`;
       svg.appendChild(label);
     });
-
-    const points = metrics.map((m, idx) => ({
-      x: scaleX(idx),
-      y: scaleY(Math.max(0, m.latency_ms || 0)),
-      ok: !!m.ok,
-      ts: m.timestamp || m.ts,
-      latency: m.latency_ms || 0,
+    const hoverPoints = pointsFromMetrics(metrics, scaleX).map(pt => ({
+      ...pt,
+      y: scaleY(Math.max(0, Math.min(maxTick, pt.latency))),
     }));
+    const points = pointsFromMetrics(plottedMetrics, scaleX).map(pt => ({
+      ...pt,
+      y: scaleY(Math.max(0, Math.min(maxTick, pt.latency))),
+    }));
+    renderXAxisLabels(
+      svg,
+      domainFrom,
+      domainTo,
+      scaleX,
+      pad,
+      height,
+      rangeLabelIntervalMs(detailState.metricsRange),
+      detailState.metricsRange
+    );
 
-    const segments = [];
-    let current = null;
-    points.forEach((pt, idx) => {
-      if (!current || current.ok !== pt.ok) {
-        if (current) segments.push(current);
-        current = { ok: pt.ok, points: [] };
-        if (idx > 0) {
-          current.points.push(points[idx - 1]);
-        }
+    renderDownBackgrounds(svg, hoverPoints, pad, height);
+    const upSegments = [];
+    let segment = [];
+    points.forEach((pt) => {
+      if (pt.ok) {
+        segment.push(pt);
+      } else if (segment.length) {
+        upSegments.push(segment);
+        segment = [];
       }
-      current.points.push(pt);
     });
-    if (current) segments.push(current);
+    if (segment.length) upSegments.push(segment);
 
-    segments.forEach(seg => {
+    upSegments.forEach((seg) => {
+      if (seg.length < 2) return;
       const poly = document.createElementNS('http://www.w3.org/2000/svg', 'polyline');
       poly.setAttribute('fill', 'none');
-      poly.setAttribute('stroke', seg.ok ? '#2dd27b' : '#ff6b6b');
+      poly.setAttribute('stroke', '#2dd27b');
       poly.setAttribute('stroke-width', '3');
       poly.setAttribute('stroke-linecap', 'round');
       poly.setAttribute('stroke-linejoin', 'round');
-      poly.setAttribute('points', seg.points.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '));
+      poly.setAttribute('points', seg.map(p => `${p.x.toFixed(2)},${p.y.toFixed(2)}`).join(' '));
       svg.appendChild(poly);
     });
 
-    points.forEach((pt, idx) => {
-      const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-      circle.setAttribute('cx', pt.x.toFixed(2));
-      circle.setAttribute('cy', pt.y.toFixed(2));
-      circle.setAttribute('r', (idx === 0 || idx === points.length - 1) ? '4' : '2.5');
-      circle.setAttribute('fill', pt.ok ? '#2dd27b' : '#ff6b6b');
-      const title = document.createElementNS('http://www.w3.org/2000/svg', 'title');
-      title.textContent = `${MonitoringPage.formatDate(pt.ts)} - ${MonitoringPage.formatLatency(pt.latency)}`;
-      circle.appendChild(title);
-      svg.appendChild(circle);
-    });
+    const upPoints = points.filter(pt => pt.ok);
+    upPoints.forEach((pt, idx, arr) => renderPoint(svg, pt, idx, arr.length));
+    bindChartHover(svg, hoverPoints, pad, width, height);
 
     els.chart.appendChild(svg);
+  }
+
+  function inferRangeMs(rangeKey) {
+    switch ((rangeKey || '').toLowerCase()) {
+      case '1h': return 60 * 60 * 1000;
+      case '3h': return 3 * 60 * 60 * 1000;
+      case '6h': return 6 * 60 * 60 * 1000;
+      case '24h': return 24 * 60 * 60 * 1000;
+      case '7d': return 7 * 24 * 60 * 60 * 1000;
+      case '30d': return 30 * 24 * 60 * 60 * 1000;
+      default: return 24 * 60 * 60 * 1000;
+    }
+  }
+
+  function rangeLabelIntervalMs(rangeKey) {
+    switch ((rangeKey || '').toLowerCase()) {
+      case '1h': return 5 * 60 * 1000;
+      case '3h': return 15 * 60 * 1000;
+      case '6h': return 30 * 60 * 1000;
+      case '24h': return 60 * 60 * 1000;
+      case '7d': return 6 * 60 * 60 * 1000;
+      case '30d': return 24 * 60 * 60 * 1000;
+      default: return 60 * 60 * 1000;
+    }
+  }
+
+  function aggregationBucketMs(rangeKey) {
+    switch ((rangeKey || '').toLowerCase()) {
+      case '24h': return 60 * 60 * 1000;
+      case '7d': return 6 * 60 * 60 * 1000;
+      case '30d': return 24 * 60 * 60 * 1000;
+      default: return 0;
+    }
+  }
+
+  function aggregateMetrics(metrics, bucketMs, fromMs, toMs) {
+    if (!Array.isArray(metrics) || !metrics.length || !bucketMs) return metrics || [];
+    const buckets = new Map();
+    metrics.forEach((m) => {
+      const tsRaw = m.timestamp || m.ts;
+      const tsMs = Number.isFinite(Date.parse(tsRaw)) ? Date.parse(tsRaw) : 0;
+      if (!tsMs || tsMs < fromMs || tsMs > toMs) return;
+      const key = Math.floor((tsMs - fromMs) / bucketMs);
+      if (!buckets.has(key)) {
+        buckets.set(key, {
+          from: fromMs + key * bucketMs,
+          to: fromMs + (key + 1) * bucketMs,
+          upCount: 0,
+          upLatencySum: 0,
+          lastStatusCode: null,
+          lastError: '',
+        });
+      }
+      const b = buckets.get(key);
+      if (m.ok) {
+        b.upCount += 1;
+        b.upLatencySum += Math.max(0, m.latency_ms || 0);
+      }
+      b.lastStatusCode = m.status_code ?? m.statusCode ?? b.lastStatusCode;
+      if (m.error) b.lastError = m.error;
+    });
+    return Array.from(buckets.values())
+      .sort((a, b) => a.from - b.from)
+      .map((b) => {
+        const mid = new Date(Math.floor((b.from + b.to) / 2)).toISOString();
+        return {
+          timestamp: mid,
+          latency_ms: b.upCount > 0 ? Math.round(b.upLatencySum / b.upCount) : 0,
+          ok: b.upCount > 0,
+          status_code: b.lastStatusCode,
+          error: b.lastError,
+        };
+      });
+  }
+
+  function formatXAxisTick(tsMs, rangeKey) {
+    const date = new Date(tsMs);
+    const lang = (window.localStorage?.getItem('lang') || 'ru').toLowerCase();
+    const locale = lang === 'ru' ? 'ru-RU' : 'en-US';
+    const key = (rangeKey || '').toLowerCase();
+    if (key === '7d' || key === '30d') {
+      return date.toLocaleDateString(locale, { day: '2-digit', month: '2-digit' });
+    }
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  }
+
+  function renderDownBackgrounds(svg, points, pad, height) {
+    if (!Array.isArray(points) || !points.length) return;
+    const top = pad.top;
+    const bottom = height - pad.bottom;
+    points.forEach((pt, idx) => {
+      if (pt.ok) return;
+      const prevX = idx > 0 ? points[idx - 1].x : pt.x;
+      const nextX = idx < points.length - 1 ? points[idx + 1].x : pt.x;
+      const startX = idx > 0 ? (prevX + pt.x) / 2 : Math.max(pad.left, pt.x - Math.max(6, (nextX - pt.x) / 2));
+      const endX = idx < points.length - 1 ? (pt.x + nextX) / 2 : Math.min(points[points.length - 1].x, pt.x + Math.max(6, (pt.x - prevX) / 2));
+      const width = Math.max(2, endX - startX);
+      const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+      rect.setAttribute('x', `${startX}`);
+      rect.setAttribute('y', `${top}`);
+      rect.setAttribute('width', `${width}`);
+      rect.setAttribute('height', `${bottom - top}`);
+      rect.setAttribute('fill', 'rgba(255, 77, 79, 0.20)');
+      svg.appendChild(rect);
+    });
+  }
+
+  function renderPoint(svg, pt, idx, total) {
+    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
+    circle.setAttribute('cx', pt.x.toFixed(2));
+    circle.setAttribute('cy', pt.y.toFixed(2));
+    circle.setAttribute('r', (idx === 0 || idx === total - 1) ? '4' : '2.5');
+    circle.setAttribute('fill', pt.ok ? '#2dd27b' : '#ff6b6b');
+    svg.appendChild(circle);
+  }
+
+  function bindChartHover(svg, points, pad, width, height) {
+    if (!Array.isArray(points) || !points.length) return;
+    const overlay = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    overlay.setAttribute('x', `${pad.left}`);
+    overlay.setAttribute('y', `${pad.top}`);
+    overlay.setAttribute('width', `${Math.max(0, width - pad.left - pad.right)}`);
+    overlay.setAttribute('height', `${Math.max(0, height - pad.top - pad.bottom)}`);
+    overlay.setAttribute('fill', 'transparent');
+    overlay.style.pointerEvents = 'all';
+    overlay.addEventListener('mousemove', (e) => {
+      const rect = svg.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const nearest = nearestPoint(points, mouseX);
+      if (!nearest) return;
+      showChartTooltip(pointTooltipText(nearest));
+      moveChartTooltip(e);
+    });
+    overlay.addEventListener('mouseleave', hideChartTooltip);
+    svg.appendChild(overlay);
+  }
+
+  function nearestPoint(points, x) {
+    let best = null;
+    let bestDist = Number.POSITIVE_INFINITY;
+    for (let i = 0; i < points.length; i += 1) {
+      const d = Math.abs(points[i].x - x);
+      if (d < bestDist) {
+        bestDist = d;
+        best = points[i];
+      }
+    }
+    return best;
+  }
+
+  function pointTooltipText(pt) {
+    const statusText = pt.ok ? MonitoringPage.t('monitoring.status.up') : MonitoringPage.t('monitoring.status.down');
+    const codeText = pt.statusCode ? `HTTP ${pt.statusCode}` : '-';
+    const errText = pt.error ? MonitoringPage.sanitizeErrorMessage(pt.error) : '-';
+    return [
+      `${MonitoringPage.t('monitoring.tooltip.time')}: ${MonitoringPage.formatDate(pt.ts)}`,
+      `${MonitoringPage.t('monitoring.tooltip.latency')}: ${MonitoringPage.formatLatency(pt.latency)}`,
+      `${MonitoringPage.t('monitoring.tooltip.status')}: ${statusText}`,
+      `${MonitoringPage.t('monitoring.tooltip.code')}: ${codeText}`,
+      `${MonitoringPage.t('monitoring.tooltip.error')}: ${errText}`,
+    ].join('\n');
   }
 
   function niceStep(raw) {
@@ -281,6 +558,18 @@
     if (base <= 2) return 2 * pow;
     if (base <= 5) return 5 * pow;
     return 10 * pow;
+  }
+
+  function computeLatencyScaleMax(maxUp) {
+    const value = Math.max(0, Number(maxUp) || 0);
+    if (value <= 10) return 50;
+    if (value <= 50) return 100;
+    if (value <= 100) return 200;
+    let limit = 200;
+    while (limit < value) {
+      limit *= 2;
+    }
+    return limit;
   }
 
   function stopDetailRefresh() {
@@ -377,15 +666,11 @@
     els.pause.textContent = paused
       ? MonitoringPage.t('monitoring.actions.resume')
       : MonitoringPage.t('monitoring.actions.pause');
-    if (els.checkNow) {
-      els.checkNow.disabled = paused || !MonitoringPage.hasPermission('monitoring.manage');
-      els.checkNow.classList.toggle('disabled', paused || !MonitoringPage.hasPermission('monitoring.manage'));
-    }
   }
 
   function toggleActionAccess() {
     const canManage = MonitoringPage.hasPermission('monitoring.manage');
-    [els.pause, els.edit, els.clone, els.remove, els.checkNow].forEach(btn => {
+    [els.pause, els.edit, els.clone, els.remove].forEach(btn => {
       if (!btn) return;
       btn.disabled = !canManage;
       btn.classList.toggle('disabled', !canManage);
@@ -398,11 +683,14 @@
     const paused = !!mon.is_paused;
     const action = paused ? 'resume' : 'pause';
     try {
+      clearDetailAlert();
       await Api.post(`/api/monitoring/monitors/${mon.id}/${action}`);
       await MonitoringPage.loadMonitors?.();
       await loadDetail(mon.id);
     } catch (err) {
       console.error('pause', err);
+      showDetailAlert(MonitoringPage.sanitizeErrorMessage(err.message || err));
+      await loadDetail(mon.id);
     }
   }
 
@@ -437,34 +725,14 @@
     }
   }
 
-  async function handleCheckNow() {
-    const mon = MonitoringPage.selectedMonitor();
-    if (!mon) return;
-    if (mon.is_paused) return;
-    if (els.checkNow) {
-      els.checkNow.disabled = true;
-      els.checkNow.classList.add('disabled');
-    }
-    try {
-      await Api.post(`/api/monitoring/monitors/${mon.id}/check-now`, {});
-      setTimeout(() => loadDetail(mon.id), 1200);
-    } catch (err) {
-      const msg = (err && err.message) ? String(err.message).trim() : '';
-      if (msg.includes('monitoring.error.busy')) {
-        setTimeout(() => loadDetail(mon.id), 1200);
-        return;
-      }
-      console.error('check now', err);
-    } finally {
-      setTimeout(() => {
-        if (els.checkNow) {
-          const canManage = MonitoringPage.hasPermission('monitoring.manage');
-          const paused = !!(MonitoringPage.selectedMonitor() || {}).is_paused;
-          els.checkNow.disabled = !canManage || paused;
-          els.checkNow.classList.toggle('disabled', !canManage || paused);
-        }
-      }, 800);
-    }
+  function showDetailAlert(message, success = false) {
+    if (!els.detailAlert || !message) return;
+    MonitoringPage.showAlert(els.detailAlert, message, success);
+  }
+
+  function clearDetailAlert() {
+    if (!els.detailAlert) return;
+    MonitoringPage.hideAlert(els.detailAlert);
   }
 
   function statusClass(status) {

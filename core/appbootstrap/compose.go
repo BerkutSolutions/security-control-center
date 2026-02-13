@@ -6,6 +6,8 @@ import (
 	"berkut-scc/api"
 	"berkut-scc/config"
 	"berkut-scc/core/appmeta"
+	"berkut-scc/core/backups"
+	backupsstore "berkut-scc/core/backups/store"
 	"berkut-scc/core/docs"
 	"berkut-scc/core/incidents"
 	"berkut-scc/core/monitoring"
@@ -37,6 +39,9 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 	appRuntimeStore := store.NewAppRuntimeStore(db)
 	updateChecker := appmeta.NewUpdateChecker()
 	dashboardStore := store.NewDashboardStore(db)
+	backupsRepo := backupsstore.NewRepository(db)
+	backupsSvc := backups.NewService(cfg, db, backupsRepo, audits, logger)
+	backupsScheduler := backups.NewScheduler(cfg.Scheduler, backupsSvc)
 	tasksStore := taskstore.NewStore(db)
 	tasksSvc := tasks.NewService(tasksStore)
 
@@ -76,6 +81,7 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			AppRuntimeStore:  appRuntimeStore,
 			UpdateChecker:    updateChecker,
 			DashboardStore:   dashboardStore,
+			BackupsSvc:       backupsSvc,
 			DocsSvc:          docsSvc,
 			IncidentsSvc:     incidentsSvc,
 			TasksStore:       tasksStore,
@@ -83,6 +89,6 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			MonitoringEngine: monitoringEngine,
 		},
 		sessions: sessions,
-		workers:  []api.BackgroundWorker{tasksScheduler, monitoringEngine},
+		workers:  []api.BackgroundWorker{tasksScheduler, monitoringEngine, backupsScheduler},
 	}, nil
 }

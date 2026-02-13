@@ -1,4 +1,4 @@
-package monitoring
+﻿package monitoring
 
 import (
 	"context"
@@ -30,9 +30,13 @@ func (e *Engine) handleAutoIncident(ctx context.Context, m store.Monitor, prev, 
 		if sev == "" {
 			sev = "low"
 		}
-		target := monitorTarget(m)
-		title := fmt.Sprintf("%s: %s", notifyText("ru", "monitoring.notify.downTitle"), strings.TrimSpace(m.Name))
-		desc := fmt.Sprintf("%s\n%s", target, notifyText("ru", "monitoring.notify.downTitle"))
+		monitorName := strings.TrimSpace(m.Name)
+		if monitorName == "" {
+			monitorName = fmt.Sprintf("Монитор #%d", m.ID)
+		}
+		title := fmt.Sprintf("%s: %s", notifyText("ru", "monitoring.notify.downTitle"), monitorName)
+		desc := "🚨 Монитор недоступен"
+		detectedAt := now.Format("2006-01-02T15:04:05-07:00")
 		incident := &store.Incident{
 			Title:       title,
 			Description: desc,
@@ -44,8 +48,15 @@ func (e *Engine) handleAutoIncident(ctx context.Context, m store.Monitor, prev, 
 			Source:      "monitoring",
 			SourceRefID: &m.ID,
 			Meta: store.IncidentMeta{
-				IncidentType: strings.TrimSpace(m.IncidentTypeID),
-				DetectedAt:   now.UTC().Format(time.RFC3339),
+				IncidentType:          "Отказ сервиса",
+				DetectionSource:       "Мониторинг",
+				SLAResponse:           "1 час",
+				FirstResponseDeadline: "8 часов",
+				WhatHappened:          fmt.Sprintf("Недоступен монитор %s", monitorName),
+				DetectedAt:            detectedAt,
+				AffectedSystems:       monitorName,
+				Risk:                  "да",
+				ActionsTaken:          "Направлено уведомление ответственным и создан инцидент",
 			},
 		}
 		id, err := e.incidents.CreateIncident(ctx, incident, nil, nil, e.incidentRegFormat)

@@ -184,12 +184,11 @@
     const dateInput = document.createElement('input');
     dateInput.type = 'date';
     dateInput.className = 'input date-input';
-    dateInput.lang = 'ru';
+    dateInput.lang = (typeof BerkutI18n !== 'undefined' && BerkutI18n.currentLang && BerkutI18n.currentLang() === 'en') ? 'en' : 'ru';
     dateInput.value = toISODateValue(date);
     const timeInput = document.createElement('input');
-    timeInput.type = 'text';
-    timeInput.inputMode = 'numeric';
-    timeInput.placeholder = t('common.timePlaceholder');
+    timeInput.type = 'time';
+    timeInput.step = '60';
     timeInput.className = 'input time-input';
     timeInput.value = time;
     const sync = () => {

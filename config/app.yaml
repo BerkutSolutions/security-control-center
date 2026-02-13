@@ -41,3 +41,9 @@ security:
   online_window_sec: 300
   legacy_import_enabled: false
   trusted_proxies: []
+backups:
+  path: "data/backups"
+  encryption_key: ""
+  max_parallel: 1
+  pgdump_bin: "pg_dump"
+  upload_max_bytes: 536870912

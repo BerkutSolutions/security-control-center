@@ -22,5 +22,15 @@ PostgreSQL runtime + encrypted sensitive content/attachments + persistent volume
 ## Import/export/conversion
 Document/report import-export and local converter pipeline.
 
+## Monitoring and SLA
+- Monitors, metrics, events, maintenance windows, and notification channels.
+- SLA tab with coverage-aware `24h/7d/30d` windows.
+- Closed periods `day/week/month` and delayed SLA incident creation on period close.
+
+## Backups (.bscc)
+- Create/import/download/delete backup flows.
+- Dry-run/restore with progress steps.
+- Auto-backup scheduler and retention policy.
+
 ## Deploy and CI/CD
 Docker/Compose workflow, verify pipeline, rollback.

@@ -24,6 +24,7 @@ type MonitoringStore interface {
 	ListEventsFeed(ctx context.Context, filter EventFilter) ([]MonitorEvent, error)
 	AddEvent(ctx context.Context, event *MonitorEvent) (int64, error)
 	MetricsSummary(ctx context.Context, monitorID int64, since time.Time) (int, int, float64, error)
+	MetricsSummaryBetween(ctx context.Context, monitorID int64, since, until time.Time) (int, int, error)
 	DeleteMetricsBefore(ctx context.Context, before time.Time) (int64, error)
 	DeleteMonitorMetrics(ctx context.Context, monitorID int64) (int64, error)
 	DeleteMonitorEvents(ctx context.Context, monitorID int64) (int64, error)
@@ -36,8 +37,10 @@ type MonitoringStore interface {
 	GetMaintenance(ctx context.Context, id int64) (*MonitorMaintenance, error)
 	CreateMaintenance(ctx context.Context, m *MonitorMaintenance) (int64, error)
 	UpdateMaintenance(ctx context.Context, m *MonitorMaintenance) error
+	StopMaintenance(ctx context.Context, id int64, stoppedBy int64) error
 	DeleteMaintenance(ctx context.Context, id int64) error
 	ActiveMaintenanceFor(ctx context.Context, monitorID int64, tags []string, now time.Time) ([]MonitorMaintenance, error)
+	MaintenanceWindowsFor(ctx context.Context, monitorID int64, tags []string, since, until time.Time) ([]MaintenanceWindow, error)
 
 	GetSettings(ctx context.Context) (*MonitorSettings, error)
 	UpdateSettings(ctx context.Context, settings *MonitorSettings) error
@@ -54,6 +57,14 @@ type MonitoringStore interface {
 
 	GetNotificationState(ctx context.Context, monitorID int64) (*MonitorNotificationState, error)
 	UpsertNotificationState(ctx context.Context, st *MonitorNotificationState) error
+
+	GetMonitorSLAPolicy(ctx context.Context, monitorID int64) (*MonitorSLAPolicy, error)
+	UpsertMonitorSLAPolicy(ctx context.Context, policy *MonitorSLAPolicy) error
+	ListMonitorSLAPolicies(ctx context.Context, monitorIDs []int64) ([]MonitorSLAPolicy, error)
+	UpsertSLAPeriodResult(ctx context.Context, item *MonitorSLAPeriodResult) (*MonitorSLAPeriodResult, error)
+	ListSLAPeriodResults(ctx context.Context, filter MonitorSLAPeriodResultListFilter) ([]MonitorSLAPeriodResult, error)
+	MarkSLAPeriodIncidentCreated(ctx context.Context, id int64) error
+	SyncSLAPeriodTarget(ctx context.Context, monitorID int64, targetPct float64, minCoveragePct float64) error
 }
 
 type monitoringStore struct {

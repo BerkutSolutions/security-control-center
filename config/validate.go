@@ -6,8 +6,8 @@ import (
 )
 
 const (
-	defaultCSRFKey          = "FWgaRnHOh8Nep_kGLCTiBXIB2k72_G2Ch1Q7HOM0zIo"
-	defaultPepper           = "BPY89KfAWweJM5p2Vh0Zwg_-nm7wSlS8La8DxPWFAlg"
+	defaultCSRFKey           = "FWgaRnHOh8Nep_kGLCTiBXIB2k72_G2Ch1Q7HOM0zIo"
+	defaultPepper            = "BPY89KfAWweJM5p2Vh0Zwg_-nm7wSlS8La8DxPWFAlg"
 	defaultDocsEncryptionKey = "337d0c35c87c92c9dfe05f4251de8ad18fcb363d4be33bcc5394fb013dc22daf"
 )
 
@@ -33,6 +33,15 @@ func Validate(cfg *AppConfig) error {
 		return fmt.Errorf("csrf_key, pepper, and docs.encryption_key must be set via env")
 	}
 	if cfg.IsHomeMode() {
+		if appEnv != "dev" {
+			key := strings.TrimSpace(cfg.Backups.EncryptionKey)
+			if key == "" {
+				return fmt.Errorf("backups.encryption_key must be set outside APP_ENV=dev")
+			}
+			if len(key) < 32 {
+				return fmt.Errorf("backups.encryption_key must be at least 32 characters")
+			}
+		}
 		return nil
 	}
 	if appEnv != "dev" {
@@ -41,6 +50,13 @@ func Validate(cfg *AppConfig) error {
 		}
 		if !cfg.TLSEnabled {
 			return fmt.Errorf("tls_enabled=false is only allowed in APP_ENV=dev")
+		}
+		key := strings.TrimSpace(cfg.Backups.EncryptionKey)
+		if key == "" {
+			return fmt.Errorf("backups.encryption_key must be set outside APP_ENV=dev")
+		}
+		if len(key) < 32 {
+			return fmt.Errorf("backups.encryption_key must be at least 32 characters")
 		}
 	}
 	return nil

@@ -35,41 +35,41 @@ type Monitor struct {
 
 type MonitorSummary struct {
 	Monitor
-	Status          string     `json:"status"`
-	LastCheckedAt   *time.Time `json:"last_checked_at,omitempty"`
-	LastUpAt        *time.Time `json:"last_up_at,omitempty"`
-	LastDownAt      *time.Time `json:"last_down_at,omitempty"`
-	LastLatencyMs   *int       `json:"last_latency_ms,omitempty"`
-	LastStatusCode  *int       `json:"last_status_code,omitempty"`
-	LastError       string     `json:"last_error,omitempty"`
-}
-
-type MonitorState struct {
-	MonitorID      int64      `json:"monitor_id"`
 	Status         string     `json:"status"`
-	LastResultStatus string    `json:"last_result_status,omitempty"`
-	MaintenanceActive bool     `json:"maintenance_active"`
 	LastCheckedAt  *time.Time `json:"last_checked_at,omitempty"`
 	LastUpAt       *time.Time `json:"last_up_at,omitempty"`
 	LastDownAt     *time.Time `json:"last_down_at,omitempty"`
 	LastLatencyMs  *int       `json:"last_latency_ms,omitempty"`
 	LastStatusCode *int       `json:"last_status_code,omitempty"`
 	LastError      string     `json:"last_error,omitempty"`
-	Uptime24h      float64    `json:"uptime_24h"`
-	Uptime30d      float64    `json:"uptime_30d"`
-	AvgLatency24h  float64    `json:"avg_latency_24h"`
-	TLSDaysLeft    *int       `json:"tls_days_left,omitempty"`
-	TLSNotAfter    *time.Time `json:"tls_not_after,omitempty"`
+}
+
+type MonitorState struct {
+	MonitorID         int64      `json:"monitor_id"`
+	Status            string     `json:"status"`
+	LastResultStatus  string     `json:"last_result_status,omitempty"`
+	MaintenanceActive bool       `json:"maintenance_active"`
+	LastCheckedAt     *time.Time `json:"last_checked_at,omitempty"`
+	LastUpAt          *time.Time `json:"last_up_at,omitempty"`
+	LastDownAt        *time.Time `json:"last_down_at,omitempty"`
+	LastLatencyMs     *int       `json:"last_latency_ms,omitempty"`
+	LastStatusCode    *int       `json:"last_status_code,omitempty"`
+	LastError         string     `json:"last_error,omitempty"`
+	Uptime24h         float64    `json:"uptime_24h"`
+	Uptime30d         float64    `json:"uptime_30d"`
+	AvgLatency24h     float64    `json:"avg_latency_24h"`
+	TLSDaysLeft       *int       `json:"tls_days_left,omitempty"`
+	TLSNotAfter       *time.Time `json:"tls_not_after,omitempty"`
 }
 
 type MonitorMetric struct {
-	ID         int64      `json:"id"`
-	MonitorID  int64      `json:"monitor_id"`
-	TS         time.Time  `json:"ts"`
-	LatencyMs  int        `json:"latency_ms"`
-	OK         bool       `json:"ok"`
-	StatusCode *int       `json:"status_code,omitempty"`
-	Error      *string    `json:"error,omitempty"`
+	ID         int64     `json:"id"`
+	MonitorID  int64     `json:"monitor_id"`
+	TS         time.Time `json:"ts"`
+	LatencyMs  int       `json:"latency_ms"`
+	OK         bool      `json:"ok"`
+	StatusCode *int      `json:"status_code,omitempty"`
+	Error      *string   `json:"error,omitempty"`
 }
 
 type MonitorEvent struct {
@@ -81,66 +81,90 @@ type MonitorEvent struct {
 }
 
 type MonitorTLS struct {
-	MonitorID         int64      `json:"monitor_id"`
-	CheckedAt         time.Time  `json:"checked_at"`
-	NotAfter          time.Time  `json:"not_after"`
-	NotBefore         time.Time  `json:"not_before"`
-	CommonName        string     `json:"common_name"`
-	Issuer            string     `json:"issuer"`
-	SANs              []string   `json:"sans"`
-	FingerprintSHA256 string     `json:"fingerprint_sha256"`
-	LastError         *string    `json:"last_error,omitempty"`
+	MonitorID         int64     `json:"monitor_id"`
+	CheckedAt         time.Time `json:"checked_at"`
+	NotAfter          time.Time `json:"not_after"`
+	NotBefore         time.Time `json:"not_before"`
+	CommonName        string    `json:"common_name"`
+	Issuer            string    `json:"issuer"`
+	SANs              []string  `json:"sans"`
+	FingerprintSHA256 string    `json:"fingerprint_sha256"`
+	LastError         *string   `json:"last_error,omitempty"`
 }
 
 type MonitorCertSummary struct {
-	MonitorID        int64      `json:"monitor_id"`
-	Name             string     `json:"name"`
-	URL              string     `json:"url"`
-	Tags             []string   `json:"tags"`
-	Status           string     `json:"status"`
-	NotAfter         *time.Time `json:"not_after,omitempty"`
-	NotBefore        *time.Time `json:"not_before,omitempty"`
-	CheckedAt        *time.Time `json:"checked_at,omitempty"`
-	CommonName       string     `json:"common_name,omitempty"`
-	Issuer           string     `json:"issuer,omitempty"`
-	DaysLeft         *int       `json:"days_left,omitempty"`
-	ExpiringSoon     bool       `json:"expiring_soon"`
-	LastError        string     `json:"last_error,omitempty"`
+	MonitorID    int64      `json:"monitor_id"`
+	Name         string     `json:"name"`
+	URL          string     `json:"url"`
+	Tags         []string   `json:"tags"`
+	Status       string     `json:"status"`
+	NotAfter     *time.Time `json:"not_after,omitempty"`
+	NotBefore    *time.Time `json:"not_before,omitempty"`
+	CheckedAt    *time.Time `json:"checked_at,omitempty"`
+	CommonName   string     `json:"common_name,omitempty"`
+	Issuer       string     `json:"issuer,omitempty"`
+	DaysLeft     *int       `json:"days_left,omitempty"`
+	ExpiringSoon bool       `json:"expiring_soon"`
+	LastError    string     `json:"last_error,omitempty"`
 }
 
 type MonitorMaintenance struct {
-	ID          int64     `json:"id"`
-	Name        string    `json:"name"`
-	MonitorID   *int64    `json:"monitor_id,omitempty"`
-	Tags        []string  `json:"tags,omitempty"`
-	StartsAt    time.Time `json:"starts_at"`
-	EndsAt      time.Time `json:"ends_at"`
-	Timezone    string    `json:"timezone,omitempty"`
-	IsRecurring bool      `json:"is_recurring"`
-	RRuleText   string    `json:"rrule_text,omitempty"`
-	CreatedBy   int64     `json:"created_by"`
-	CreatedAt   time.Time `json:"created_at"`
-	UpdatedAt   time.Time `json:"updated_at"`
-	IsActive    bool      `json:"is_active"`
+	ID            int64               `json:"id"`
+	Name          string              `json:"name"`
+	DescriptionMD string              `json:"description_md,omitempty"`
+	MonitorID     *int64              `json:"monitor_id,omitempty"`
+	MonitorIDs    []int64             `json:"monitor_ids,omitempty"`
+	Tags          []string            `json:"tags,omitempty"`
+	StartsAt      time.Time           `json:"starts_at"`
+	EndsAt        time.Time           `json:"ends_at"`
+	Timezone      string              `json:"timezone,omitempty"`
+	Strategy      string              `json:"strategy"`
+	Schedule      MaintenanceSchedule `json:"schedule"`
+	IsRecurring   bool                `json:"is_recurring"`
+	RRuleText     string              `json:"rrule_text,omitempty"`
+	CreatedBy     int64               `json:"created_by"`
+	CreatedAt     time.Time           `json:"created_at"`
+	UpdatedAt     time.Time           `json:"updated_at"`
+	IsActive      bool                `json:"is_active"`
+	StoppedAt     *time.Time          `json:"stopped_at,omitempty"`
+	StoppedBy     *int64              `json:"stopped_by,omitempty"`
+}
+
+type MaintenanceSchedule struct {
+	CronExpression string     `json:"cron_expression,omitempty"`
+	DurationMin    int        `json:"duration_min,omitempty"`
+	IntervalDays   int        `json:"interval_days,omitempty"`
+	Weekdays       []int      `json:"weekdays,omitempty"`
+	MonthDays      []int      `json:"month_days,omitempty"`
+	UseLastDay     bool       `json:"use_last_day,omitempty"`
+	WindowStart    string     `json:"window_start,omitempty"`
+	WindowEnd      string     `json:"window_end,omitempty"`
+	ActiveFrom     *time.Time `json:"active_from,omitempty"`
+	ActiveUntil    *time.Time `json:"active_until,omitempty"`
+}
+
+type MaintenanceWindow struct {
+	Start time.Time `json:"start"`
+	End   time.Time `json:"end"`
 }
 
 type MonitorSettings struct {
-	ID                  int64     `json:"id"`
-	RetentionDays       int       `json:"retention_days"`
-	MaxConcurrentChecks int       `json:"max_concurrent_checks"`
-	DefaultTimeoutSec   int       `json:"default_timeout_sec"`
-	DefaultIntervalSec  int       `json:"default_interval_sec"`
-	EngineEnabled       bool      `json:"engine_enabled"`
-	AllowPrivateNetworks bool     `json:"allow_private_networks"`
-	TLSRefreshHours     int       `json:"tls_refresh_hours"`
-	TLSExpiringDays     int       `json:"tls_expiring_days"`
-	NotifySuppressMinutes int     `json:"notify_suppress_minutes"`
-	NotifyRepeatDownMinutes int   `json:"notify_repeat_down_minutes"`
-	NotifyMaintenance     bool    `json:"notify_maintenance"`
-	DefaultRetries        int     `json:"default_retries"`
-	DefaultRetryIntervalSec int   `json:"default_retry_interval_sec"`
-	DefaultSLATargetPct   float64 `json:"default_sla_target_pct"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	ID                      int64     `json:"id"`
+	RetentionDays           int       `json:"retention_days"`
+	MaxConcurrentChecks     int       `json:"max_concurrent_checks"`
+	DefaultTimeoutSec       int       `json:"default_timeout_sec"`
+	DefaultIntervalSec      int       `json:"default_interval_sec"`
+	EngineEnabled           bool      `json:"engine_enabled"`
+	AllowPrivateNetworks    bool      `json:"allow_private_networks"`
+	TLSRefreshHours         int       `json:"tls_refresh_hours"`
+	TLSExpiringDays         int       `json:"tls_expiring_days"`
+	NotifySuppressMinutes   int       `json:"notify_suppress_minutes"`
+	NotifyRepeatDownMinutes int       `json:"notify_repeat_down_minutes"`
+	NotifyMaintenance       bool      `json:"notify_maintenance"`
+	DefaultRetries          int       `json:"default_retries"`
+	DefaultRetryIntervalSec int       `json:"default_retry_interval_sec"`
+	DefaultSLATargetPct     float64   `json:"default_sla_target_pct"`
+	UpdatedAt               time.Time `json:"updated_at"`
 }
 
 type MonitorFilter struct {
@@ -185,19 +209,50 @@ type NotificationChannel struct {
 }
 
 type MonitorNotification struct {
-	ID                   int64 `json:"id"`
-	MonitorID            int64 `json:"monitor_id"`
+	ID                    int64 `json:"id"`
+	MonitorID             int64 `json:"monitor_id"`
 	NotificationChannelID int64 `json:"notification_channel_id"`
-	Enabled              bool  `json:"enabled"`
+	Enabled               bool  `json:"enabled"`
 }
 
 type MonitorNotificationState struct {
-	MonitorID             int64      `json:"monitor_id"`
-	LastNotifiedAt        *time.Time `json:"last_notified_at,omitempty"`
-	LastDownNotifiedAt    *time.Time `json:"last_down_notified_at,omitempty"`
-	LastUpNotifiedAt      *time.Time `json:"last_up_notified_at,omitempty"`
-	LastTLSNotifiedAt     *time.Time `json:"last_tls_notified_at,omitempty"`
+	MonitorID                 int64      `json:"monitor_id"`
+	LastNotifiedAt            *time.Time `json:"last_notified_at,omitempty"`
+	LastDownNotifiedAt        *time.Time `json:"last_down_notified_at,omitempty"`
+	LastUpNotifiedAt          *time.Time `json:"last_up_notified_at,omitempty"`
+	LastTLSNotifiedAt         *time.Time `json:"last_tls_notified_at,omitempty"`
 	LastMaintenanceNotifiedAt *time.Time `json:"last_maintenance_notified_at,omitempty"`
-	DownStartedAt         *time.Time `json:"down_started_at,omitempty"`
-	DownSequence          int        `json:"down_sequence"`
+	DownStartedAt             *time.Time `json:"down_started_at,omitempty"`
+	DownSequence              int        `json:"down_sequence"`
+}
+
+type MonitorSLAPolicy struct {
+	MonitorID           int64     `json:"monitor_id"`
+	IncidentOnViolation bool      `json:"incident_on_violation"`
+	IncidentPeriod      string    `json:"incident_period"`
+	MinCoveragePct      float64   `json:"min_coverage_pct"`
+	UpdatedAt           time.Time `json:"updated_at"`
+}
+
+type MonitorSLAPeriodResult struct {
+	ID              int64     `json:"id"`
+	MonitorID       int64     `json:"monitor_id"`
+	PeriodType      string    `json:"period_type"`
+	PeriodStart     time.Time `json:"period_start"`
+	PeriodEnd       time.Time `json:"period_end"`
+	UptimePct       float64   `json:"uptime_pct"`
+	CoveragePct     float64   `json:"coverage_pct"`
+	TargetPct       float64   `json:"target_pct"`
+	Status          string    `json:"status"`
+	IncidentCreated bool      `json:"incident_created"`
+	CreatedAt       time.Time `json:"created_at"`
+	UpdatedAt       time.Time `json:"updated_at"`
+}
+
+type MonitorSLAPeriodResultListFilter struct {
+	Limit        int
+	MonitorID    *int64
+	PeriodType   string
+	Status       string
+	OnlyViolates bool
 }

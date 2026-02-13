@@ -13,10 +13,15 @@
     if (method !== 'GET') {
       opts.headers['X-CSRF-Token'] = csrf();
     }
-    const res = await fetch(url, opts);
+    let res;
+    try {
+      res = await fetch(url, opts);
+    } catch (err) {
+      throw new Error((err && err.message ? String(err.message) : 'common.networkError').trim());
+    }
     if (!res.ok) {
       const text = await res.text();
-      throw new Error(text || res.statusText);
+      throw new Error((text || res.statusText || '').trim());
     }
     const ct = res.headers.get('content-type') || '';
     if (ct.includes('application/json')) return res.json();
@@ -30,10 +35,15 @@
     del: (url, body) => request('DELETE', url, body),
     upload: async (url, formData) => {
       const opts = { method: 'POST', body: formData, credentials: 'include', headers: { 'X-CSRF-Token': csrf() } };
-      const res = await fetch(url, opts);
+      let res;
+      try {
+        res = await fetch(url, opts);
+      } catch (err) {
+        throw new Error((err && err.message ? String(err.message) : 'common.networkError').trim());
+      }
       if (!res.ok) {
         const text = await res.text();
-        throw new Error(text || res.statusText);
+        throw new Error((text || res.statusText || '').trim());
       }
       const ct = res.headers.get('content-type') || '';
       if (ct.includes('application/json')) return res.json();

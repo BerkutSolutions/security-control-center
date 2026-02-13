@@ -276,5 +276,6 @@
   if (typeof MonitoringPage !== 'undefined') {
     MonitoringPage.bindCerts = bindCerts;
     MonitoringPage.refreshCertsNotifyList = renderNotifyList;
+    MonitoringPage.refreshCerts = loadCerts;
   }
 })();

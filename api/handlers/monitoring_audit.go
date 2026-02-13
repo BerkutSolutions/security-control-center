@@ -17,6 +17,7 @@ const (
 	monitorAuditMonitorMetricsDelete = "monitoring.monitor.metrics.delete"
 
 	monitorAuditSLAUpdate             = "monitoring.sla.update"
+	monitorAuditSLAPolicyUpdate       = "monitoring.sla.policy.update"
 	monitorAuditSettingsUpdate        = "monitoring.settings.update"
 	monitorAuditCertsSettingsUpdate   = "monitoring.certs.settings.update"
 	monitorAuditCertsNotifyTest       = "monitoring.certs.notify_test"
@@ -24,6 +25,7 @@ const (
 
 	monitorAuditMaintenanceCreate = "monitoring.maintenance.create"
 	monitorAuditMaintenanceUpdate = "monitoring.maintenance.update"
+	monitorAuditMaintenanceStop   = "monitoring.maintenance.stop"
 	monitorAuditMaintenanceDelete = "monitoring.maintenance.delete"
 
 	monitorAuditNotifChannelCreate   = "monitoring.notification.channel.create"

@@ -10,6 +10,7 @@ Base path: `/api`
 - Incidents: `/api/incidents/*`
 - Tasks: `/api/tasks/*`
 - Monitoring: `/api/monitoring/*`
+- Backups: `/api/backups/*`
 - Logs: `/api/logs`
 - HTTPS settings: `GET/PUT /api/settings/https`
 
@@ -17,12 +18,80 @@ Base path: `/api`
 - Все state-changing запросы требуют CSRF.
 - Сервер всегда выполняет permission-check.
 
-## Мониторинг: детали
+## Бэкапы (v1.0.3)
+Основные endpoint:
+- `GET /api/backups`
+- `GET /api/backups/{id}`
+- `POST /api/backups`
+- `POST /api/backups/import`
+- `GET /api/backups/{id}/download`
+- `DELETE /api/backups/{id}`
+- `POST /api/backups/{id}/restore`
+- `POST /api/backups/{id}/restore/dry-run`
+- `GET /api/backups/restores/{restore_id}`
+- `GET /api/backups/plan`
+- `PUT /api/backups/plan`
+- `POST /api/backups/plan/enable`
+- `POST /api/backups/plan/disable`
+
+Права:
+- `backups.read`, `backups.create`, `backups.import`, `backups.download`, `backups.delete`, `backups.restore`, `backups.plan.update`.
+
+## Мониторинг (v1.0.3)
 - Типы мониторов, поддерживаемые backend:
   - `http`, `tcp`, `ping`, `http_keyword`, `http_json`, `grpc_keyword`, `dns`, `docker`, `push`, `steam`, `gamedig`, `mqtt`, `kafka_producer`, `mssql`, `postgres`, `mysql`, `mongodb`, `radius`, `redis`, `tailscale_ping`.
-- Ручная проверка:
-  - `POST /api/monitoring/monitors/{id}/check-now`
-  - При конкурентной проверке возвращается `monitoring.error.busy`.
 - Пассивный push ingestion:
   - `POST /api/monitoring/monitors/{id}/push`
   - Пример payload: `{ "ok": true, "latency_ms": 42, "status_code": 200, "error": "" }`
+
+Основные endpoint:
+- Мониторы:
+  - `GET /api/monitoring/monitors`
+  - `POST /api/monitoring/monitors`
+  - `GET /api/monitoring/monitors/{id}`
+  - `PUT /api/monitoring/monitors/{id}`
+  - `DELETE /api/monitoring/monitors/{id}`
+  - `POST /api/monitoring/monitors/{id}/pause`
+  - `POST /api/monitoring/monitors/{id}/resume`
+  - `POST /api/monitoring/monitors/{id}/clone`
+  - `POST /api/monitoring/monitors/{id}/push`
+- Состояние/метрики/события:
+  - `GET /api/monitoring/monitors/{id}/state`
+  - `GET /api/monitoring/monitors/{id}/metrics`
+  - `DELETE /api/monitoring/monitors/{id}/metrics`
+  - `GET /api/monitoring/monitors/{id}/events`
+  - `DELETE /api/monitoring/monitors/{id}/events`
+  - `GET /api/monitoring/events`
+- SLA:
+  - `GET /api/monitoring/sla/overview`
+  - `GET /api/monitoring/sla/history`
+  - `PUT /api/monitoring/monitors/{id}/sla-policy`
+- TLS/сертификаты:
+  - `GET /api/monitoring/monitors/{id}/tls`
+  - `GET /api/monitoring/certs`
+  - `POST /api/monitoring/certs/test-notification`
+- Maintenance:
+  - `GET /api/monitoring/maintenance`
+  - `POST /api/monitoring/maintenance`
+  - `PUT /api/monitoring/maintenance/{id}`
+  - `POST /api/monitoring/maintenance/{id}/stop`
+  - `DELETE /api/monitoring/maintenance/{id}`
+- Настройки:
+  - `GET /api/monitoring/settings`
+  - `PUT /api/monitoring/settings`
+- Каналы уведомлений:
+  - `GET /api/monitoring/notifications`
+  - `POST /api/monitoring/notifications`
+  - `PUT /api/monitoring/notifications/{id}`
+  - `DELETE /api/monitoring/notifications/{id}`
+  - `POST /api/monitoring/notifications/{id}/test`
+  - `GET /api/monitoring/monitors/{id}/notifications`
+  - `PUT /api/monitoring/monitors/{id}/notifications`
+
+SLA-особенности:
+- Закрытые периоды (`day/week/month`) рассчитываются фоновым evaluator (scheduler), а не кнопкой UI.
+- Статус периода:
+  - `ok` — цель SLA выполнена;
+  - `violated` — цель SLA нарушена;
+  - `unknown` — недостаточно покрытия измерениями.
+- SLA-инцидент создается только при закрытии выбранного периода и только при включенной policy.

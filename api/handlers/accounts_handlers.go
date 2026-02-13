@@ -522,7 +522,7 @@ func sanitizeRoles(in []string, fallback string) []string {
 
 var allowedMenuKeys = map[string]struct{}{
 	"dashboard": {}, "tasks": {}, "controls": {}, "monitoring": {}, "incidents": {}, "docs": {},
-	"reports": {}, "accounts": {}, "settings": {}, "logs": {},
+	"reports": {}, "backups": {}, "accounts": {}, "settings": {}, "logs": {},
 }
 
 var menuKeyAliases = map[string]string{

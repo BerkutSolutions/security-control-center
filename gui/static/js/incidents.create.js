@@ -73,6 +73,7 @@
   function buildCreateFormHtml() {
     const now = new Date();
     const pad = (num) => `${num}`.padStart(2, '0');
+    const inputLang = (typeof BerkutI18n !== 'undefined' && BerkutI18n.currentLang && BerkutI18n.currentLang() === 'en') ? 'en' : 'ru';
     const dateValue = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
     const timeValue = (typeof AppTime !== 'undefined' && AppTime.formatTime)
       ? AppTime.formatTime(now)
@@ -127,8 +128,8 @@
                   <div class="form-field">
                     <label>${t('incidents.form.slaDeadline')}</label>
                     <div class="datetime-field inline">
-                      <input type="date" id="incident-form-deadline-date" class="input date-input" lang="ru" value="${dateValue}" data-default-value="${dateValue}">
-                      <input type="text" id="incident-form-deadline-time" class="input time-input" value="${timeValue}" data-default-value="${timeValue}" placeholder="${t('common.timePlaceholder')}">
+                      <input type="date" id="incident-form-deadline-date" class="input date-input" lang="${inputLang}" value="${dateValue}" data-default-value="${dateValue}">
+                      <input type="time" id="incident-form-deadline-time" class="input time-input" value="${timeValue}" data-default-value="${timeValue}" step="60">
                     </div>
                   </div>
                   <div class="form-field">
@@ -171,7 +172,7 @@
                   </div>
                   <div class="form-field">
                     <label>${t('incidents.form.detectedAt')}</label>
-                    <input id="incident-form-detected" placeholder="${t('incidents.form.detectedPlaceholder')}">
+                    <input type="datetime-local" id="incident-form-detected" class="input">
                   </div>
                   <div class="form-field">
                     <label>${t('incidents.form.affected')}</label>
@@ -207,7 +208,7 @@
     const panel = document.querySelector(`#incidents-panels [data-tab="${tabId}"]`);
     if (!tab || !panel) return;
     panel.querySelectorAll('.time-input').forEach(input => {
-      input.inputMode = 'numeric';
+      if (input.type !== 'time') input.inputMode = 'numeric';
     });
     if (IncidentsPage.bindCreateAttachments) IncidentsPage.bindCreateAttachments(tabId);
     const saveBtn = panel.querySelector('#incident-form-save');
@@ -329,7 +330,9 @@
               : '',
             assets: assetsInput?.value || '',
             what_happened: whatInput?.value || '',
-            detected_at: detectedInput?.value || '',
+            detected_at: (IncidentsPage.toISODateTime
+              ? IncidentsPage.toISODateTime(detectedInput?.value || '')
+              : (detectedInput?.value || '')),
             affected_systems: affectedInput?.value || '',
             risk: riskInput?.value || '',
           actions_taken: actionsInput?.value || '',

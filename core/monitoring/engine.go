@@ -31,6 +31,7 @@ type Engine struct {
 	settings          store.MonitorSettings
 	lastCleanupAt     time.Time
 	lastMaintenanceAt time.Time
+	lastSLAAt         time.Time
 }
 
 func NewEngine(store store.MonitoringStore, logger *utils.Logger) *Engine {
@@ -109,7 +110,7 @@ func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 	if m.IsPaused {
 		return errors.New("monitoring.error.paused")
 	}
-	settings := e.currentSettings(ctx)
+	settings := e.currentSettingsFresh(ctx)
 	if !settings.EngineEnabled {
 		return errors.New("monitoring.error.engineDisabled")
 	}
@@ -117,7 +118,35 @@ func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 		return errors.New("monitoring.error.busy")
 	}
 	defer e.releaseSlot(m.ID)
-	return e.runCheck(ctx, *m, settings)
+	checkTimeout := e.manualCheckTimeout(*m, settings)
+	checkCtx, cancel := context.WithTimeout(ctx, checkTimeout)
+	defer cancel()
+	manual := *m
+	// Manual check should be responsive for UI: single attempt with hard deadline.
+	manual.Retries = 0
+	manual.RetryIntervalSec = 0
+	return e.runCheck(checkCtx, manual, settings)
+}
+
+func (e *Engine) InvalidateSettings() {
+	e.mu.Lock()
+	e.lastSettingsAt = time.Time{}
+	e.mu.Unlock()
+}
+
+func (e *Engine) manualCheckTimeout(m store.Monitor, settings store.MonitorSettings) time.Duration {
+	timeoutSec := m.TimeoutSec
+	if timeoutSec <= 0 {
+		timeoutSec = settings.DefaultTimeoutSec
+	}
+	if timeoutSec <= 0 {
+		timeoutSec = 20
+	}
+	if timeoutSec > 20 {
+		timeoutSec = 20
+	}
+	// Small grace for network close/write and DB update.
+	return time.Duration(timeoutSec+2) * time.Second
 }
 
 func (e *Engine) loop(ctx context.Context) {
@@ -135,6 +164,7 @@ func (e *Engine) loop(ctx context.Context) {
 			e.runDueChecks(ctx, settings)
 			e.runMaintenance(ctx, settings)
 			e.runRetention(ctx, settings)
+			e.runSLAEvaluator(ctx, settings)
 		case <-ctx.Done():
 			return
 		}
@@ -156,6 +186,21 @@ func (e *Engine) currentSettings(ctx context.Context) store.MonitorSettings {
 	e.mu.Lock()
 	defer e.mu.Unlock()
 	return e.settings
+}
+
+func (e *Engine) currentSettingsFresh(ctx context.Context) store.MonitorSettings {
+	if e.store == nil {
+		return e.currentSettings(ctx)
+	}
+	settings, err := e.store.GetSettings(ctx)
+	if err == nil && settings != nil {
+		e.mu.Lock()
+		e.settings = *settings
+		e.lastSettingsAt = time.Now().UTC()
+		e.mu.Unlock()
+		return *settings
+	}
+	return e.currentSettings(ctx)
 }
 
 func (e *Engine) ensureSemaphore(max int) {

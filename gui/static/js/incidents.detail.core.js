@@ -259,7 +259,7 @@
               </div>
               <div class="meta-field">
                 <label>${t('incidents.form.detectedAt')}</label>
-                <div class="meta-value">${formatMetaValue(meta.detected_at)}</div>
+                <div class="meta-value">${formatMetaValue(meta.detected_at, { type: 'datetime' })}</div>
               </div>
               <div class="meta-field">
                 <label>${t('incidents.form.affected')}</label>

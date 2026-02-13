@@ -62,23 +62,28 @@ func checkPingLike(ctx context.Context, m store.Monitor, settings store.MonitorS
 	if strings.Contains(host, "/") && !strings.Contains(host, ":") {
 		host = strings.SplitN(host, "/", 2)[0]
 	}
+	if parsedHost, parsedPort := splitHostPort(host); parsedHost != "" {
+		host = parsedHost
+		if m.Port <= 0 && parsedPort > 0 {
+			m.Port = parsedPort
+		}
+	}
 	if host == "" {
 		return CheckResult{}, errors.New("empty host")
 	}
 	if err := guardTarget(ctx, host, settings.AllowPrivateNetworks); err != nil {
 		return CheckResult{}, err
 	}
-	if ip := net.ParseIP(host); ip != nil {
-		return CheckResult{OK: true}, nil
-	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil {
-		return CheckResult{}, err
-	}
-	if len(addrs) == 0 {
-		return CheckResult{}, errors.New("no host records")
-	}
 	port := m.Port
+	if ip := net.ParseIP(host); ip == nil {
+		addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
+		if err != nil {
+			return CheckResult{}, err
+		}
+		if len(addrs) == 0 {
+			return CheckResult{}, errors.New("no host records")
+		}
+	}
 	if port > 0 {
 		addr := net.JoinHostPort(host, strconv.Itoa(port))
 		dialer := &net.Dialer{Timeout: timeout}
@@ -89,6 +94,39 @@ func checkPingLike(ctx context.Context, m store.Monitor, settings store.MonitorS
 		_ = conn.Close()
 	}
 	return CheckResult{OK: true}, nil
+}
+
+func splitHostPort(raw string) (string, int) {
+	val := strings.TrimSpace(raw)
+	if val == "" {
+		return "", 0
+	}
+	if strings.HasPrefix(val, "[") {
+		if host, port, err := net.SplitHostPort(val); err == nil {
+			if n, convErr := strconv.Atoi(port); convErr == nil && n > 0 {
+				return strings.TrimSpace(host), n
+			}
+			return strings.TrimSpace(host), 0
+		}
+		return strings.Trim(val, "[]"), 0
+	}
+	if strings.Count(val, ":") == 1 {
+		if host, port, err := net.SplitHostPort(val); err == nil {
+			if n, convErr := strconv.Atoi(port); convErr == nil && n > 0 {
+				return strings.TrimSpace(host), n
+			}
+			return strings.TrimSpace(host), 0
+		}
+		parts := strings.SplitN(val, ":", 2)
+		host := strings.TrimSpace(parts[0])
+		if host == "" {
+			return "", 0
+		}
+		if n, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil && n > 0 {
+			return host, n
+		}
+	}
+	return val, 0
 }
 
 func checkGRPCKeyword(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {

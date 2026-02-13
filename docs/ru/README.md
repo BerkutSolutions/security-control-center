@@ -1,4 +1,6 @@
-﻿# Berkut SCC — Документация (RU)
+﻿# Berkut SCC - Документация (RU)
+
+Актуальная версия документации: `1.0.3`
 
 ## Разделы
 1. Архитектура: `docs/ru/architecture.md`
@@ -9,6 +11,7 @@
 6. Wiki по вкладкам: `docs/ru/wiki/tabs.md`
 7. Wiki по функционалу: `docs/ru/wiki/features.md`
 8. Актуальный план развития: `docs/ru/roadmap.md`
+9. Бэкапы (.bscc): `docs/ru/backups.md`
 
 ## Контекст
 Документация синхронизирована с текущей моделью:
@@ -16,3 +19,5 @@
 - goose миграции
 - cleanenv-конфигурация
 - zero-trust проверки доступа на сервере
+- модуль бэкапов `.bscc` (create/import/download/restore/plan/scheduler/retention)
+- SLA-модуль мониторинга (вкладка SLA, закрытые периоды, background evaluator, policy инцидентов)

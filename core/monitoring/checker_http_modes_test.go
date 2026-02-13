@@ -132,3 +132,25 @@ func TestCheckMonitorPingByHost(t *testing.T) {
 		t.Fatalf("expected ping-like check ok, got error=%s", res.Error)
 	}
 }
+
+func TestCheckMonitorPingWithHostPort(t *testing.T) {
+	res := CheckMonitor(context.Background(), store.Monitor{
+		Type:       TypePing,
+		Host:       "127.0.0.1:80",
+		TimeoutSec: 2,
+	}, store.MonitorSettings{AllowPrivateNetworks: true, DefaultTimeoutSec: 2})
+	if res.OK && res.Error != "" {
+		t.Fatalf("expected clean result, got error=%s", res.Error)
+	}
+}
+
+func TestCheckMonitorPingWithHostPortConnectionRefused(t *testing.T) {
+	res := CheckMonitor(context.Background(), store.Monitor{
+		Type:       TypePing,
+		Host:       "127.0.0.1:1",
+		TimeoutSec: 2,
+	}, store.MonitorSettings{AllowPrivateNetworks: true, DefaultTimeoutSec: 2})
+	if res.OK {
+		t.Fatalf("expected failed ping-like check for closed port")
+	}
+}

@@ -11,6 +11,7 @@ import (
 	"berkut-scc/config"
 	"berkut-scc/core/appmeta"
 	"berkut-scc/core/auth"
+	"berkut-scc/core/backups"
 	"berkut-scc/core/docs"
 	"berkut-scc/core/incidents"
 	"berkut-scc/core/monitoring"
@@ -42,6 +43,7 @@ type Server struct {
 	tasksStore       tasks.Store
 	tasksSvc         *tasks.Service
 	dashboardStore   store.DashboardStore
+	backupsSvc       *backups.Service
 	controlsStore    store.ControlsStore
 	entityLinksStore store.EntityLinksStore
 	monitoringStore  store.MonitoringStore
@@ -80,6 +82,7 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 		tasksStore:       deps.TasksStore,
 		tasksSvc:         deps.TasksSvc,
 		dashboardStore:   deps.DashboardStore,
+		backupsSvc:       deps.BackupsSvc,
 		activityTracker:  newSessionActivity(),
 	}
 	if err := s.bootstrapRoles(context.Background()); err != nil && logger != nil {

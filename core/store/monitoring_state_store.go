@@ -164,6 +164,26 @@ func (s *monitoringStore) MetricsSummary(ctx context.Context, monitorID int64, s
 	return okVal, totalVal, avgVal, nil
 }
 
+func (s *monitoringStore) MetricsSummaryBetween(ctx context.Context, monitorID int64, since, until time.Time) (int, int, error) {
+	row := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*), SUM(CASE WHEN ok=1 THEN 1 ELSE 0 END)
+		FROM monitor_metrics
+		WHERE monitor_id=? AND ts>=? AND ts<?`, monitorID, since, until)
+	var total, okCount sql.NullInt64
+	if err := row.Scan(&total, &okCount); err != nil {
+		return 0, 0, err
+	}
+	totalVal := 0
+	okVal := 0
+	if total.Valid {
+		totalVal = int(total.Int64)
+	}
+	if okCount.Valid {
+		okVal = int(okCount.Int64)
+	}
+	return okVal, totalVal, nil
+}
+
 func (s *monitoringStore) DeleteMetricsBefore(ctx context.Context, before time.Time) (int64, error) {
 	res, err := s.db.ExecContext(ctx, `DELETE FROM monitor_metrics WHERE ts < ?`, before)
 	if err != nil {

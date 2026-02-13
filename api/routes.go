@@ -8,6 +8,7 @@ import (
 )
 
 func (s *Server) registerRoutes() {
+	s.router.Use(s.recoverMiddleware)
 	s.router.Use(s.loggingMiddleware)
 	s.router.Use(s.securityHeadersMiddleware)
 
@@ -21,6 +22,7 @@ func (s *Server) registerRoutes() {
 
 	apiRouter := chi.NewRouter()
 	apiRouter.Use(s.jsonMiddleware)
+	apiRouter.Use(s.maintenanceModeMiddleware)
 
 	s.registerCoreAPIRoutes(apiRouter, h)
 	s.registerAccountsRoutes(apiRouter, h)
@@ -29,6 +31,7 @@ func (s *Server) registerRoutes() {
 	s.registerIncidentsRoutes(apiRouter, h)
 	s.registerControlsRoutes(apiRouter, h)
 	s.registerMonitoringRoutes(apiRouter, h)
+	s.registerBackupsRoutes(apiRouter)
 	s.registerTasksRoutes(apiRouter)
 	s.registerTemplatesAndApprovalsRoutes(apiRouter, h)
 	s.registerLogsAndSettingsRoutes(apiRouter, h)

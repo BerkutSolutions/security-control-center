@@ -19,6 +19,7 @@ type AppConfig struct {
 	Docs           DocsConfig      `yaml:"docs"`
 	Security       SecurityConfig  `yaml:"security"`
 	Incidents      IncidentsConfig `yaml:"incidents"`
+	Backups        BackupsConfig   `yaml:"backups"`
 }
 
 func (c *AppConfig) IsHomeMode() bool {
@@ -75,4 +76,12 @@ type SchedulerConfig struct {
 	Enabled         bool `yaml:"enabled" env:"BERKUT_SCHEDULER_ENABLED" env-default:"true"`
 	IntervalSeconds int  `yaml:"interval_seconds" env:"BERKUT_SCHEDULER_INTERVAL_SECONDS" env-default:"60"`
 	MaxJobsPerTick  int  `yaml:"max_jobs_per_tick" env:"BERKUT_SCHEDULER_MAX_JOBS_PER_TICK" env-default:"20"`
+}
+
+type BackupsConfig struct {
+	Path           string `yaml:"path" env:"BERKUT_BACKUP_PATH" env-default:"data/backups"`
+	EncryptionKey  string `yaml:"encryption_key" env:"BERKUT_BACKUP_ENCRYPTION_KEY"`
+	MaxParallel    int    `yaml:"max_parallel" env:"BERKUT_BACKUP_MAX_PARALLEL" env-default:"1"`
+	PGDumpBin      string `yaml:"pgdump_bin" env:"BERKUT_BACKUP_PGDUMP_BIN" env-default:"pg_dump"`
+	UploadMaxBytes int64  `yaml:"upload_max_bytes" env:"BERKUT_BACKUP_UPLOAD_MAX_BYTES" env-default:"536870912"`
 }

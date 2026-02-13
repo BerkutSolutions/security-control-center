@@ -638,17 +638,23 @@ var migrations = []string{
 	`CREATE TABLE IF NOT EXISTS monitor_maintenance (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
+		description_md TEXT NOT NULL DEFAULT '',
 		monitor_id INTEGER,
+		monitor_ids_json TEXT NOT NULL DEFAULT '[]',
 		tags_json TEXT,
 		starts_at TIMESTAMP NOT NULL,
 		ends_at TIMESTAMP NOT NULL,
 		timezone TEXT NOT NULL DEFAULT '',
+		strategy TEXT NOT NULL DEFAULT 'single',
+		strategy_json TEXT NOT NULL DEFAULT '{}',
 		is_recurring INTEGER NOT NULL DEFAULT 0,
 		rrule_text TEXT,
 		created_by INTEGER,
 		created_at TIMESTAMP NOT NULL,
 		updated_at TIMESTAMP NOT NULL,
 		is_active INTEGER NOT NULL DEFAULT 1,
+		stopped_at TIMESTAMP,
+		stopped_by INTEGER,
 		FOREIGN KEY(monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 	);`,
 	`CREATE TABLE IF NOT EXISTS monitoring_settings (
@@ -658,7 +664,7 @@ var migrations = []string{
 		default_timeout_sec INTEGER NOT NULL DEFAULT 5,
 		default_interval_sec INTEGER NOT NULL DEFAULT 60,
 		engine_enabled INTEGER NOT NULL DEFAULT 1,
-		allow_private_networks INTEGER NOT NULL DEFAULT 0,
+		allow_private_networks INTEGER NOT NULL DEFAULT 1,
 		tls_refresh_hours INTEGER NOT NULL DEFAULT 24,
 		tls_expiring_days INTEGER NOT NULL DEFAULT 30,
 		notify_suppress_minutes INTEGER NOT NULL DEFAULT 5,
@@ -1076,20 +1082,46 @@ func ensureMonitoringColumns(ctx context.Context, db *sql.DB) error {
 	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS monitor_maintenance (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		name TEXT NOT NULL,
+		description_md TEXT NOT NULL DEFAULT '',
 		monitor_id INTEGER,
+		monitor_ids_json TEXT NOT NULL DEFAULT '[]',
 		tags_json TEXT,
 		starts_at TIMESTAMP NOT NULL,
 		ends_at TIMESTAMP NOT NULL,
 		timezone TEXT NOT NULL DEFAULT '',
+		strategy TEXT NOT NULL DEFAULT 'single',
+		strategy_json TEXT NOT NULL DEFAULT '{}',
 		is_recurring INTEGER NOT NULL DEFAULT 0,
 		rrule_text TEXT,
 		created_by INTEGER,
 		created_at TIMESTAMP NOT NULL,
 		updated_at TIMESTAMP NOT NULL,
 		is_active INTEGER NOT NULL DEFAULT 1,
+		stopped_at TIMESTAMP,
+		stopped_by INTEGER,
 		FOREIGN KEY(monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 	);`); err != nil {
 		return err
+	}
+	maintenanceCols := []col{
+		{Table: "monitor_maintenance", Name: "description_md", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN description_md TEXT NOT NULL DEFAULT ''"},
+		{Table: "monitor_maintenance", Name: "monitor_ids_json", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN monitor_ids_json TEXT NOT NULL DEFAULT '[]'"},
+		{Table: "monitor_maintenance", Name: "strategy", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN strategy TEXT NOT NULL DEFAULT 'single'"},
+		{Table: "monitor_maintenance", Name: "strategy_json", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN strategy_json TEXT NOT NULL DEFAULT '{}'"},
+		{Table: "monitor_maintenance", Name: "stopped_at", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN stopped_at TIMESTAMP"},
+		{Table: "monitor_maintenance", Name: "stopped_by", SQL: "ALTER TABLE monitor_maintenance ADD COLUMN stopped_by INTEGER"},
+	}
+	for _, c := range maintenanceCols {
+		exists, err := columnExists(ctx, db, c.Table, c.Name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, c.SQL); err != nil {
+			return fmt.Errorf("add column %s.%s: %w", c.Table, c.Name, err)
+		}
 	}
 	if _, err := db.ExecContext(ctx, `CREATE TABLE IF NOT EXISTS notification_channels (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,

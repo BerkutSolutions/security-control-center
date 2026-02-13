@@ -9,18 +9,36 @@ import (
 	"time"
 
 	"berkut-scc/core/store"
+	"github.com/robfig/cron/v3"
 )
 
+type maintenanceSchedulePayload struct {
+	CronExpression string    `json:"cron_expression"`
+	DurationMin    int       `json:"duration_min"`
+	IntervalDays   int       `json:"interval_days"`
+	Weekdays       []int     `json:"weekdays"`
+	MonthDays      []int     `json:"month_days"`
+	UseLastDay     bool      `json:"use_last_day"`
+	WindowStart    string    `json:"window_start"`
+	WindowEnd      string    `json:"window_end"`
+	ActiveFrom     time.Time `json:"active_from"`
+	ActiveUntil    time.Time `json:"active_until"`
+}
+
 type maintenancePayload struct {
-	Name        string    `json:"name"`
-	MonitorID   *int64    `json:"monitor_id"`
-	Tags        []string  `json:"tags"`
-	StartsAt    time.Time `json:"starts_at"`
-	EndsAt      time.Time `json:"ends_at"`
-	Timezone    string    `json:"timezone"`
-	IsRecurring *bool     `json:"is_recurring"`
-	RRuleText   string    `json:"rrule_text"`
-	IsActive    *bool     `json:"is_active"`
+	Name          string                     `json:"name"`
+	DescriptionMD string                     `json:"description_md"`
+	MonitorID     *int64                     `json:"monitor_id"`
+	MonitorIDs    []int64                    `json:"monitor_ids"`
+	Tags          []string                   `json:"tags"`
+	StartsAt      time.Time                  `json:"starts_at"`
+	EndsAt        time.Time                  `json:"ends_at"`
+	Timezone      string                     `json:"timezone"`
+	Strategy      string                     `json:"strategy"`
+	Schedule      maintenanceSchedulePayload `json:"schedule"`
+	IsRecurring   *bool                      `json:"is_recurring"`
+	RRuleText     string                     `json:"rrule_text"`
+	IsActive      *bool                      `json:"is_active"`
 }
 
 func (h *MonitoringHandler) ListMaintenance(w http.ResponseWriter, r *http.Request) {
@@ -51,6 +69,10 @@ func (h *MonitoringHandler) CreateMaintenance(w http.ResponseWriter, r *http.Req
 	}
 	item, err := payloadToMaintenance(payload, sessionUserID(r))
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := h.ensureMaintenanceMonitorIDs(r, item.MonitorIDs); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -89,12 +111,30 @@ func (h *MonitoringHandler) UpdateMaintenance(w http.ResponseWriter, r *http.Req
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	if err := h.ensureMaintenanceMonitorIDs(r, item.MonitorIDs); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 	if err := h.store.UpdateMaintenance(r.Context(), item); err != nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
 	h.audit(r, monitorAuditMaintenanceUpdate, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, item)
+}
+
+func (h *MonitoringHandler) StopMaintenance(w http.ResponseWriter, r *http.Request) {
+	id, err := parseID(pathParams(r)["id"])
+	if err != nil {
+		http.Error(w, errBadRequest, http.StatusBadRequest)
+		return
+	}
+	if err := h.store.StopMaintenance(r.Context(), id, sessionUserID(r)); err != nil {
+		http.Error(w, errServerError, http.StatusInternalServerError)
+		return
+	}
+	h.audit(r, monitorAuditMaintenanceStop, strconv.FormatInt(id, 10))
+	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
 func (h *MonitoringHandler) DeleteMaintenance(w http.ResponseWriter, r *http.Request) {
@@ -113,14 +153,18 @@ func (h *MonitoringHandler) DeleteMaintenance(w http.ResponseWriter, r *http.Req
 
 func payloadToMaintenance(payload maintenancePayload, createdBy int64) (*store.MonitorMaintenance, error) {
 	item := &store.MonitorMaintenance{
-		Name:      strings.TrimSpace(payload.Name),
-		MonitorID: payload.MonitorID,
-		Tags:      payload.Tags,
-		StartsAt:  payload.StartsAt.UTC(),
-		EndsAt:    payload.EndsAt.UTC(),
-		Timezone:  strings.TrimSpace(payload.Timezone),
-		RRuleText: strings.TrimSpace(payload.RRuleText),
-		CreatedBy: createdBy,
+		Name:          strings.TrimSpace(payload.Name),
+		DescriptionMD: strings.TrimSpace(payload.DescriptionMD),
+		MonitorID:     payload.MonitorID,
+		MonitorIDs:    payload.MonitorIDs,
+		Tags:          payload.Tags,
+		StartsAt:      payload.StartsAt.UTC(),
+		EndsAt:        payload.EndsAt.UTC(),
+		Timezone:      strings.TrimSpace(payload.Timezone),
+		Strategy:      strings.ToLower(strings.TrimSpace(payload.Strategy)),
+		Schedule:      payloadToMaintenanceSchedule(payload.Schedule),
+		RRuleText:     strings.TrimSpace(payload.RRuleText),
+		CreatedBy:     createdBy,
 	}
 	if payload.IsRecurring != nil {
 		item.IsRecurring = *payload.IsRecurring
@@ -129,6 +173,9 @@ func payloadToMaintenance(payload maintenancePayload, createdBy int64) (*store.M
 		item.IsActive = *payload.IsActive
 	} else {
 		item.IsActive = true
+	}
+	if item.Strategy == "" {
+		item.Strategy = defaultMaintenanceStrategy(item)
 	}
 	if err := validateMaintenance(item); err != nil {
 		return nil, err
@@ -141,8 +188,14 @@ func mergeMaintenance(existing *store.MonitorMaintenance, payload maintenancePay
 	if payload.Name != "" {
 		item.Name = strings.TrimSpace(payload.Name)
 	}
+	if payload.DescriptionMD != "" || (payload.DescriptionMD == "" && strings.TrimSpace(payload.Name) != "") {
+		item.DescriptionMD = strings.TrimSpace(payload.DescriptionMD)
+	}
 	if payload.MonitorID != nil {
 		item.MonitorID = payload.MonitorID
+	}
+	if payload.MonitorIDs != nil {
+		item.MonitorIDs = payload.MonitorIDs
 	}
 	if payload.Tags != nil {
 		item.Tags = payload.Tags
@@ -156,6 +209,12 @@ func mergeMaintenance(existing *store.MonitorMaintenance, payload maintenancePay
 	if payload.Timezone != "" {
 		item.Timezone = strings.TrimSpace(payload.Timezone)
 	}
+	if payload.Strategy != "" {
+		item.Strategy = strings.ToLower(strings.TrimSpace(payload.Strategy))
+	}
+	if scheduleChanged(payload.Schedule) {
+		item.Schedule = payloadToMaintenanceSchedule(payload.Schedule)
+	}
 	if payload.IsRecurring != nil {
 		item.IsRecurring = *payload.IsRecurring
 	}
@@ -164,6 +223,9 @@ func mergeMaintenance(existing *store.MonitorMaintenance, payload maintenancePay
 	}
 	if payload.IsActive != nil {
 		item.IsActive = *payload.IsActive
+	}
+	if item.Strategy == "" {
+		item.Strategy = defaultMaintenanceStrategy(&item)
 	}
 	if err := validateMaintenance(&item); err != nil {
 		return nil, err
@@ -178,56 +240,111 @@ func validateMaintenance(item *store.MonitorMaintenance) error {
 	if item.Name == "" {
 		return errors.New("monitoring.error.nameRequired")
 	}
-	if item.StartsAt.IsZero() || item.EndsAt.IsZero() || !item.EndsAt.After(item.StartsAt) {
-		return errors.New("monitoring.error.invalidWindow")
+	if strings.TrimSpace(item.Timezone) == "" {
+		item.Timezone = "UTC"
 	}
-	if item.IsRecurring {
-		if item.RRuleText == "" {
-			return errors.New("monitoring.error.invalidRRule")
+	if _, err := time.LoadLocation(item.Timezone); err != nil {
+		return errors.New("monitoring.maintenance.error.invalidTimezone")
+	}
+	if len(item.MonitorIDs) == 0 && item.MonitorID == nil && len(item.Tags) == 0 {
+		return errors.New("monitoring.maintenance.error.monitorRequired")
+	}
+	switch strings.ToLower(strings.TrimSpace(item.Strategy)) {
+	case "single":
+		if item.StartsAt.IsZero() || item.EndsAt.IsZero() || !item.EndsAt.After(item.StartsAt) {
+			return errors.New("monitoring.error.invalidWindow")
 		}
-		if err := validateRRule(item.RRuleText); err != nil {
-			return errors.New("monitoring.error.invalidRRule")
+	case "cron":
+		if strings.TrimSpace(item.Schedule.CronExpression) == "" || item.Schedule.DurationMin <= 0 {
+			return errors.New("monitoring.maintenance.error.invalidCron")
 		}
+		parser := cron.NewParser(cron.Minute | cron.Hour | cron.Dom | cron.Month | cron.Dow)
+		if _, err := parser.Parse(strings.TrimSpace(item.Schedule.CronExpression)); err != nil {
+			return errors.New("monitoring.maintenance.error.invalidCron")
+		}
+	case "interval":
+		if item.Schedule.IntervalDays <= 0 || !validHHMM(item.Schedule.WindowStart) || !validHHMM(item.Schedule.WindowEnd) {
+			return errors.New("monitoring.maintenance.error.invalidInterval")
+		}
+	case "weekday":
+		if len(item.Schedule.Weekdays) == 0 || !validHHMM(item.Schedule.WindowStart) || !validHHMM(item.Schedule.WindowEnd) {
+			return errors.New("monitoring.maintenance.error.invalidWeekday")
+		}
+	case "monthday":
+		if (len(item.Schedule.MonthDays) == 0 && !item.Schedule.UseLastDay) || !validHHMM(item.Schedule.WindowStart) || !validHHMM(item.Schedule.WindowEnd) {
+			return errors.New("monitoring.maintenance.error.invalidMonthday")
+		}
+	case "rrule":
+		if !item.StartsAt.IsZero() && !item.EndsAt.IsZero() && !item.EndsAt.After(item.StartsAt) {
+			return errors.New("monitoring.error.invalidWindow")
+		}
+		if item.IsRecurring {
+			if item.RRuleText == "" {
+				return errors.New("monitoring.error.invalidRRule")
+			}
+		}
+	default:
+		return errors.New("monitoring.maintenance.error.invalidStrategy")
+	}
+	if item.Schedule.ActiveFrom != nil && item.Schedule.ActiveUntil != nil && !item.Schedule.ActiveUntil.After(*item.Schedule.ActiveFrom) {
+		return errors.New("monitoring.error.invalidWindow")
 	}
 	return nil
 }
 
-func validateRRule(raw string) error {
-	raw = strings.TrimSpace(raw)
-	if raw == "" {
-		return errors.New("empty")
+func payloadToMaintenanceSchedule(in maintenanceSchedulePayload) store.MaintenanceSchedule {
+	out := store.MaintenanceSchedule{
+		CronExpression: strings.TrimSpace(in.CronExpression),
+		DurationMin:    in.DurationMin,
+		IntervalDays:   in.IntervalDays,
+		Weekdays:       in.Weekdays,
+		MonthDays:      in.MonthDays,
+		UseLastDay:     in.UseLastDay,
+		WindowStart:    strings.TrimSpace(in.WindowStart),
+		WindowEnd:      strings.TrimSpace(in.WindowEnd),
 	}
-	parts := strings.Split(raw, ";")
-	var freq string
-	for _, part := range parts {
-		kv := strings.SplitN(strings.TrimSpace(part), "=", 2)
-		if len(kv) != 2 {
-			return errors.New("invalid")
-		}
-		key := strings.ToUpper(strings.TrimSpace(kv[0]))
-		val := strings.ToUpper(strings.TrimSpace(kv[1]))
-		switch key {
-		case "FREQ":
-			freq = val
-		case "INTERVAL":
-			if _, err := strconv.Atoi(val); err != nil {
-				return errors.New("invalid")
-			}
-		case "BYDAY":
-			if val == "" {
-				continue
-			}
-			for _, day := range strings.Split(val, ",") {
-				if _, ok := map[string]bool{"MO": true, "TU": true, "WE": true, "TH": true, "FR": true, "SA": true, "SU": true}[strings.TrimSpace(day)]; !ok {
-					return errors.New("invalid")
-				}
-			}
-		default:
-			return errors.New("invalid")
-		}
+	if !in.ActiveFrom.IsZero() {
+		val := in.ActiveFrom.UTC()
+		out.ActiveFrom = &val
 	}
-	if freq != "DAILY" && freq != "WEEKLY" {
-		return errors.New("invalid")
+	if !in.ActiveUntil.IsZero() {
+		val := in.ActiveUntil.UTC()
+		out.ActiveUntil = &val
+	}
+	return out
+}
+
+func scheduleChanged(in maintenanceSchedulePayload) bool {
+	return strings.TrimSpace(in.CronExpression) != "" || in.DurationMin != 0 || in.IntervalDays != 0 || len(in.Weekdays) > 0 || len(in.MonthDays) > 0 || in.UseLastDay || strings.TrimSpace(in.WindowStart) != "" || strings.TrimSpace(in.WindowEnd) != "" || !in.ActiveFrom.IsZero() || !in.ActiveUntil.IsZero()
+}
+
+func defaultMaintenanceStrategy(item *store.MonitorMaintenance) string {
+	if item == nil {
+		return "single"
+	}
+	if item.IsRecurring || strings.TrimSpace(item.RRuleText) != "" {
+		return "rrule"
+	}
+	return "single"
+}
+
+func validHHMM(raw string) bool {
+	_, err := time.Parse("15:04", strings.TrimSpace(raw))
+	return err == nil
+}
+
+func (h *MonitoringHandler) ensureMaintenanceMonitorIDs(r *http.Request, ids []int64) error {
+	for _, id := range ids {
+		if id <= 0 {
+			return errors.New("monitoring.maintenance.error.monitorRequired")
+		}
+		item, err := h.store.GetMonitor(r.Context(), id)
+		if err != nil {
+			return errors.New("monitoring.error.monitorNotFound")
+		}
+		if item == nil {
+			return errors.New("monitoring.error.monitorNotFound")
+		}
 	}
 	return nil
 }

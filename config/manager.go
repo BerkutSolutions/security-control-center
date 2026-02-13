@@ -59,6 +59,7 @@ func applyEnvAliases(cfg *AppConfig) {
 		cfg.Docs.StoragePath = filepathJoin(base, "docs")
 		cfg.Docs.StorageDir = filepathJoin(base, "docs")
 		cfg.Incidents.StorageDir = filepathJoin(base, "incidents")
+		cfg.Backups.Path = filepathJoin(base, "backups")
 	}
 	if v := getEnv("DOCS_STORAGE_PATH"); v != "" {
 		cfg.Docs.StoragePath = strings.TrimSpace(v)
@@ -69,6 +70,25 @@ func applyEnvAliases(cfg *AppConfig) {
 	}
 	if v := getEnv("INCIDENTS_STORAGE_DIR"); v != "" {
 		cfg.Incidents.StorageDir = strings.TrimSpace(v)
+	}
+	if v := getEnv("BACKUP_PATH"); v != "" {
+		cfg.Backups.Path = strings.TrimSpace(v)
+	}
+	if v := getEnv("BACKUP_ENCRYPTION_KEY"); v != "" {
+		cfg.Backups.EncryptionKey = strings.TrimSpace(v)
+	}
+	if v := getEnv("BACKUP_PGDUMP_BIN"); v != "" {
+		cfg.Backups.PGDumpBin = strings.TrimSpace(v)
+	}
+	if v := getEnv("BACKUP_MAX_PARALLEL"); v != "" {
+		if n, err := strconv.Atoi(strings.TrimSpace(v)); err == nil {
+			cfg.Backups.MaxParallel = n
+		}
+	}
+	if v := getEnv("BACKUP_UPLOAD_MAX_BYTES"); v != "" {
+		if n, err := strconv.ParseInt(strings.TrimSpace(v), 10, 64); err == nil {
+			cfg.Backups.UploadMaxBytes = n
+		}
 	}
 }
 
@@ -88,6 +108,18 @@ func normalizeConfig(cfg *AppConfig) {
 	cfg.Docs.StoragePath = strings.TrimSpace(cfg.Docs.StoragePath)
 	cfg.Docs.StorageDir = strings.TrimSpace(cfg.Docs.StorageDir)
 	cfg.Incidents.StorageDir = strings.TrimSpace(cfg.Incidents.StorageDir)
+	cfg.Backups.Path = strings.TrimSpace(cfg.Backups.Path)
+	cfg.Backups.EncryptionKey = strings.TrimSpace(cfg.Backups.EncryptionKey)
+	cfg.Backups.PGDumpBin = strings.TrimSpace(cfg.Backups.PGDumpBin)
+	if cfg.Backups.PGDumpBin == "" {
+		cfg.Backups.PGDumpBin = "pg_dump"
+	}
+	if cfg.Backups.MaxParallel <= 0 {
+		cfg.Backups.MaxParallel = 1
+	}
+	if cfg.Backups.UploadMaxBytes <= 0 {
+		cfg.Backups.UploadMaxBytes = 512 * 1024 * 1024
+	}
 	if cfg.Docs.StorageDir == "" && cfg.Docs.StoragePath != "" {
 		cfg.Docs.StorageDir = cfg.Docs.StoragePath
 	}

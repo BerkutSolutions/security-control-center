@@ -1,5 +1,7 @@
 ﻿# Berkut SCC Documentation (EN)
 
+Documentation version baseline: `1.0.3`
+
 ## Sections
 1. Architecture: `docs/eng/architecture.md`
 2. API: `docs/eng/api.md`
@@ -9,6 +11,7 @@
 6. Tabs wiki: `docs/eng/wiki/tabs.md`
 7. Features wiki: `docs/eng/wiki/features.md`
 8. Current evolution plan: `docs/eng/roadmap.md`
+9. Backups (.bscc): `docs/eng/backups.md`
 
 ## Context
 Documentation is aligned with current runtime reality:
@@ -16,3 +19,5 @@ Documentation is aligned with current runtime reality:
 - goose migrations
 - cleanenv configuration
 - server-side zero-trust authorization
+- `.bscc` backups module (create/import/download/restore/plan/scheduler/retention)
+- monitoring SLA module (SLA tab, closed periods, background evaluator, incident policy)

@@ -52,8 +52,9 @@
   function applyDateInputLocale() {
     const page = document.getElementById('logs-page');
     if (!page) return;
-    page.querySelectorAll('input[data-i18n-placeholder="common.datetimePlaceholder"]').forEach(input => {
-      input.inputMode = 'numeric';
+    const lang = (typeof BerkutI18n !== 'undefined' && BerkutI18n.currentLang) ? BerkutI18n.currentLang() : 'ru';
+    page.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
+      input.lang = lang === 'en' ? 'en' : 'ru';
     });
   }
 
@@ -206,7 +207,10 @@
   function prettyAction(action) {
     const lang = BerkutI18n?.currentLang?.() || 'ru';
     const map = ACTION_LABELS[lang] || ACTION_LABELS.ru;
-    return map[action] || action;
+    if (map[action]) return map[action];
+    const translated = BerkutI18n?.t ? BerkutI18n.t(action) : '';
+    if (translated && translated !== action) return translated;
+    return action;
   }
 
   function prettyDetails(item) {
@@ -230,6 +234,12 @@
     if (act.startsWith('approval')) {
       if (!details) return '';
       return isNaN(details) ? `${labels.approval} ${details}` : `${labels.approval} #${details}`;
+    }
+    if (act.startsWith('backups.')) {
+      return formatBackupDetails(details, labels);
+    }
+    if (act.startsWith('monitoring.')) {
+      return formatMonitoringDetails(act, details, labels);
     }
     if (/^\d+$/.test(details) && NOISY_NUMERIC_DETAILS_ACTIONS.has(act)) {
       return '';
@@ -259,6 +269,87 @@
     return rendered.join(' | ');
   }
 
+  function formatBackupDetails(details, labels) {
+    if (!details) return '';
+    const dict = labels?.backups || {};
+    const resultLabels = {
+      requested: dict.result_requested || 'requested',
+      queued: dict.result_queued || 'queued',
+      success: dict.result_success || 'success',
+      failed: dict.result_failed || 'failed',
+      denied: dict.result_denied || 'denied',
+      not_found: dict.result_not_found || 'not_found',
+      not_implemented: dict.result_not_implemented || 'not_implemented',
+    };
+    const codeToKey = {
+      'backups.concurrent_operation': 'backups.error.concurrentOperation',
+      'backups.not_found': 'backups.error.notFound',
+      'backups.not_ready': 'backups.error.notReady',
+      'backups.file_missing': 'backups.error.fileMissing',
+      'backups.invalid_request': 'backups.error.invalidRequest',
+      'backups.internal': 'backups.error.internal',
+    };
+    const pairs = details.split(/\s+/).map((chunk) => chunk.trim()).filter(Boolean);
+    const rendered = pairs.map((pair) => {
+      const eq = pair.indexOf('=');
+      if (eq <= 0) return pair;
+      const key = pair.slice(0, eq).trim();
+      const rawValue = pair.slice(eq + 1).trim();
+      if (!key) return pair;
+      const keyLabel = dict[key] || key;
+      if ((key === 'code' || key === 'reason_code') && rawValue) {
+        const i18nKey = codeToKey[rawValue];
+        if (i18nKey) {
+          const translated = BerkutI18n.t(i18nKey);
+          const value = translated && translated !== i18nKey ? translated : rawValue;
+          return `${keyLabel}: ${value}`;
+        }
+      }
+      if (key === 'event' && rawValue) {
+        const eventText = BerkutI18n.t(rawValue);
+        const value = eventText && eventText !== rawValue ? eventText : rawValue;
+        return `${keyLabel}: ${value}`;
+      }
+      if (key === 'result' && rawValue) {
+        const normalized = rawValue.toLowerCase();
+        const value = resultLabels[normalized] || rawValue;
+        return `${keyLabel}: ${value}`;
+      }
+      return `${keyLabel}: ${rawValue}`;
+    });
+    return rendered.join(' | ');
+  }
+
+  function formatMonitoringDetails(action, details, labels) {
+    if (!details) return '';
+    const dict = labels?.monitoring || {};
+    if (action === 'monitoring.notification.channel.apply_all') {
+      const parts = details.split('|').map((x) => x.trim()).filter(Boolean);
+      if (parts.length >= 2) {
+        const channel = `${dict.channel || 'Канал'}: ${parts[0]}`;
+        const applied = `${dict.applied || 'Применено'}: ${parts[1]}`;
+        return `${channel} | ${applied}`;
+      }
+    }
+    if (action === 'monitoring.settings.update') {
+      const pieces = details.split('|').map((chunk) => chunk.trim()).filter(Boolean);
+      if (!pieces.length) return details;
+      const rendered = pieces.map((piece) => {
+        const eq = piece.indexOf('=');
+        if (eq <= 0) return piece;
+        const key = piece.slice(0, eq).trim();
+        const value = piece.slice(eq + 1).trim();
+        const keyLabel = dict[key] || key;
+        return `${keyLabel}: ${value}`;
+      });
+      return rendered.join(' | ');
+    }
+    if (/^\d+$/.test(details)) {
+      return `${dict.id || 'ID'}: ${details}`;
+    }
+    return details;
+  }
+
   function categoryForAction(action) {
     if (!action) return 'other';
     if (action.startsWith('doc.') || action.startsWith('template.')) return 'docs';
@@ -273,6 +364,7 @@
     if (action.startsWith('control.')) return 'controls';
     if (action.startsWith('monitoring.')) return 'monitoring';
     if (action.startsWith('reports.') || action.startsWith('report.')) return 'reports';
+    if (action.startsWith('backups.')) return 'backups';
     if (action.startsWith('settings.')) return 'settings';
     if (['create_user', 'delete_user', 'copy_user', 'import_users'].includes(action)) return 'accounts';
     return 'other';
@@ -291,6 +383,7 @@
     'controls',
     'monitoring',
     'reports',
+    'backups',
     'settings',
     'other',
   ];
@@ -510,16 +603,56 @@
       'monitoring.settings.update': 'Мониторинг: обновление настроек',
       'monitoring.maintenance.create': 'Мониторинг: создание окна обслуживания',
       'monitoring.maintenance.update': 'Мониторинг: обновление окна обслуживания',
+      'monitoring.maintenance.stop': 'Мониторинг: остановка окна обслуживания',
       'monitoring.maintenance.delete': 'Мониторинг: удаление окна обслуживания',
       'monitoring.certs.settings.update': 'Мониторинг: настройки сертификатов',
       'monitoring.sla.update': 'Мониторинг: обновление SLA',
+      'monitoring.sla.policy.update': 'Мониторинг: обновление SLA-политики',
       'monitoring.notification.create': 'Мониторинг: уведомление создано',
       'monitoring.notification.update': 'Мониторинг: уведомление обновлено',
       'monitoring.notification.delete': 'Мониторинг: уведомление удалено',
       'monitoring.notification.test': 'Мониторинг: тест уведомления',
+      'monitoring.notification.channel.create': 'Мониторинг: создание канала уведомлений',
+      'monitoring.notification.channel.update': 'Мониторинг: обновление канала уведомлений',
+      'monitoring.notification.channel.delete': 'Мониторинг: удаление канала уведомлений',
+      'monitoring.notification.channel.test': 'Мониторинг: тест канала уведомлений',
+      'monitoring.notification.channel.apply_all': 'Мониторинг: канал применен ко всем мониторам',
+      'monitoring.notification.bindings.update': 'Мониторинг: привязки уведомлений обновлены',
+      'monitoring.monitor.push': 'Мониторинг: push-событие',
+      'monitoring.monitor.events.delete': 'Мониторинг: очистка событий монитора',
+      'monitoring.monitor.metrics.delete': 'Мониторинг: очистка метрик монитора',
       'monitoring.certs.notify_test': 'Мониторинг: тест сертификатов',
+      'monitoring.certs.notify_test.failed': 'Мониторинг: тест сертификатов завершился ошибкой',
       'monitoring.incident.auto_create': 'Мониторинг: авто-создание инцидента',
       'monitoring.incident.auto_close': 'Мониторинг: авто-закрытие инцидента',
+      'backups.list': 'Бэкапы: список',
+      'backups.read': 'Бэкапы: просмотр',
+      'backups.create.requested': 'Бэкапы: создание запрошено',
+      'backups.create.success': 'Бэкапы: создание завершено',
+      'backups.create.failed': 'Бэкапы: создание завершилось ошибкой',
+      'backups.import.requested': 'Бэкапы: импорт запрошен',
+      'backups.import.success': 'Бэкапы: импорт завершен',
+      'backups.import.failed': 'Бэкапы: импорт завершился ошибкой',
+      'backups.download.requested': 'Бэкапы: скачивание запрошено',
+      'backups.download.success': 'Бэкапы: скачивание завершено',
+      'backups.download.failed': 'Бэкапы: скачивание завершилось ошибкой',
+      'backups.delete': 'Бэкапы: удаление',
+      'backups.restore.requested': 'Бэкапы: восстановление запрошено',
+      'backups.restore.start': 'Бэкапы: восстановление запущено',
+      'backups.restore.dry_run.requested': 'Бэкапы: dry-run запрошен',
+      'backups.restore.read': 'Бэкапы: статус восстановления',
+      'backups.restore.success': 'Бэкапы: восстановление завершено',
+      'backups.restore.failed': 'Бэкапы: восстановление завершилось ошибкой',
+      'backups.maintenance.enter': 'Бэкапы: вход в режим обслуживания',
+      'backups.maintenance.exit': 'Бэкапы: выход из режима обслуживания',
+      'backups.plan.read': 'Бэкапы: просмотр расписания',
+      'backups.plan.update': 'Бэкапы: обновление расписания',
+      'backups.plan.enable': 'Бэкапы: расписание включено',
+      'backups.plan.disable': 'Бэкапы: расписание отключено',
+      'backups.auto.started': 'Бэкапы: автозапуск начат',
+      'backups.auto.success': 'Бэкапы: автозапуск успешен',
+      'backups.auto.failed': 'Бэкапы: автозапуск с ошибкой',
+      'backups.retention.deleted': 'Бэкапы: удаление по ретенции',
       'settings.updates.check': 'Настройки: проверка обновлений',
       'settings.updates.toggle': 'Настройки: автопроверка обновлений',
     },
@@ -737,16 +870,56 @@
       'monitoring.settings.update': 'Monitoring: settings updated',
       'monitoring.maintenance.create': 'Monitoring: maintenance window created',
       'monitoring.maintenance.update': 'Monitoring: maintenance window updated',
+      'monitoring.maintenance.stop': 'Monitoring: maintenance window stopped',
       'monitoring.maintenance.delete': 'Monitoring: maintenance window deleted',
       'monitoring.certs.settings.update': 'Monitoring: certificate settings updated',
       'monitoring.sla.update': 'Monitoring: SLA updated',
+      'monitoring.sla.policy.update': 'Monitoring: SLA policy updated',
       'monitoring.notification.create': 'Monitoring: notification created',
       'monitoring.notification.update': 'Monitoring: notification updated',
       'monitoring.notification.delete': 'Monitoring: notification deleted',
       'monitoring.notification.test': 'Monitoring: notification test',
+      'monitoring.notification.channel.create': 'Monitoring: notification channel created',
+      'monitoring.notification.channel.update': 'Monitoring: notification channel updated',
+      'monitoring.notification.channel.delete': 'Monitoring: notification channel deleted',
+      'monitoring.notification.channel.test': 'Monitoring: notification channel test',
+      'monitoring.notification.channel.apply_all': 'Monitoring: channel applied to all monitors',
+      'monitoring.notification.bindings.update': 'Monitoring: notification bindings updated',
+      'monitoring.monitor.push': 'Monitoring: push event',
+      'monitoring.monitor.events.delete': 'Monitoring: monitor events cleared',
+      'monitoring.monitor.metrics.delete': 'Monitoring: monitor metrics cleared',
       'monitoring.certs.notify_test': 'Monitoring: certificates test',
+      'monitoring.certs.notify_test.failed': 'Monitoring: certificates test failed',
       'monitoring.incident.auto_create': 'Monitoring: incident auto-created',
       'monitoring.incident.auto_close': 'Monitoring: incident auto-closed',
+      'backups.list': 'Backups: list',
+      'backups.read': 'Backups: read',
+      'backups.create.requested': 'Backups: create requested',
+      'backups.create.success': 'Backups: create succeeded',
+      'backups.create.failed': 'Backups: create failed',
+      'backups.import.requested': 'Backups: import requested',
+      'backups.import.success': 'Backups: import succeeded',
+      'backups.import.failed': 'Backups: import failed',
+      'backups.download.requested': 'Backups: download requested',
+      'backups.download.success': 'Backups: download succeeded',
+      'backups.download.failed': 'Backups: download failed',
+      'backups.delete': 'Backups: delete',
+      'backups.restore.requested': 'Backups: restore requested',
+      'backups.restore.start': 'Backups: restore started',
+      'backups.restore.dry_run.requested': 'Backups: dry-run requested',
+      'backups.restore.read': 'Backups: restore status read',
+      'backups.restore.success': 'Backups: restore succeeded',
+      'backups.restore.failed': 'Backups: restore failed',
+      'backups.maintenance.enter': 'Backups: enter maintenance mode',
+      'backups.maintenance.exit': 'Backups: exit maintenance mode',
+      'backups.plan.read': 'Backups: plan read',
+      'backups.plan.update': 'Backups: plan updated',
+      'backups.plan.enable': 'Backups: plan enabled',
+      'backups.plan.disable': 'Backups: plan disabled',
+      'backups.auto.started': 'Backups: auto backup started',
+      'backups.auto.success': 'Backups: auto backup succeeded',
+      'backups.auto.failed': 'Backups: auto backup failed',
+      'backups.retention.deleted': 'Backups: retention deleted',
       'settings.updates.check': 'Settings: update check',
       'settings.updates.toggle': 'Settings: update checks toggled',
     },
@@ -756,6 +929,45 @@
     ru: {
       document: 'Документ',
       approval: 'Согласование',
+      monitoring: {
+        id: 'ID',
+        channel: 'Канал',
+        applied: 'Применено',
+        retention: 'Хранение (дни)',
+        max_concurrent: 'Параллельные проверки',
+        default_timeout: 'Таймаут по умолчанию',
+        default_interval: 'Интервал по умолчанию',
+        default_retries: 'Повторы по умолчанию',
+        default_retry_interval: 'Интервал повторов',
+        default_sla: 'SLA по умолчанию',
+        engine: 'Движок включен',
+        allow_private: 'Разрешены приватные сети',
+        tls_refresh: 'Обновление TLS (часы)',
+        tls_expiring: 'Порог TLS (дни)',
+        notify_suppress: 'Подавление уведомлений (мин)',
+        notify_repeat: 'Повтор down-уведомлений (мин)',
+        notify_maintenance: 'Уведомлять об обслуживании',
+      },
+      backups: {
+        result: 'Результат',
+        code: 'Код',
+        reason_code: 'Причина',
+        event: 'Событие',
+        backup_id: 'Бэкап',
+        restore_id: 'Восстановление',
+        id: 'ID',
+        filename: 'Файл',
+        size: 'Размер',
+        size_bytes: 'Размер',
+        dry_run: 'Сухой прогон',
+        result_requested: 'Запрошено',
+        result_queued: 'В очереди',
+        result_success: 'Успешно',
+        result_failed: 'Ошибка',
+        result_denied: 'Запрещено',
+        result_not_found: 'Не найдено',
+        result_not_implemented: 'Не реализовано',
+      },
       'invalid password': 'неверный пароль',
       'user missing or inactive': 'пользователь не найден или отключен',
       permanent: 'постоянная блокировка',
@@ -771,6 +983,45 @@
     en: {
       document: 'Document',
       approval: 'Approval',
+      monitoring: {
+        id: 'ID',
+        channel: 'Channel',
+        applied: 'Applied',
+        retention: 'Retention (days)',
+        max_concurrent: 'Concurrent checks',
+        default_timeout: 'Default timeout',
+        default_interval: 'Default interval',
+        default_retries: 'Default retries',
+        default_retry_interval: 'Retry interval',
+        default_sla: 'Default SLA',
+        engine: 'Engine enabled',
+        allow_private: 'Private networks allowed',
+        tls_refresh: 'TLS refresh (hours)',
+        tls_expiring: 'TLS expiring threshold (days)',
+        notify_suppress: 'Suppress notifications (min)',
+        notify_repeat: 'Repeat down notifications (min)',
+        notify_maintenance: 'Notify maintenance',
+      },
+      backups: {
+        result: 'Result',
+        code: 'Code',
+        reason_code: 'Reason',
+        event: 'Event',
+        backup_id: 'Backup',
+        restore_id: 'Restore',
+        id: 'ID',
+        filename: 'File',
+        size: 'Size',
+        size_bytes: 'Size',
+        dry_run: 'Dry run',
+        result_requested: 'Requested',
+        result_queued: 'Queued',
+        result_success: 'Success',
+        result_failed: 'Failed',
+        result_denied: 'Denied',
+        result_not_found: 'Not found',
+        result_not_implemented: 'Not implemented',
+      },
       'invalid password': 'invalid password',
       'user missing or inactive': 'user missing or inactive',
       permanent: 'permanent lockout',

@@ -2,6 +2,7 @@ package api
 
 import (
 	"berkut-scc/core/appmeta"
+	"berkut-scc/core/backups"
 	"berkut-scc/core/docs"
 	"berkut-scc/core/incidents"
 	"berkut-scc/core/monitoring"
@@ -25,6 +26,7 @@ type ServerDeps struct {
 	AppRuntimeStore  store.AppRuntimeStore
 	UpdateChecker    *appmeta.UpdateChecker
 	DashboardStore   store.DashboardStore
+	BackupsSvc       *backups.Service
 	DocsSvc          *docs.Service
 	IncidentsSvc     *incidents.Service
 	TasksStore       tasks.Store

@@ -11,7 +11,7 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -trimpath -ldflags="-s -w" -o
 FROM alpine:3.20
 WORKDIR /app
 
-RUN apk add --no-cache ca-certificates tzdata pandoc libreoffice && \
+RUN apk add --no-cache ca-certificates tzdata pandoc libreoffice postgresql16-client && \
     addgroup -S berkut && adduser -S -G berkut berkut && \
     mkdir -p /app/config /app/data && chown -R berkut:berkut /app
 

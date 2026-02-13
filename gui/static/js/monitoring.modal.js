@@ -27,7 +27,6 @@
     els.bodyType = document.getElementById('monitor-body-type');
     els.tags = document.getElementById('monitor-tags');
     els.tagsHint = document.querySelector('[data-tag-hint="monitor-tags"]');
-    els.sla = document.getElementById('monitor-sla-target');
     els.autoIncident = document.getElementById('monitor-auto-incident');
     els.incidentSeverity = document.getElementById('monitor-incident-severity');
     els.notifyTLS = document.getElementById('monitor-notify-tls');
@@ -91,9 +90,6 @@
       els.body.value = monitor.request_body || '';
       els.bodyType.value = monitor.request_body_type || 'none';
       setSelectedOptions(els.tags, monitor.tags || []);
-      if (els.sla) {
-        els.sla.value = monitor.sla_target_pct || '';
-      }
       if (els.autoIncident) {
         els.autoIncident.checked = !!monitor.auto_incident;
       }
@@ -117,9 +113,6 @@
       els.retryInterval.value = defaults.default_retry_interval_sec || 30;
       els.retries.value = defaults.default_retries ?? 2;
       els.allowedStatus.value = '200-299';
-      if (els.sla) {
-        els.sla.value = defaults.default_sla_target_pct || 90;
-      }
       if (els.autoIncident) {
         els.autoIncident.checked = false;
       }
@@ -158,6 +151,11 @@
       els.modal.hidden = true;
       modalState.editingId = null;
       await MonitoringPage.loadMonitors?.();
+      await MonitoringPage.refreshSLA?.();
+      await MonitoringPage.refreshMaintenanceList?.();
+      MonitoringPage.refreshEventsFilters?.();
+      MonitoringPage.refreshEventsCenter?.();
+      MonitoringPage.refreshCerts?.();
     } catch (err) {
       MonitoringPage.showAlert(els.alert, MonitoringPage.sanitizeErrorMessage(err.message || err), false);
     }
@@ -190,12 +188,6 @@
     }
     if (els.ignoreTLS) {
       payload.ignore_tls_errors = !!els.ignoreTLS.checked;
-    }
-    if (els.sla && els.sla.value !== '') {
-      const sla = parseFloat(els.sla.value);
-      if (!Number.isNaN(sla) && sla > 0) {
-        payload.sla_target_pct = sla;
-      }
     }
     if (URL_TYPES.has(type)) {
       payload.url = els.url.value.trim();
@@ -363,10 +355,19 @@
     els.notifications.closest('.form-field').hidden = false;
     const channels = await MonitoringPage.ensureNotificationChannels?.();
     let activeIds = [];
+    let linkMap = new Map();
+    let hasExplicitBindings = false;
     if (monitorId && canView) {
       try {
         const res = await Api.get(`/api/monitoring/monitors/${monitorId}/notifications`);
-        activeIds = (res.items || []).filter(i => i.enabled).map(i => i.notification_channel_id);
+        const items = Array.isArray(res.items) ? res.items : [];
+        hasExplicitBindings = items.length > 0;
+        items.forEach((item) => {
+          const id = Number(item.notification_channel_id || 0);
+          if (!id) return;
+          linkMap.set(id, !!item.enabled);
+        });
+        activeIds = items.filter(i => i.enabled).map(i => i.notification_channel_id);
       } catch (_) {
         activeIds = [];
       }
@@ -387,7 +388,14 @@
         <span>${escapeHtml(ch.name)} (${escapeHtml(ch.type)})</span>`;
       const input = row.querySelector('input');
       if (input) {
-        input.checked = activeIds.includes(ch.id);
+        if (linkMap.has(ch.id)) {
+          input.checked = !!linkMap.get(ch.id);
+        } else if (!hasExplicitBindings && !!ch.is_default) {
+          // No monitor-level bindings yet: reflect default channels as preselected.
+          input.checked = true;
+        } else {
+          input.checked = activeIds.includes(ch.id);
+        }
         input.disabled = !canManage;
       }
       els.notifications.appendChild(row);
@@ -396,8 +404,13 @@
 
   async function saveMonitorNotifications(monitorId) {
     if (!els.notifications) return;
-    const selected = Array.from(els.notifications.querySelectorAll('input[type="checkbox"]:checked')).map(i => parseInt(i.value, 10)).filter(Boolean);
-    const items = selected.map(id => ({ notification_channel_id: id, enabled: true }));
+    const checkboxes = Array.from(els.notifications.querySelectorAll('input[type="checkbox"]'));
+    const items = checkboxes
+      .map((input) => ({
+        notification_channel_id: parseInt(input.value, 10) || 0,
+        enabled: !!input.checked,
+      }))
+      .filter((item) => item.notification_channel_id > 0);
     await Api.put(`/api/monitoring/monitors/${monitorId}/notifications`, { items });
   }
 

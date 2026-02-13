@@ -13,9 +13,22 @@ Spaces/boards/tasks, parent-child связи, комментарии, файлы
 ## Monitoring
 Маршруты вкладок:
 - `/monitoring`
+- `/monitoring/events`
+- `/monitoring/sla`
+- `/monitoring/maintenance`
 - `/monitoring/certs`
 - `/monitoring/notifications`
 - `/monitoring/settings`
+
+Кратко по SLA:
+- карточки SLA по мониторам (24h/7d/30d, статус, policy инцидентов);
+- история закрытых периодов;
+- расчет закрытых периодов выполняется асинхронно background evaluator.
+
+Кратко по техобслуживанию:
+- отдельная вкладка с планированием/редактированием/остановкой окон;
+- стратегии расписаний: `single`, `cron`, `interval`, `weekday`, `monthday`;
+- окна техобслуживания исключаются из SLA-штрафов как accepted risk.
 
 ## Docs
 Документы, версии, ACL, классификация, экспорт, шаблоны.
@@ -28,6 +41,13 @@ Spaces/boards/tasks, parent-child связи, комментарии, файлы
 
 ## Reports
 Builder, sections, charts, snapshots, templates, export.
+
+## Backups
+Маршруты вкладок:
+- `/backups`
+- `/backups/history`
+- `/backups/restore`
+- `/backups/plan`
 
 ## Accounts
 Пользователи, роли, группы, сессии, импорт.

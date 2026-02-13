@@ -167,6 +167,26 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 		}
 		return now.Sub(last.UTC()) >= suppress
 	}
+	canNotifyDownOutage := func() bool {
+		// Send DOWN only once per outage window until an UP notification is sent.
+		if st.LastDownNotifiedAt == nil {
+			return true
+		}
+		if st.LastUpNotifiedAt == nil {
+			return false
+		}
+		return st.LastDownNotifiedAt.Before(st.LastUpNotifiedAt.UTC())
+	}
+	canNotifyUpRecover := func() bool {
+		// Send UP only when there was a previously notified DOWN in the current outage cycle.
+		if st.LastDownNotifiedAt == nil {
+			return false
+		}
+		if st.LastUpNotifiedAt == nil {
+			return true
+		}
+		return st.LastDownNotifiedAt.After(st.LastUpNotifiedAt.UTC())
+	}
 	if maintenanceChanged && settings.NotifyMaintenance && canSend(st.LastNotifiedAt) && canSend(st.LastMaintenanceNotifiedAt) {
 		kind := "maintenance_start"
 		if !next.MaintenanceActive {
@@ -178,14 +198,23 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 		}
 		return
 	}
-	if rawStatus == "down" && (prev == nil || prev.LastCheckedAt == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) != "down") && canSend(st.LastNotifiedAt) && canSend(st.LastDownNotifiedAt) {
+	if rawStatus == "down" &&
+		(prev == nil || prev.LastCheckedAt == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) != "down") &&
+		canNotifyDownOutage() &&
+		canSend(st.LastNotifiedAt) &&
+		canSend(st.LastDownNotifiedAt) {
 		if e.dispatchNotification(ctx, channels, buildNotificationMessage("down", "ru", m, result, tlsRecord, now, st.DownSequence > 1)) {
 			st.LastNotifiedAt = &now
 			st.LastDownNotifiedAt = &now
 		}
 		return
 	}
-	if rawStatus == "up" && prev != nil && strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) == "down" && canSend(st.LastNotifiedAt) && canSend(st.LastUpNotifiedAt) {
+	if rawStatus == "up" &&
+		prev != nil &&
+		strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) == "down" &&
+		canNotifyUpRecover() &&
+		canSend(st.LastNotifiedAt) &&
+		canSend(st.LastUpNotifiedAt) {
 		if e.dispatchNotification(ctx, channels, buildNotificationMessage("up", "ru", m, result, tlsRecord, now, false)) {
 			st.LastNotifiedAt = &now
 			st.LastUpNotifiedAt = &now
@@ -372,4 +401,3 @@ func NotifyTestMessage(lang string) string {
 	}
 	return strings.Join(lines, "\n")
 }
-

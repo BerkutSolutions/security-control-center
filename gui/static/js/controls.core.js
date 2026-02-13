@@ -90,11 +90,9 @@ const ControlsPage = (() => {
   function applyDateInputLocale() {
     const page = document.getElementById('controls-page');
     if (!page) return;
-    page.querySelectorAll('input[type="date"]').forEach(input => {
-      input.lang = 'ru';
-    });
-    page.querySelectorAll('input[data-i18n-placeholder="common.datetimePlaceholder"]').forEach(input => {
-      input.inputMode = 'numeric';
+    const lang = (typeof BerkutI18n !== 'undefined' && BerkutI18n.currentLang) ? BerkutI18n.currentLang() : 'ru';
+    page.querySelectorAll('input[type="date"], input[type="datetime-local"]').forEach(input => {
+      input.lang = lang === 'en' ? 'en' : 'ru';
     });
   }
 

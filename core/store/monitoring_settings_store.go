@@ -79,7 +79,7 @@ func defaultMonitoringSettings() MonitorSettings {
 		DefaultTimeoutSec:   20,
 		DefaultIntervalSec:  30,
 		EngineEnabled:       true,
-		AllowPrivateNetworks: false,
+		AllowPrivateNetworks: true,
 		TLSRefreshHours:     24,
 		TLSExpiringDays:     30,
 		NotifySuppressMinutes: 5,

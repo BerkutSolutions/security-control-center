@@ -34,6 +34,7 @@
     { value: 'reports', labelKey: 'nav.reports' },
     { value: 'accounts', labelKey: 'nav.accounts' },
     { value: 'settings', labelKey: 'nav.settings' },
+    { value: 'backups', labelKey: 'nav.backups' },
     { value: 'logs', labelKey: 'nav.logs' },
   ];
   const CLEARANCE_TAGS = [

@@ -1,10 +1,13 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"berkut-scc/core/monitoring"
@@ -14,15 +17,24 @@ import (
 )
 
 type MonitoringHandler struct {
-	store     store.MonitoringStore
-	audits    store.AuditStore
-	engine    *monitoring.Engine
-	policy    *rbac.Policy
-	encryptor *utils.Encryptor
+	store        store.MonitoringStore
+	audits       store.AuditStore
+	engine       *monitoring.Engine
+	policy       *rbac.Policy
+	encryptor    *utils.Encryptor
+	checkNowMu   sync.Mutex
+	lastCheckNow map[int64]time.Time
 }
 
 func NewMonitoringHandler(store store.MonitoringStore, audits store.AuditStore, engine *monitoring.Engine, policy *rbac.Policy, encryptor *utils.Encryptor) *MonitoringHandler {
-	return &MonitoringHandler{store: store, audits: audits, engine: engine, policy: policy, encryptor: encryptor}
+	return &MonitoringHandler{
+		store:        store,
+		audits:       audits,
+		engine:       engine,
+		policy:       policy,
+		encryptor:    encryptor,
+		lastCheckNow: map[int64]time.Time{},
+	}
 }
 
 func (h *MonitoringHandler) ListMonitors(w http.ResponseWriter, r *http.Request) {
@@ -139,6 +151,17 @@ func (h *MonitoringHandler) UpdateMonitor(w http.ResponseWriter, r *http.Request
 	h.audit(r, monitorAuditMonitorUpdate, strconv.FormatInt(id, 10))
 	if slaChanged {
 		h.audit(r, monitorAuditSLAUpdate, strconv.FormatInt(id, 10))
+		target := 90.0
+		if mon.SLATargetPct != nil && *mon.SLATargetPct > 0 && *mon.SLATargetPct <= 100 {
+			target = *mon.SLATargetPct
+		} else if settings != nil && settings.DefaultSLATargetPct > 0 && settings.DefaultSLATargetPct <= 100 {
+			target = settings.DefaultSLATargetPct
+		}
+		minCoverage := 80.0
+		if policy, err := h.store.GetMonitorSLAPolicy(r.Context(), id); err == nil && policy != nil && policy.MinCoveragePct > 0 && policy.MinCoveragePct <= 100 {
+			minCoverage = policy.MinCoveragePct
+		}
+		_ = h.store.SyncSLAPeriodTarget(r.Context(), id, target, minCoverage)
 	}
 	writeJSON(w, http.StatusOK, mon)
 }
@@ -172,6 +195,10 @@ func (h *MonitoringHandler) setPaused(w http.ResponseWriter, r *http.Request, pa
 		return
 	}
 	if err := h.store.SetMonitorPaused(r.Context(), id, paused); err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			http.Error(w, errNotFound, http.StatusNotFound)
+			return
+		}
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
@@ -185,16 +212,49 @@ func (h *MonitoringHandler) CheckNow(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
 		return
 	}
+	if !h.allowCheckNow(id) {
+		http.Error(w, "monitoring.error.tooFrequent", http.StatusTooManyRequests)
+		return
+	}
 	if h.engine == nil {
 		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
 	}
 	if err := h.engine.CheckNow(r.Context(), id); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		switch strings.TrimSpace(err.Error()) {
+		case "monitoring.error.busy":
+			writeJSON(w, http.StatusAccepted, map[string]string{"status": "busy"})
+		case "monitoring.error.engineDisabled":
+			http.Error(w, err.Error(), http.StatusServiceUnavailable)
+		case "common.notFound":
+			http.Error(w, err.Error(), http.StatusNotFound)
+		default:
+			http.Error(w, err.Error(), http.StatusBadRequest)
+		}
 		return
 	}
 	h.audit(r, monitorAuditMonitorCheckNow, strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func (h *MonitoringHandler) allowCheckNow(monitorID int64) bool {
+	h.checkNowMu.Lock()
+	defer h.checkNowMu.Unlock()
+	now := time.Now().UTC()
+	last := h.lastCheckNow[monitorID]
+	if !last.IsZero() && now.Sub(last) < 2*time.Second {
+		return false
+	}
+	h.lastCheckNow[monitorID] = now
+	if len(h.lastCheckNow) > 2000 {
+		cutoff := now.Add(-10 * time.Minute)
+		for id, ts := range h.lastCheckNow {
+			if ts.Before(cutoff) {
+				delete(h.lastCheckNow, id)
+			}
+		}
+	}
+	return true
 }
 
 func (h *MonitoringHandler) CloneMonitor(w http.ResponseWriter, r *http.Request) {

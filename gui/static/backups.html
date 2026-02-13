@@ -1,0 +1,261 @@
+<div class="page" id="backups-page">
+  <div class="card">
+    <div class="card-body">
+      <div class="alert" id="backups-alert" hidden></div>
+
+      <div class="tabs browser-tabs backups-tabs" id="backups-tabs">
+        <a class="tab-btn active" href="/backups" data-tab="backups-tab-overview" data-i18n="backups.tabs.overview">Overview</a>
+        <a class="tab-btn" href="/backups/history" data-tab="backups-tab-history" data-i18n="backups.tabs.history">History</a>
+        <a class="tab-btn" href="/backups/restore" data-tab="backups-tab-restore" data-i18n="backups.tabs.restore">Restore</a>
+        <a class="tab-btn" href="/backups/plan" data-tab="backups-tab-plan" data-i18n="backups.tabs.plan">Plan</a>
+      </div>
+
+      <div class="tab-panels backups-panels">
+        <div class="tab-panel" id="backups-tab-overview" data-tab="backups-tab-overview">
+          <div class="backups-grid">
+            <div class="card nested-card backups-metric">
+              <div class="card-header"><h3 data-i18n="backups.overview.lastSuccessful">Last successful backup</h3></div>
+              <div class="card-body">
+                <div class="metric-label" data-i18n="backups.fields.date">Date</div>
+                <div class="metric-value" id="backups-overview-last-success-date">-</div>
+                <div class="metric-label" data-i18n="backups.fields.size">Size</div>
+                <div class="metric-value" id="backups-overview-last-success-size">-</div>
+                <div class="metric-label" data-i18n="backups.fields.filename">Filename</div>
+                <div id="backups-overview-last-success-file">-</div>
+              </div>
+            </div>
+            <div class="card nested-card backups-metric">
+              <div class="card-header"><h3 data-i18n="backups.overview.lastRun">Last run</h3></div>
+              <div class="card-body">
+                <div class="metric-label" data-i18n="backups.fields.status">Status</div>
+                <div class="metric-value" id="backups-overview-last-run-status">-</div>
+                <div class="metric-label" data-i18n="backups.fields.updatedAt">Updated</div>
+                <div id="backups-overview-last-run-updated">-</div>
+              </div>
+            </div>
+          </div>
+          <div class="backups-actions backups-overview-actions">
+            <button class="btn primary" id="backups-create-now" data-i18n="backups.actions.createNow">Create backup now</button>
+            <button class="btn ghost" id="backups-overview-refresh" data-i18n="common.refresh">Refresh</button>
+          </div>
+          <div class="card nested-card backups-create-card">
+            <div class="card-header"><h3 data-i18n="backups.overview.newBackupOptions">New backup options</h3></div>
+            <div class="card-body">
+              <div class="form-grid single-column">
+                <div class="form-field backups-create-name-field">
+                  <label for="backups-create-label" data-i18n="backups.create.fields.label">Backup name</label>
+                  <input id="backups-create-label" type="text" maxlength="48" data-i18n-placeholder="backups.create.fields.labelPlaceholder" placeholder="Monthly baseline">
+                  <label class="checkbox">
+                    <input type="checkbox" id="backups-create-include-files">
+                    <span data-i18n="backups.create.fields.includeFiles">Include files</span>
+                  </label>
+                </div>
+              </div>
+              <div class="form-field">
+                <label data-i18n="backups.create.fields.scope">Backup scope</label>
+                <div class="checkbox-list backups-scope-grid" id="backups-create-scope-list">
+                  <label class="checkbox"><input type="checkbox" data-scope="all" checked><span data-i18n="backups.scope.all">All modules</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="docs"><span data-i18n="nav.docs">Documents</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="tasks"><span data-i18n="nav.tasks">Tasks</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="incidents"><span data-i18n="nav.incidents">Incidents</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="reports"><span data-i18n="nav.reports">Reports</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="monitoring"><span data-i18n="nav.monitoring">Monitoring</span></label>
+                  <label class="checkbox"><input type="checkbox" data-scope="controls"><span data-i18n="nav.controls">Controls</span></label>
+                </div>
+                <div class="form-hint" id="backups-create-scope-preview">ALL</div>
+              </div>
+            </div>
+          </div>
+          <div id="backups-overview-loading" class="muted backups-overview-loading" hidden data-i18n="common.loading">Loading...</div>
+          <div id="backups-overview-empty" class="backups-empty backups-overview-empty" hidden>
+            <span data-i18n="backups.empty.noBackups">No backups yet</span>
+            <button class="btn primary backups-overview-empty-create" id="backups-overview-empty-create" data-i18n="backups.empty.createFirst">Create first backup</button>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="backups-tab-history" data-tab="backups-tab-history" hidden>
+          <div class="card nested-card">
+            <div class="card-body">
+              <div class="form-grid two-column">
+                <div class="form-field">
+                  <label for="backups-history-status" data-i18n="backups.filters.status">Status</label>
+                  <select id="backups-history-status">
+                    <option value="" data-i18n="common.all">All</option>
+                    <option value="queued" data-i18n="backups.status.queued">Queued</option>
+                    <option value="running" data-i18n="backups.status.running">Running</option>
+                    <option value="success" data-i18n="backups.status.success">Success</option>
+                    <option value="failed" data-i18n="backups.status.failed">Failed</option>
+                    <option value="canceled" data-i18n="backups.status.canceled">Canceled</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label for="backups-history-search" data-i18n="backups.filters.filename">Filename</label>
+                  <input id="backups-history-search" type="search" data-i18n-placeholder="backups.filters.filenamePlaceholder" placeholder="Search by filename">
+                </div>
+              </div>
+              <div class="backups-actions">
+                <button class="btn ghost" id="backups-history-refresh" data-i18n="common.refresh">Refresh</button>
+              </div>
+            </div>
+          </div>
+          <div class="card nested-card">
+            <div class="card-body">
+              <div id="backups-history-loading" class="muted" hidden data-i18n="common.loading">Loading...</div>
+              <div id="backups-history-empty" class="backups-empty" hidden>
+                <span data-i18n="backups.empty.noBackups">No backups yet</span>
+                <button class="btn primary backups-history-empty-create" id="backups-history-empty-create" data-i18n="backups.empty.createFirst">Create first backup</button>
+              </div>
+              <div class="table-responsive">
+                <table class="data-table" id="backups-history-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="backups.fields.createdAt">Created</th>
+                      <th data-i18n="backups.fields.status">Status</th>
+                      <th data-i18n="backups.fields.size">Size</th>
+                      <th data-i18n="backups.fields.filename">Filename</th>
+                      <th data-i18n="common.actions">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="backups-tab-restore" data-tab="backups-tab-restore" hidden>
+          <div class="card nested-card">
+            <div class="card-body">
+              <div class="form-grid two-column">
+                <div class="form-field">
+                  <label for="backups-restore-artifact" data-i18n="backups.restore.selectBackup">Backup</label>
+                  <select id="backups-restore-artifact"></select>
+                </div>
+              </div>
+              <div class="backups-actions">
+                <button class="btn ghost" id="backups-import-open" data-i18n="backups.import.action">Import .bscc</button>
+                <button class="btn ghost" id="backups-restore-dry-run" data-i18n="backups.actions.dryRun">Dry-run check</button>
+                <button class="btn danger" id="backups-restore-run" data-i18n="backups.actions.restore">Restore</button>
+                <button class="btn ghost" id="backups-restore-refresh" data-i18n="common.refresh">Refresh</button>
+              </div>
+              <div id="backups-restore-current" class="muted backups-restore-current"></div>
+            </div>
+          </div>
+          <div class="card nested-card">
+            <div class="card-header"><h3 data-i18n="backups.restore.progress">Restore progress</h3></div>
+            <div class="card-body">
+              <div id="backups-restore-loading" class="muted" hidden data-i18n="common.loading">Loading...</div>
+              <ul id="backups-restore-steps" class="steps-list"></ul>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel" id="backups-tab-plan" data-tab="backups-tab-plan" hidden>
+          <div class="card nested-card">
+            <div class="card-body">
+              <form id="backups-plan-form" class="form-grid three-column backups-plan-grid">
+                <div class="backups-plan-col">
+                  <div class="form-field checkbox-field">
+                    <label class="checkbox">
+                      <input type="checkbox" id="backups-plan-enabled">
+                      <span data-i18n="backups.plan.fields.enabled">Enabled</span>
+                    </label>
+                  </div>
+                  <div class="form-field checkbox-field">
+                    <label class="checkbox">
+                      <input type="checkbox" id="backups-plan-include-files">
+                      <span data-i18n="backups.plan.fields.includeFiles">Include files</span>
+                    </label>
+                  </div>
+                </div>
+                <div class="backups-plan-col">
+                  <div class="form-field">
+                    <label for="backups-plan-schedule-type" data-i18n="backups.plan.fields.scheduleType">Backup frequency</label>
+                    <select id="backups-plan-schedule-type">
+                      <option value="daily" data-i18n="backups.plan.frequency.daily">Daily</option>
+                      <option value="weekly" data-i18n="backups.plan.frequency.weekly">Weekly</option>
+                      <option value="monthly_start" data-i18n="backups.plan.frequency.monthlyStart">Monthly (start of month)</option>
+                      <option value="monthly_end" data-i18n="backups.plan.frequency.monthlyEnd">Monthly (end of month)</option>
+                    </select>
+                  </div>
+                  <div class="form-field">
+                    <label for="backups-plan-time" data-i18n="backups.plan.fields.time">Time</label>
+                    <input id="backups-plan-time" type="time" value="02:00">
+                  </div>
+                  <div class="form-field" id="backups-plan-weekday-wrap" hidden>
+                    <label for="backups-plan-weekday" data-i18n="backups.plan.fields.weekday">Weekday</label>
+                    <select id="backups-plan-weekday">
+                      <option value="0" data-i18n="common.weekday.sunday">Sunday</option>
+                      <option value="1" data-i18n="common.weekday.monday">Monday</option>
+                      <option value="2" data-i18n="common.weekday.tuesday">Tuesday</option>
+                      <option value="3" data-i18n="common.weekday.wednesday">Wednesday</option>
+                      <option value="4" data-i18n="common.weekday.thursday">Thursday</option>
+                      <option value="5" data-i18n="common.weekday.friday">Friday</option>
+                      <option value="6" data-i18n="common.weekday.saturday">Saturday</option>
+                    </select>
+                  </div>
+                </div>
+                <div class="backups-plan-col">
+                  <div class="form-field">
+                    <label for="backups-plan-retention-days" data-i18n="backups.plan.fields.retentionDays">Retention days</label>
+                    <input id="backups-plan-retention-days" type="number" min="1">
+                  </div>
+                  <div class="form-field">
+                    <label for="backups-plan-keep-last" data-i18n="backups.plan.fields.keepLast">Keep latest backups</label>
+                    <input id="backups-plan-keep-last" type="number" min="1">
+                  </div>
+                </div>
+              </form>
+              <div class="backups-actions">
+                <button class="btn primary" id="backups-plan-save" data-i18n="common.save">Save</button>
+                <button class="btn ghost" id="backups-plan-refresh" data-i18n="common.refresh">Refresh</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="backups-delete-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="backups.delete.confirmTitle">Delete backup</h3>
+        <button class="btn ghost" id="backups-delete-cancel-top" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="backups-delete-message" class="confirm-message" data-i18n="backups.delete.confirmMessage">Delete selected backup?</div>
+        <div class="form-actions">
+          <button type="button" class="btn danger" id="backups-delete-confirm" data-i18n="common.delete">Delete</button>
+          <button type="button" class="btn ghost" id="backups-delete-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="backups-import-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="backups.import.title">Import backup</h3>
+        <button class="btn ghost" id="backups-import-cancel-top" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label for="backups-import-file" data-i18n="backups.import.fileLabel">BSCC file</label>
+            <input id="backups-import-file" type="file" accept=".bscc,application/octet-stream">
+          </div>
+          <div class="banner" data-i18n="backups.import.keyWarning">
+            Use the correct encryption key for backups created on another server.
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="button" class="btn primary" id="backups-import-submit" data-i18n="backups.import.upload">Upload</button>
+          <button type="button" class="btn ghost" id="backups-import-cancel" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

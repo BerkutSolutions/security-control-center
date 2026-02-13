@@ -3,7 +3,7 @@
   let inactivityTimer;
   let autoLogoutHandler;
   let pingTimer;
-  const MENU_ORDER = ['dashboard', 'tasks', 'controls', 'monitoring', 'docs', 'approvals', 'incidents', 'reports', 'accounts', 'settings', 'logs'];
+  const MENU_ORDER = ['dashboard', 'tasks', 'controls', 'monitoring', 'docs', 'approvals', 'incidents', 'reports', 'accounts', 'settings', 'backups', 'logs'];
   const lang = prefs.language || localStorage.getItem('berkut_lang') || 'ru';
   await BerkutI18n.load(lang);
   BerkutI18n.apply();
@@ -99,6 +99,7 @@
     if (base === 'dashboard') return 'dashboard';
     if (base === 'controls') return 'controls';
     if (base === 'monitoring') return 'monitoring';
+    if (base === 'backups') return 'backups';
     if (base === 'reports') return 'reports';
     if (base === 'findings') return 'findings';
     if (base === 'logs') return 'logs';
@@ -129,6 +130,11 @@
     } else if (rawHash.startsWith('settings/')) {
       const [, tab] = rawHash.split('/');
       next = tab ? `/settings/${tab}` : '/settings';
+    } else if (rawHash.startsWith('backups/')) {
+      const [, tab] = rawHash.split('/');
+      next = tab ? `/backups/${tab}` : '/backups';
+    } else if (rawHash === 'backups') {
+      next = '/backups';
     } else if (rawHash) {
       const base = rawHash.split('/')[0];
       const known = items.find(i => i.path === base);
@@ -272,6 +278,9 @@
     if (path === 'reports' && typeof ReportsPage !== 'undefined') {
       ReportsPage.init();
     }
+    if (path === 'backups' && typeof BackupsPage !== 'undefined') {
+      BackupsPage.init();
+    }
   }
 
   async function handlePreferencesChange(nextPrefs, menu, currentPath) {
@@ -411,6 +420,8 @@
         return BerkutI18n.t('settings.subtitle');
       case 'reports':
         return BerkutI18n.t('reports.subtitle');
+      case 'backups':
+        return BerkutI18n.t('backups.subtitle');
       default:
         return BerkutI18n.t('placeholder.subtitle');
     }

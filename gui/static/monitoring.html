@@ -1,6 +1,9 @@
 <div class="page" id="monitoring-page">
   <div class="tabs browser-tabs" id="monitoring-tabs">
     <button class="tab-btn active" data-tab="monitoring-tab-home" data-i18n="monitoring.tabs.home">Home</button>
+    <button class="tab-btn" data-tab="monitoring-tab-events" data-i18n="monitoring.tabs.events">Events center</button>
+    <button class="tab-btn" data-tab="monitoring-tab-sla" data-i18n="monitoring.tabs.sla">SLA</button>
+    <button class="tab-btn" data-tab="monitoring-tab-maintenance" data-i18n="monitoring.tabs.maintenance">Maintenance</button>
     <button class="tab-btn" data-tab="monitoring-tab-cert" data-i18n="monitoring.tabs.certificates">Certificates</button>
     <button class="tab-btn" data-tab="monitoring-tab-notify" data-i18n="monitoring.tabs.notifications">Notifications</button>
     <button class="tab-btn" data-tab="monitoring-tab-settings" data-i18n="monitoring.tabs.settings">Settings</button>
@@ -71,9 +74,9 @@
                 </div>
                 <div class="muted" id="monitor-detail-target"></div>
                 <div class="monitoring-maintenance" id="monitor-maintenance-info" hidden></div>
+                <div class="alert" id="monitor-detail-alert" hidden></div>
               </div>
               <div class="btn-group" id="monitor-detail-actions">
-                <button class="btn secondary" id="monitor-check-now" data-i18n="monitoring.actions.checkNow">Check now</button>
                 <button class="btn ghost" id="monitor-pause-toggle" data-i18n="monitoring.actions.pause">Pause</button>
                 <button class="btn ghost" id="monitor-edit" data-i18n="monitoring.actions.edit">Edit</button>
                 <button class="btn ghost" id="monitor-clone" data-i18n="monitoring.actions.clone">Clone</button>
@@ -120,52 +123,54 @@
               </div>
             </div>
           </div>
-          <div class="card" id="monitor-events-center">
-            <div class="card-header">
-              <div>
-                <h3 data-i18n="monitoring.events.centerTitle">Events Center</h3>
-                <p class="muted" data-i18n="monitoring.events.centerSubtitle">Latest monitoring events</p>
-              </div>
-              <button class="btn ghost" id="monitor-events-center-refresh" data-i18n="common.refresh">Refresh</button>
+        </section>
+      </div>
+    </div>
+    <div class="tab-panel" id="monitoring-tab-events" data-tab="monitoring-tab-events" hidden>
+      <div class="card" id="monitor-events-center">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="monitoring.events.centerTitle">Events Center</h3>
+            <p class="muted" data-i18n="monitoring.events.centerSubtitle">Latest monitoring events</p>
+          </div>
+          <button class="btn ghost" id="monitor-events-center-refresh" data-i18n="common.refresh">Refresh</button>
+        </div>
+        <div class="card-body">
+          <div class="filters-grid monitoring-events-row">
+            <div class="form-field">
+              <label data-i18n="monitoring.filter.range">Range</label>
+              <select id="monitor-events-center-range" class="select select-compact">
+                <option value="1h" data-i18n="monitoring.range.1h">1h</option>
+                <option value="3h" data-i18n="monitoring.range.3h">3h</option>
+                <option value="6h" data-i18n="monitoring.range.6h">6h</option>
+                <option value="24h" data-i18n="monitoring.range.24h">24h</option>
+                <option value="7d" data-i18n="monitoring.range.week">Week</option>
+                <option value="30d" data-i18n="monitoring.range.month">Month</option>
+              </select>
             </div>
-            <div class="card-body">
-              <div class="filters-grid monitoring-events-row">
-                <div class="form-field">
-                  <label data-i18n="monitoring.filter.range">Range</label>
-                  <select id="monitor-events-center-range" class="select select-compact">
-                    <option value="1h" data-i18n="monitoring.range.1h">1h</option>
-                    <option value="3h" data-i18n="monitoring.range.3h">3h</option>
-                    <option value="6h" data-i18n="monitoring.range.6h">6h</option>
-                    <option value="24h" data-i18n="monitoring.range.24h">24h</option>
-                    <option value="7d" data-i18n="monitoring.range.week">Week</option>
-                    <option value="30d" data-i18n="monitoring.range.month">Month</option>
-                  </select>
-                </div>
-                <div class="form-field">
-                  <label data-i18n="monitoring.filter.type">Type</label>
-                  <select id="monitor-events-center-type">
-                    <option value="" data-i18n="common.all">All</option>
-                    <option value="up" data-i18n="monitoring.status.up">UP</option>
-                    <option value="down" data-i18n="monitoring.status.down">DOWN</option>
-                    <option value="maintenance_start" data-i18n="monitoring.event.maintenanceStart">Maintenance start</option>
-                    <option value="maintenance_end" data-i18n="monitoring.event.maintenanceEnd">Maintenance end</option>
-                    <option value="tls_expiring" data-i18n="monitoring.event.tlsExpiring">TLS expiring</option>
-                  </select>
-                </div>
-                <div class="form-field">
-                  <label data-i18n="monitoring.filter.monitor">Monitor</label>
-                  <select id="monitor-events-center-monitor"></select>
-                </div>
-                <div class="form-field">
-                  <label data-i18n="monitoring.filter.tags">Tags</label>
-                  <select id="monitor-events-center-tags" multiple></select>
-                  <div class="selected-hint tag-hint" data-tag-hint="monitor-events-center-tags"></div>
-                </div>
-              </div>
-              <div class="monitoring-events-list" id="monitor-events-center-list"></div>
+            <div class="form-field">
+              <label data-i18n="monitoring.filter.type">Type</label>
+              <select id="monitor-events-center-type">
+                <option value="" data-i18n="common.all">All</option>
+                <option value="up" data-i18n="monitoring.status.up">UP</option>
+                <option value="down" data-i18n="monitoring.status.down">DOWN</option>
+                <option value="maintenance_start" data-i18n="monitoring.event.maintenanceStart">Maintenance start</option>
+                <option value="maintenance_end" data-i18n="monitoring.event.maintenanceEnd">Maintenance end</option>
+                <option value="tls_expiring" data-i18n="monitoring.event.tlsExpiring">TLS expiring</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.filter.monitor">Monitor</label>
+              <select id="monitor-events-center-monitor"></select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.filter.tags">Tags</label>
+              <select id="monitor-events-center-tags" multiple></select>
+              <div class="selected-hint tag-hint" data-tag-hint="monitor-events-center-tags"></div>
             </div>
           </div>
-        </section>
+          <div class="monitoring-events-list" id="monitor-events-center-list"></div>
+        </div>
       </div>
     </div>
     <div class="tab-panel" id="monitoring-tab-cert" data-tab="monitoring-tab-cert" hidden>
@@ -253,6 +258,57 @@
         <div class="card-body">
           <div class="alert" id="monitoring-notify-alert" hidden></div>
           <div class="monitoring-table" id="monitoring-notify-list"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-panel" id="monitoring-tab-sla" data-tab="monitoring-tab-sla" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="monitoring.sla.title">SLA</h3>
+            <p class="muted" data-i18n="monitoring.sla.subtitle">Coverage-aware SLA by monitor</p>
+          </div>
+          <button class="btn ghost" id="monitoring-sla-refresh" data-i18n="common.refresh">Refresh</button>
+        </div>
+        <div class="card-body">
+          <div class="filters-grid">
+            <div class="form-field">
+              <label data-i18n="monitoring.sla.filter.status">SLA status</label>
+              <select id="monitoring-sla-status">
+                <option value="" data-i18n="common.all">All</option>
+                <option value="ok" data-i18n="monitoring.sla.ok">SLA OK</option>
+                <option value="violated" data-i18n="monitoring.sla.violated">SLA violated</option>
+                <option value="unknown" data-i18n="monitoring.sla.unknown">Unknown</option>
+              </select>
+            </div>
+          </div>
+          <div class="monitoring-table" id="monitoring-sla-list"></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="monitoring.sla.historyTitle">Closed periods</h3>
+            <p class="muted" data-i18n="monitoring.sla.historySubtitle">Latest SLA period evaluations</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="monitoring-table" id="monitoring-sla-history"></div>
+        </div>
+      </div>
+    </div>
+    <div class="tab-panel" id="monitoring-tab-maintenance" data-tab="monitoring-tab-maintenance" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="monitoring.maintenance.title">Maintenance windows</h3>
+            <p class="muted" data-i18n="monitoring.maintenance.subtitle">Scheduled windows treated as accepted risk in SLA</p>
+          </div>
+          <button class="btn primary" id="monitoring-maintenance-new" data-i18n="monitoring.maintenance.new">Schedule</button>
+        </div>
+        <div class="card-body">
+          <div class="alert" id="monitoring-maintenance-alert" hidden></div>
+          <div class="monitoring-table" id="monitoring-maintenance-list"></div>
         </div>
       </div>
     </div>
@@ -347,19 +403,6 @@
           </div>
         </div>
       </div>
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <h3 data-i18n="monitoring.maintenance.title">Maintenance windows</h3>
-            <p class="muted" data-i18n="monitoring.maintenance.subtitle">Scheduled windows for maintenance mode</p>
-          </div>
-          <button class="btn primary" id="monitoring-maintenance-new" data-i18n="monitoring.maintenance.new">+ New window</button>
-        </div>
-        <div class="card-body">
-          <div class="alert" id="monitoring-maintenance-alert" hidden></div>
-          <div class="monitoring-table" id="monitoring-maintenance-list"></div>
-        </div>
-      </div>
     </div>
   </div>
 
@@ -429,10 +472,6 @@
           <div class="form-field">
             <label data-i18n="monitoring.field.retryInterval">Retry interval (sec)</label>
             <input type="number" id="monitor-retry-interval" min="1">
-          </div>
-          <div class="form-field">
-            <label data-i18n="monitoring.field.slaTarget">SLA target (%)</label>
-            <input type="number" id="monitor-sla-target" min="1" max="100" step="0.1">
           </div>
           <div class="form-field" id="monitor-method-field">
             <label data-i18n="monitoring.field.method">Method</label>
@@ -587,59 +626,123 @@
 
   <div class="modal" id="maintenance-modal" hidden>
     <div class="modal-backdrop"></div>
-    <div class="modal-body">
+    <div class="modal-body wide">
       <div class="modal-header">
         <h3 id="maintenance-modal-title" data-i18n="monitoring.maintenance.createTitle">Maintenance window</h3>
         <button class="btn ghost" data-close="#maintenance-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <div class="alert" id="maintenance-modal-alert" hidden></div>
-        <form id="maintenance-form" class="form-grid two-column">
-          <div class="form-field required">
-            <label data-i18n="monitoring.maintenance.field.name">Name</label>
-            <input id="maintenance-name" required>
-          </div>
-          <div class="form-field">
-            <label data-i18n="monitoring.maintenance.field.monitor">Monitor</label>
-            <select id="maintenance-monitor"></select>
-          </div>
-          <div class="form-field full">
-            <label data-i18n="monitoring.maintenance.field.tags">Tags</label>
-            <select id="maintenance-tags" multiple></select>
-            <div class="selected-hint" data-tag-hint="maintenance-tags"></div>
-            <div class="tag-input-row">
-              <input id="maintenance-tags-new" placeholder="Tag" data-i18n-placeholder="monitoring.placeholder.tag">
-              <button class="btn ghost" id="maintenance-tags-add" type="button" data-i18n="common.add">Add</button>
+        <form id="maintenance-form" class="maintenance-modal-grid">
+          <div class="maintenance-modal-col">
+            <div class="form-field required">
+              <label data-i18n="monitoring.maintenance.field.name">Name</label>
+              <input id="maintenance-name" required>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.maintenance.field.description">Description (Markdown)</label>
+              <textarea id="maintenance-description" rows="4"></textarea>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="monitoring.maintenance.field.monitors">Affected monitors</label>
+              <select id="maintenance-monitors" class="select" multiple></select>
+              <div class="selected-hint" id="maintenance-monitors-hint"></div>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.maintenance.field.timezone">Timezone</label>
+              <select id="maintenance-timezone"></select>
             </div>
           </div>
-          <div class="form-field required">
-            <label data-i18n="monitoring.maintenance.field.startsAt">Starts at</label>
-            <input type="text" id="maintenance-starts-at" class="input" data-i18n-placeholder="common.datetimePlaceholder" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ">
+
+          <div class="maintenance-modal-col">
+            <div class="form-field">
+              <label data-i18n="monitoring.maintenance.field.strategy">Strategy</label>
+              <select id="maintenance-strategy">
+                <option value="single" data-i18n="monitoring.maintenance.strategy.single">Single window</option>
+                <option value="cron" data-i18n="monitoring.maintenance.strategy.cron">Cron expression</option>
+                <option value="interval" data-i18n="monitoring.maintenance.strategy.interval">Interval</option>
+                <option value="weekday" data-i18n="monitoring.maintenance.strategy.weekday">Day of week</option>
+                <option value="monthday" data-i18n="monitoring.maintenance.strategy.monthday">Day of month</option>
+              </select>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="cron">
+              <label data-i18n="monitoring.maintenance.field.cron">Cron expression</label>
+              <input id="maintenance-cron" placeholder="30 3 * * *">
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="cron">
+              <label data-i18n="monitoring.maintenance.field.duration">Duration (minutes)</label>
+              <input type="number" id="maintenance-duration" min="1">
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="interval">
+              <label data-i18n="monitoring.maintenance.field.intervalDays">Run every N days</label>
+              <input type="number" id="maintenance-interval-days" min="1" value="1">
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="interval">
+              <label data-i18n="monitoring.maintenance.field.dailyWindow">Daily window</label>
+              <div class="time-range-row">
+                <input type="time" id="maintenance-window-start" value="02:00">
+                <span>-</span>
+                <input type="time" id="maintenance-window-end" value="03:00">
+              </div>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="weekday">
+              <label data-i18n="monitoring.maintenance.field.weekdays">Days of week</label>
+              <div class="maintenance-checkbox-grid" id="maintenance-weekdays">
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.mon">Mon</span><input type="checkbox" value="1"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.tue">Tue</span><input type="checkbox" value="2"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.wed">Wed</span><input type="checkbox" value="3"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.thu">Thu</span><input type="checkbox" value="4"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.fri">Fri</span><input type="checkbox" value="5"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.sat">Sat</span><input type="checkbox" value="6"></label>
+                <label class="checkbox maintenance-day"><span data-i18n="common.weekday.sun">Sun</span><input type="checkbox" value="7"></label>
+              </div>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="weekday">
+              <label data-i18n="monitoring.maintenance.field.dailyWindow">Daily window</label>
+              <div class="time-range-row">
+                <input type="time" id="maintenance-weekday-start" value="02:00">
+                <span>-</span>
+                <input type="time" id="maintenance-weekday-end" value="03:00">
+              </div>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="monthday">
+              <label data-i18n="monitoring.maintenance.field.monthDays">Days of month</label>
+              <div class="maintenance-checkbox-grid compact" id="maintenance-monthdays"></div>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="monthday">
+              <label class="checkbox maintenance-day">
+                <span data-i18n="monitoring.maintenance.field.lastDay">Last day of month</span>
+                <input type="checkbox" id="maintenance-last-day">
+              </label>
+            </div>
+            <div class="form-field maintenance-strategy-block" data-strategy="monthday">
+              <label data-i18n="monitoring.maintenance.field.dailyWindow">Daily window</label>
+              <div class="time-range-row">
+                <input type="time" id="maintenance-monthday-start" value="02:00">
+                <span>-</span>
+                <input type="time" id="maintenance-monthday-end" value="03:00">
+              </div>
+            </div>
           </div>
-          <div class="form-field required">
-            <label data-i18n="monitoring.maintenance.field.endsAt">Ends at</label>
-            <input type="text" id="maintenance-ends-at" class="input" data-i18n-placeholder="common.datetimePlaceholder" placeholder="ДД.ММ.ГГГГ ЧЧ:ММ">
-          </div>
-          <div class="form-field">
-            <label data-i18n="monitoring.maintenance.field.timezone">Timezone</label>
-            <select id="maintenance-timezone"></select>
-          </div>
-          <div class="form-field">
-            <label class="checkbox">
-              <input type="checkbox" id="maintenance-recurring">
-              <span data-i18n="monitoring.maintenance.field.recurring">Recurring</span>
-            </label>
-          </div>
-          <div class="form-field full">
-            <label data-i18n="monitoring.maintenance.field.rrule">RRULE</label>
-            <input id="maintenance-rrule" placeholder="FREQ=WEEKLY;BYDAY=MO,WE,FR" data-i18n-placeholder="monitoring.maintenance.rrulePlaceholder">
-            <div class="muted" data-i18n="monitoring.maintenance.rruleHint">Recurring rule in RFC 5545 format.</div>
-          </div>
-          <div class="form-field">
-            <label class="checkbox">
-              <input type="checkbox" id="maintenance-active" checked>
-              <span data-i18n="monitoring.maintenance.field.active">Active</span>
-            </label>
+
+          <div class="maintenance-modal-col">
+            <div class="form-field">
+              <label class="checkbox maintenance-state">
+                <span data-i18n="monitoring.maintenance.field.state">State</span>
+                <div class="maintenance-state-inline">
+                  <input type="checkbox" id="maintenance-active" checked>
+                  <span data-i18n="monitoring.maintenance.state.enabled">Enabled</span>
+                </div>
+              </label>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="monitoring.maintenance.field.activeFrom">Start date/time</label>
+              <input type="datetime-local" id="maintenance-starts-at" class="input">
+            </div>
+            <div class="form-field required">
+              <label data-i18n="monitoring.maintenance.field.activeUntil">End date/time</label>
+              <input type="datetime-local" id="maintenance-ends-at" class="input">
+            </div>
           </div>
         </form>
         <div class="form-actions">

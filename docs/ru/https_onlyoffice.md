@@ -144,3 +144,10 @@ docker compose --profile proxy logs -f berkut
 - `nginx` должен быть `Up`, не `Restarting`.
 - Не должно быть `cannot load certificate "/etc/nginx/certs/fullchain.pem"`.
 - В browser devtools не должно быть `ServiceWorker ... SSL certificate error`.
+
+## Политика сохранения SCC (DOCX)
+
+- Новая версия DOCX создаётся только через кнопку `Сохранить` в модальном окне документа.
+- Для сохранения версии обязательна причина изменения.
+- Сохранение внутри OnlyOffice (`Ctrl+S` / встроенная кнопка) не создаёт версию SCC.
+- При каждом открытии/переключении View/Edit используется новая сессия OnlyOffice (новый session key), чтобы исключить залипшее состояние редактора.

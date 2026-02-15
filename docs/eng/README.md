@@ -1,6 +1,6 @@
 ﻿# Berkut SCC Documentation (EN)
 
-Documentation version baseline: `1.0.3`
+Documentation version baseline: `1.0.4`
 
 ## Sections
 1. Architecture: `docs/eng/architecture.md`

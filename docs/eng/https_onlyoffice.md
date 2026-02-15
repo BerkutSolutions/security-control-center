@@ -137,3 +137,10 @@ Expected:
 - `nginx` must be `Up`, not `Restarting`.
 - no `cannot load certificate "/etc/nginx/certs/fullchain.pem"`.
 - no `ServiceWorker ... SSL certificate error` in browser devtools.
+
+## SCC Save Policy (DOCX)
+
+- SCC creates a new DOCX version only through modal `Save` in the document panel.
+- Change reason is mandatory for SCC version creation.
+- In-editor OnlyOffice save / `Ctrl+S` does not create SCC versions.
+- View/Edit switches use a fresh OnlyOffice session key per open to avoid stale session state.

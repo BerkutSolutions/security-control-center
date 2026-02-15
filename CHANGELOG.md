@@ -1,34 +1,32 @@
 ﻿# Журнал изменений
 
-## 1.0.4 — 15.02.2026
+## 1.0.4-1 — 15.02.2026
 
-### Документы / OnlyOffice
-- Интегрирован OnlyOffice Document Server в отдельном контейнере с reverse-proxy через `/office/`.
-- Добавлены backend endpoint'ы для OnlyOffice:
-  - `GET /api/docs/{id}/office/config`
-  - `GET /api/docs/{id}/office/file`
-  - `POST /api/docs/{id}/office/callback`
-  - `POST /api/docs/{id}/office/forcesave`
-- Реализованы JWT-подписи и серверные проверки (zero-trust) для конфигурации, бинарной выдачи и callback.
-- Для DOCX включен встроенный OnlyOffice в панели документа (без внешних CDN).
-- Для PDF/DOCX отключены markdown-элементы в модальном редакторе.
+### Документация / деплой
+- Обновлён пример compose: `docs/ru/docker-compose.https.yml` под запуск через отдельные контейнеры `nginx` + `onlyoffice`.
+- Из compose-примера убрана привязка к пользовательской сети и статическим IP.
+- В `nginx`-примере добавлен inline reverse-proxy для маршрутов `/`, `/office/`, `/cache/`, `/printfile/`, `/downloadas/`.
+- Секреты в compose-примере переведены на безопасные placeholders (`change-me-*`) без чувствительных значений.
+- Для `OnlyOffice` публичный URL в примере закреплён как `/office/` для same-origin работы через proxy.
+- В `docs/ru/https_onlyoffice.md` добавлен раздел быстрого запуска через отдельный proxy-контейнер.
+- Обновлены формулировки ссылок на compose-пример в:
+  - `docs/ru/README.md`
+  - `docs/README.md`
+  - `docs/eng/README.md`
 
-### Сохранение и версии DOCX
-- Версионирование DOCX выполняется только через явное сохранение SCC (кнопка `Сохранить` в модальном окне + причина изменения).
-- Callback сохраняет новую версию только для explicit-save потока; in-editor save/`Ctrl+S` не создают версию SCC.
-- Добавлена защита от ложного «успешно сохранено»: успех показывается только если появилась новая версия.
-
-### Надежность и UX
-- Исправлены переходы `Просмотр <-> Редактирование` для DOCX (полный re-init сессии).
-- Для каждого открытия выдаётся уникальный session key OnlyOffice с валидным charset (hex), чтобы избежать websocket/session reject.
-- Снижен шум в аудите: внутренние технические обновления контента выполняются с `?audit=0`.
-- Добавлены/исправлены RU/EN i18n-ключи для статусов и ошибок OnlyOffice.
-- Исправлено переполнение длинных названий документов и выравнивание кнопок в UI.
-
-### Безопасность
-- В конфиге редактора отключены `download` и `print` permissions для DOCX.
-- Сервер продолжает проверять права на каждом endpoint (UI не является контролем безопасности).
-- Добавлены аудит-события для действий OnlyOffice (`config`, `forcesave`, `callback_saved`, `callback_error`).
+### Документация / презентация проекта
+- Переработан `README.md`: расширено описание продукта, целевой аудитории, бизнес-ценности и ключевых возможностей.
+- Переработан `README.en.md` в аналогичной структуре для англоязычной презентации проекта.
+- Инструкции быстрого запуска вынесены в отдельные файлы:
+  - `QUICKSTART.md`
+  - `QUICKSTART.en.md`
+- В корневых README добавлены прямые гиперссылки на документы по запуску и деплою:
+  - `docs/ru/deploy.md`, `docs/eng/deploy.md`
+  - `docs/ru/runbook.md`, `docs/eng/runbook.md`
+  - `docs/ru/https_onlyoffice.md`, `docs/eng/https_onlyoffice.md`
+  - `docs/ru/docker-compose.https.yml`
 
 ## 1.0.3 — 13.02.2026
 - Базовый релиз платформы с модулями backup/SLA/monitoring и обновлённой серверной архитектурой.
+
+

@@ -59,6 +59,17 @@ func Validate(cfg *AppConfig) error {
 			return fmt.Errorf("backups.encryption_key must be at least 32 characters")
 		}
 	}
+	if cfg.Docs.OnlyOffice.Enabled {
+		if strings.TrimSpace(cfg.Docs.OnlyOffice.PublicURL) == "" {
+			return fmt.Errorf("docs.onlyoffice.public_url must be set when onlyoffice is enabled")
+		}
+		if strings.TrimSpace(cfg.Docs.OnlyOffice.AppInternalURL) == "" {
+			return fmt.Errorf("docs.onlyoffice.app_internal_url must be set when onlyoffice is enabled")
+		}
+		if strings.TrimSpace(cfg.Docs.OnlyOffice.JWTSecret) == "" {
+			return fmt.Errorf("docs.onlyoffice.jwt_secret must be set when onlyoffice is enabled")
+		}
+	}
 	return nil
 }
 

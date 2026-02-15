@@ -9,6 +9,9 @@ Primary entry points:
 - English: `docs/eng/README.md`
 - Backups RU: `docs/ru/backups.md`
 - Backups EN: `docs/eng/backups.md`
+- HTTPS + OnlyOffice RU: `docs/ru/https_onlyoffice.md`
+- HTTPS + OnlyOffice EN: `docs/eng/https_onlyoffice.md`
+- HTTPS compose example: `docs/ru/docker-compose.https.yml`
 - Tabs/UX wiki RU: `docs/ru/wiki/tabs.md`
 - Tabs/UX wiki EN: `docs/eng/wiki/tabs.md`
 

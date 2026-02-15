@@ -8,6 +8,7 @@
     '/static/js/docs.folders.js',
     '/static/js/docs.users.js',
     '/static/js/docs.list.js',
+    '/static/js/docs.onlyoffice.js',
     '/static/js/docs.editor.js',
     '/static/js/docs.templates.js',
     '/static/js/approvals.workflow.js',

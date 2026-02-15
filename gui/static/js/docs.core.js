@@ -243,7 +243,6 @@ const DocsPage = (() => {
   async function init() {
     const page = document.getElementById('docs-page');
     if (!page) return;
-    console.log('[docs] init');
     const dir = (typeof window !== 'undefined' && window.UserDirectory)
       ? window.UserDirectory
       : (typeof UserDirectory !== 'undefined' ? UserDirectory : null);
@@ -258,7 +257,11 @@ const DocsPage = (() => {
     DocEditor.init({
       onSave: async () => { if (DocsPage.loadDocs) await DocsPage.loadDocs(); },
       onModeChange: (docId, mode) => {
-        if (DocsPage.updateActiveDocMode) {
+        // Re-open tab in requested mode so DOCX mode switch uses the same path
+        // as context-menu Edit and always boots a clean OnlyOffice session.
+        if (DocsPage.openDocTab) {
+          DocsPage.openDocTab(docId, mode);
+        } else if (DocsPage.updateActiveDocMode) {
           DocsPage.updateActiveDocMode(docId, mode);
         } else if (DocsPage.updateDocsPath) {
           DocsPage.updateDocsPath(docId, mode);
@@ -278,10 +281,6 @@ const DocsPage = (() => {
     // Ensure editor and context menu are hidden on initial load in case markup state is stale
     DocEditor.close({ silent: true });
     if (DocsPage.hideContextMenu) DocsPage.hideContextMenu();
-    console.log('[docs] init: hidden states', {
-      editorHidden: document.getElementById('doc-editor')?.hidden,
-      contextMenuHidden: document.getElementById('doc-context-menu')?.hidden,
-    });
     const canViewDocs = hasPermission('docs.view');
     if (canViewDocs) {
       if (DocsPage.loadFolders) await DocsPage.loadFolders();

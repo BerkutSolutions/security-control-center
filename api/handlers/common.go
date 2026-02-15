@@ -3,7 +3,9 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"strings"
 )
 
 const (
@@ -29,4 +31,29 @@ func parseMultipartFormLimited(w http.ResponseWriter, r *http.Request, maxBytes 
 		return err
 	}
 	return nil
+}
+
+func attachmentDisposition(filename string) string {
+	return fmt.Sprintf("attachment; filename=%q", sanitizeHeaderFilename(filename))
+}
+
+func sanitizeHeaderFilename(name string) string {
+	clean := strings.TrimSpace(name)
+	if clean == "" {
+		return "file"
+	}
+	replacer := strings.NewReplacer(
+		"\r", "",
+		"\n", "",
+		"\"", "",
+		";", "_",
+		"/", "_",
+		"\\", "_",
+	)
+	clean = replacer.Replace(clean)
+	clean = strings.TrimSpace(clean)
+	if clean == "" {
+		return "file"
+	}
+	return clean
 }

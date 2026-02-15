@@ -51,12 +51,25 @@ services:
       retries: 5
       start_period: 15s
 
+  onlyoffice:
+    image: onlyoffice/documentserver:8.3
+    environment:
+      JWT_ENABLED: ${ONLYOFFICE_JWT_ENABLED:-true}
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
+      JWT_HEADER: ${ONLYOFFICE_JWT_HEADER:-Authorization}
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+    restart: unless-stopped
+
   nginx:
     image: nginx:1.27-alpine
     profiles: ["proxy"]
     depends_on:
       berkut:
         condition: service_healthy
+      onlyoffice:
+        condition: service_started
     ports:
       - "${PROXY_HTTP_PORT:-80}:80"
       - "${PROXY_HTTPS_PORT:-443}:443"
@@ -68,3 +81,5 @@ services:
 volumes:
   berkut_data:
   berkut_pgdata:
+  onlyoffice_data:
+  onlyoffice_logs:

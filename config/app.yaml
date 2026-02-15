@@ -32,6 +32,17 @@ docs:
     soffice_path: "soffice"
     timeout_sec: 20
     temp_dir: ""
+  onlyoffice:
+    enabled: false
+    public_url: ""
+    internal_url: "http://onlyoffice/"
+    app_internal_url: "http://berkut:8080"
+    jwt_secret: ""
+    jwt_header: "Authorization"
+    jwt_issuer: "berkut-scc"
+    jwt_audience: "onlyoffice-document-server"
+    verify_tls: true
+    request_timeout_sec: 20
 incidents:
   reg_no_format: "INC-{year}-{seq:05}"
   storage_dir: "data/incidents"

@@ -39,6 +39,7 @@ type DocsConfig struct {
 	VersionLimit       int               `yaml:"version_limit" env:"BERKUT_DOCS_VERSION_LIMIT" env-default:"10"`
 	Watermark          WatermarkConfig   `yaml:"watermark"`
 	Converters         ConvertersConfig  `yaml:"converters"`
+	OnlyOffice         OnlyOfficeConfig  `yaml:"onlyoffice"`
 	AllowDowngrade     bool              `yaml:"allow_downgrade"`
 	WatermarkMinLevel  string            `yaml:"watermark_min_level"` // deprecated; kept for compatibility
 	ClassificationTags map[string]string `yaml:"classification_tags"` // optional mapping of tag codes to descriptions
@@ -57,6 +58,19 @@ type ConvertersConfig struct {
 	SofficePath string `yaml:"soffice_path" env:"BERKUT_DOCS_CONVERTERS_SOFFICE_PATH" env-default:"soffice"`
 	TimeoutSec  int    `yaml:"timeout_sec" env:"BERKUT_DOCS_CONVERTERS_TIMEOUT" env-default:"20"`
 	TempDir     string `yaml:"temp_dir" env:"BERKUT_DOCS_CONVERTERS_TEMP_DIR"`
+}
+
+type OnlyOfficeConfig struct {
+	Enabled        bool   `yaml:"enabled" env:"BERKUT_DOCS_ONLYOFFICE_ENABLED" env-default:"false"`
+	PublicURL      string `yaml:"public_url" env:"BERKUT_DOCS_ONLYOFFICE_PUBLIC_URL" env-default:""`
+	InternalURL    string `yaml:"internal_url" env:"BERKUT_DOCS_ONLYOFFICE_INTERNAL_URL" env-default:"http://onlyoffice/"`
+	AppInternalURL string `yaml:"app_internal_url" env:"BERKUT_DOCS_ONLYOFFICE_APP_INTERNAL_URL" env-default:"http://berkut:8080"`
+	JWTSecret      string `yaml:"jwt_secret" env:"BERKUT_DOCS_ONLYOFFICE_JWT_SECRET" env-default:""`
+	JWTHeader      string `yaml:"jwt_header" env:"BERKUT_DOCS_ONLYOFFICE_JWT_HEADER" env-default:"Authorization"`
+	JWTIssuer      string `yaml:"jwt_issuer" env:"BERKUT_DOCS_ONLYOFFICE_JWT_ISSUER" env-default:"berkut-scc"`
+	JWTAudience    string `yaml:"jwt_audience" env:"BERKUT_DOCS_ONLYOFFICE_JWT_AUDIENCE" env-default:"onlyoffice-document-server"`
+	VerifyTLS      bool   `yaml:"verify_tls" env:"BERKUT_DOCS_ONLYOFFICE_VERIFY_TLS" env-default:"true"`
+	RequestTimeout int    `yaml:"request_timeout_sec" env:"BERKUT_DOCS_ONLYOFFICE_REQUEST_TIMEOUT" env-default:"20"`
 }
 
 type SecurityConfig struct {

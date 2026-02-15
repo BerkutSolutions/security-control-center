@@ -70,6 +70,10 @@ func (m *maintenanceRepo) AttachArtifactToRun(ctx context.Context, runID, artifa
 	return nil
 }
 func (m *maintenanceRepo) GetGooseVersion(ctx context.Context) (int64, error) { return 0, nil }
+func (m *maintenanceRepo) GetArtifactByStoragePath(ctx context.Context, storagePath string) (*backups.BackupArtifact, error) {
+	return nil, backups.ErrNotFound
+}
+func (m *maintenanceRepo) ResetRunningOperations(ctx context.Context) error { return nil }
 
 func TestMaintenanceModeBlocksBackupsEndpointsExceptRestoreStatus(t *testing.T) {
 	repo := &maintenanceRepo{enabled: true}

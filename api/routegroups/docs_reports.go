@@ -33,6 +33,10 @@ func RegisterDocs(apiRouter chi.Router, g Guards, docs *handlers.DocsHandler, in
 		docsRouter.MethodFunc("DELETE", "/{id:[0-9]+}/links/{link_id:[0-9]+}", g.SessionPerm("docs.edit", docs.DeleteLink))
 		docsRouter.MethodFunc("GET", "/{id:[0-9]+}/control-links", g.SessionPerm("docs.view", docs.ListControlLinks))
 		docsRouter.MethodFunc("POST", "/{id:[0-9]+}/convert", g.SessionPerm("docs.edit", docs.ConvertToMarkdown))
+		docsRouter.MethodFunc("GET", "/{id:[0-9]+}/office/config", g.SessionPerm("docs.view", docs.OnlyOfficeConfig))
+		docsRouter.MethodFunc("GET", "/{id:[0-9]+}/office/file", g.SessionPerm("docs.view", docs.OnlyOfficeFile))
+		docsRouter.MethodFunc("POST", "/{id:[0-9]+}/office/callback", g.SessionPerm("docs.edit", docs.OnlyOfficeCallback))
+		docsRouter.MethodFunc("POST", "/{id:[0-9]+}/office/forcesave", g.SessionPerm("docs.edit", docs.OnlyOfficeForceSave))
 		docsRouter.MethodFunc("POST", "/upload", g.SessionPerm("docs.upload", docs.Upload))
 		docsRouter.MethodFunc("POST", "/import/commit", g.SessionPerm("docs.upload", docs.ImportCommit))
 		docsRouter.MethodFunc("GET", "/list", g.SessionPerm("docs.view", incidents.ListDocsLite))
@@ -42,6 +46,7 @@ func RegisterDocs(apiRouter chi.Router, g Guards, docs *handlers.DocsHandler, in
 func RegisterReports(apiRouter chi.Router, g Guards, reports *handlers.ReportsHandler) {
 	apiRouter.Route("/reports", func(reportsRouter chi.Router) {
 		reportsRouter.MethodFunc("GET", "/", g.SessionPerm("reports.view", reports.List))
+		reportsRouter.MethodFunc("GET", "/export", g.SessionPerm("reports.export", reports.ExportBundle))
 		reportsRouter.MethodFunc("POST", "/", g.SessionPerm("reports.create", reports.Create))
 		reportsRouter.MethodFunc("GET", "/{id:[0-9]+}", g.SessionPerm("reports.view", reports.Get))
 		reportsRouter.MethodFunc("PUT", "/{id:[0-9]+}", g.SessionPerm("reports.edit", reports.UpdateMeta))

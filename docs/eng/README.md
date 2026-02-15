@@ -12,6 +12,8 @@ Documentation version baseline: `1.0.3`
 7. Features wiki: `docs/eng/wiki/features.md`
 8. Current evolution plan: `docs/eng/roadmap.md`
 9. Backups (.bscc): `docs/eng/backups.md`
+10. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
+11. HTTPS compose example: `docs/ru/docker-compose.https.yml`
 
 ## Context
 Documentation is aligned with current runtime reality:

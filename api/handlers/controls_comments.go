@@ -243,7 +243,7 @@ func (h *ControlsHandler) DownloadControlCommentFile(w http.ResponseWriter, r *h
 				return
 			}
 			w.Header().Set("Content-Type", att.ContentType)
-			w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", att.Name))
+			w.Header().Set("Content-Disposition", attachmentDisposition(att.Name))
 			http.ServeFile(w, r, att.Path)
 			return
 		}

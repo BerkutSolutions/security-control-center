@@ -1,14 +1,27 @@
 (() => {
   const state = ReportsPage.state;
+  const exportModulePerms = {
+    tasks: 'tasks.view',
+    controls: 'controls.view',
+    monitoring: 'monitoring.view',
+    sla: 'monitoring.view',
+    maintenance: 'monitoring.maintenance.view',
+    approvals: 'docs.approval.view',
+    incidents: 'incidents.view',
+    logs: 'logs.view',
+    docs: 'docs.view'
+  };
 
   function bindBuilder() {
     const form = document.getElementById('report-create-form');
     const modeRadios = document.querySelectorAll('input[name="mode"]');
     const templateRow = document.getElementById('report-template-row');
+    const exportRow = document.getElementById('report-export-row');
     modeRadios.forEach(r => {
       r.addEventListener('change', () => {
         const selected = document.querySelector('input[name="mode"]:checked')?.value || 'empty';
         if (templateRow) templateRow.hidden = selected !== 'template';
+        if (exportRow) exportRow.hidden = selected !== 'export';
       });
     });
     if (form) {
@@ -30,6 +43,9 @@
     bindToolbar();
     populateTags();
     populateOwnerAndAcl();
+    bindExportSourceControls();
+    applyExportSourceAccess();
+    applyCreateModeAccess();
   }
 
   async function createReport() {
@@ -51,6 +67,28 @@
           return;
         }
         res = await Api.post('/api/reports/from-template', payload);
+      } else if (mode === 'export') {
+        const modules = selectedExportModules();
+        if (!modules.length) {
+          ReportsPage.showAlert('report-create-alert', BerkutI18n.t('reports.export.error.noModules'));
+          return;
+        }
+        const exported = await requestExportMarkdown({
+          modules,
+          period_from: payload.period_from,
+          period_to: payload.period_to,
+          limit: (document.getElementById('report-export-limit')?.value || '').trim(),
+          sla_period: document.getElementById('report-export-sla-period')?.value || 'month'
+        });
+        res = await Api.post('/api/reports', payload);
+        const doc = res.doc || res.document || res;
+        if (!doc?.id) {
+          throw new Error(BerkutI18n.t('common.error'));
+        }
+        await Api.put(`/api/reports/${doc.id}/content`, {
+          content: exported,
+          reason: BerkutI18n.t('reports.builder.exportReason') || 'Initial export'
+        });
       } else {
         res = await Api.post('/api/reports', payload);
       }
@@ -85,7 +123,9 @@
     const form = document.getElementById('report-create-form');
     if (form) form.reset();
     const templateRow = document.getElementById('report-template-row');
+    const exportRow = document.getElementById('report-export-row');
     if (templateRow) templateRow.hidden = true;
+    if (exportRow) exportRow.hidden = true;
     const emptyMode = document.querySelector('input[name="mode"][value="empty"]');
     if (emptyMode) emptyMode.checked = true;
     const defaultOwner = document.getElementById('report-owner');
@@ -97,6 +137,11 @@
       const hint = document.querySelector('[data-tag-hint="report-tags"]');
       if (tags && hint) DocUI.bindTagHint(tags, hint);
     }
+    setExportModulesChecked(true);
+    const exportLimit = document.getElementById('report-export-limit');
+    if (exportLimit) exportLimit.value = '100';
+    const sla = document.getElementById('report-export-sla-period');
+    if (sla) sla.value = 'month';
   }
 
   function collectPayload() {
@@ -352,6 +397,72 @@
 
   function escapeHtml(str) {
     return (str || '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function bindExportSourceControls() {
+    const allBtn = document.getElementById('report-export-all');
+    const noneBtn = document.getElementById('report-export-none');
+    if (allBtn) {
+      allBtn.onclick = () => setExportModulesChecked(true);
+    }
+    if (noneBtn) {
+      noneBtn.onclick = () => setExportModulesChecked(false);
+    }
+  }
+
+  function applyExportSourceAccess() {
+    document.querySelectorAll('#report-export-row input[type="checkbox"][data-export-module]').forEach((el) => {
+      const key = el.getAttribute('data-export-module');
+      const perm = exportModulePerms[key] || '';
+      const allowed = ReportsPage.hasPermission(perm);
+      if (!allowed) {
+        el.checked = false;
+        el.disabled = true;
+      }
+    });
+  }
+
+  function applyCreateModeAccess() {
+    const exportRadio = document.querySelector('input[name="mode"][value="export"]');
+    if (!exportRadio) return;
+    const allowed = ReportsPage.hasPermission('reports.export');
+    exportRadio.disabled = !allowed;
+    if (!allowed && exportRadio.checked) {
+      const emptyMode = document.querySelector('input[name="mode"][value="empty"]');
+      if (emptyMode) {
+        emptyMode.checked = true;
+        emptyMode.dispatchEvent(new Event('change'));
+      }
+    }
+  }
+
+  function setExportModulesChecked(next) {
+    document.querySelectorAll('#report-export-row input[type="checkbox"][data-export-module]').forEach((el) => {
+      if (el.disabled) return;
+      el.checked = !!next;
+    });
+  }
+
+  function selectedExportModules() {
+    return Array.from(document.querySelectorAll('#report-export-row input[type="checkbox"][data-export-module]:checked'))
+      .map((el) => el.getAttribute('data-export-module'))
+      .filter(Boolean);
+  }
+
+  async function requestExportMarkdown(opts = {}) {
+    const params = new URLSearchParams();
+    params.set('format', 'md');
+    if (Array.isArray(opts.modules) && opts.modules.length) params.set('modules', opts.modules.join(','));
+    if (opts.period_from) params.set('period_from', opts.period_from);
+    if (opts.period_to) params.set('period_to', opts.period_to);
+    if (opts.limit) params.set('limit', opts.limit);
+    if (opts.sla_period) params.set('sla_period', opts.sla_period);
+    const res = await fetch(`/api/reports/export?${params.toString()}`, { credentials: 'include' });
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error((text || '').trim() || BerkutI18n.t('common.error'));
+    }
+    return await res.text();
   }
 
   ReportsPage.bindBuilder = bindBuilder;

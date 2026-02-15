@@ -1,6 +1,12 @@
 (() => {
   const state = DocsPage.state;
   const UNSAFE_URL_PATTERN = /[\u0000-\u001F\u007F\s]+/g;
+  const isEditableFormat = (format) => {
+    const fmt = String(format || '').toLowerCase();
+    if (fmt === 'md' || fmt === 'txt') return true;
+    if (fmt !== 'docx') return false;
+    return !!(window.DocsOnlyOffice && typeof window.DocsOnlyOffice.open === 'function');
+  };
 
   function sanitizeUrl(raw, opts = {}) {
     const val = String(raw || '').trim().replace(UNSAFE_URL_PATTERN, '');
@@ -199,12 +205,8 @@
       if (frameWrap) frameWrap.hidden = true;
       mdPane.hidden = false;
       mdPane.innerHTML = `<div class="docx-view">${sanitizeHtmlFragment(result.value || '')}</div>`;
-      if (result.messages && result.messages.length) {
-        console.warn('docx render warnings', result.messages);
-      }
       return true;
     } catch (err) {
-      console.warn('docx render failed', err);
       return false;
     }
   }
@@ -286,11 +288,14 @@
       };
     }
     const editBtn = document.getElementById('view-edit-btn');
-    if (editBtn) editBtn.onclick = () => {
-      if (state.viewerDoc?.id) {
-        DocsPage.openEditor(state.viewerDoc.id);
-      }
-    };
+    if (editBtn) {
+      editBtn.hidden = !isEditableFormat(state.viewerFormat);
+      editBtn.onclick = () => {
+        if (state.viewerDoc?.id) {
+          DocsPage.openEditor(state.viewerDoc.id);
+        }
+      };
+    }
   }
 
   function applyZoom(val) {

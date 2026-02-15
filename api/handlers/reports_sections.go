@@ -9,14 +9,15 @@ import (
 )
 
 var reportSectionTypes = map[string]struct{}{
-	"summary":    {},
-	"incidents":  {},
-	"tasks":      {},
-	"docs":       {},
-	"controls":   {},
-	"monitoring": {},
-	"audit":      {},
-	"custom_md":  {},
+	"summary":     {},
+	"incidents":   {},
+	"tasks":       {},
+	"docs":        {},
+	"controls":    {},
+	"monitoring":  {},
+	"sla_summary": {},
+	"audit":       {},
+	"custom_md":   {},
 }
 
 func defaultReportSections() []store.ReportSection {
@@ -27,6 +28,7 @@ func defaultReportSections() []store.ReportSection {
 		{SectionType: "docs", Title: "Documents", IsEnabled: true},
 		{SectionType: "controls", Title: "Controls", IsEnabled: true},
 		{SectionType: "monitoring", Title: "Monitoring", IsEnabled: true},
+		{SectionType: "sla_summary", Title: "SLA executive summary", IsEnabled: true},
 		{SectionType: "audit", Title: "Audit events", IsEnabled: true},
 	}
 }

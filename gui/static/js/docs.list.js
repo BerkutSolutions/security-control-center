@@ -14,7 +14,6 @@
     let res;
     try {
       res = await Api.get(`/api/docs?${params.toString()}`);
-      console.log('[docs] loadDocs success', { count: res.items?.length || 0, folder: state.selectedFolder });
     } catch (err) {
       console.error('load docs', err);
       renderDocs([]);
@@ -105,7 +104,13 @@
         <td>${DocsPage.formatDate(doc.updated_at || doc.created_at)}</td>
       `;
       tr.onclick = () => DocsPage.openDocTab(doc.id, 'view');
-      tr.ondblclick = (e) => { e.stopPropagation(); DocsPage.openDocTab(doc.id, 'edit'); };
+      tr.ondblclick = (e) => {
+        e.stopPropagation();
+        const fmt = (doc.format || '').toLowerCase();
+        if (fmt === 'md' || fmt === 'txt') {
+          DocsPage.openDocTab(doc.id, 'edit');
+        }
+      };
       tbody.appendChild(tr);
     });
   }

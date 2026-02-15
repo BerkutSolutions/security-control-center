@@ -288,11 +288,49 @@
                 <input type="radio" name="mode" value="template">
                 <span data-i18n="reports.builder.mode.template">From template</span>
               </label>
+              <label class="checkbox">
+                <input type="radio" name="mode" value="export">
+                <span data-i18n="reports.builder.mode.export">From export</span>
+              </label>
             </div>
           </div>
           <div class="form-field full" id="report-template-row" hidden>
             <label data-i18n="reports.builder.template">Template</label>
             <select id="report-template-select"></select>
+          </div>
+          <div class="form-field full" id="report-export-row" hidden>
+            <div class="section-head">
+              <label data-i18n="reports.builder.exportModules">Export modules</label>
+              <div class="inline-actions">
+                <button class="btn ghost btn-sm" type="button" id="report-export-all" data-i18n="reports.export.selectAll">Select all</button>
+                <button class="btn ghost btn-sm" type="button" id="report-export-none" data-i18n="reports.export.clearAll">Clear</button>
+              </div>
+            </div>
+            <div class="reports-export-modules">
+              <label class="checkbox"><input type="checkbox" data-export-module="tasks" checked><span data-i18n="reports.export.module.tasks">Tasks</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="controls" checked><span data-i18n="reports.export.module.controls">Controls</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="monitoring" checked><span data-i18n="reports.export.module.monitoring">Monitoring</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="sla" checked><span data-i18n="reports.export.module.sla">SLA</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="maintenance" checked><span data-i18n="reports.export.module.maintenance">Maintenance</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="approvals" checked><span data-i18n="reports.export.module.approvals">Approvals</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="incidents" checked><span data-i18n="reports.export.module.incidents">Incidents</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="logs" checked><span data-i18n="reports.export.module.logs">Logs</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="docs" checked><span data-i18n="reports.export.module.docs">Documents</span></label>
+            </div>
+            <div class="form-grid two-column" style="margin-top:10px;">
+              <div class="form-field">
+                <label data-i18n="reports.export.limit">Rows per section</label>
+                <input type="number" id="report-export-limit" class="input" min="1" max="1000" value="100">
+              </div>
+              <div class="form-field">
+                <label data-i18n="reports.builder.exportSlaPeriod">SLA period</label>
+                <select id="report-export-sla-period">
+                  <option value="month" data-i18n="reports.sections.filters.periodMonth">Month</option>
+                  <option value="week" data-i18n="reports.sections.filters.periodWeek">Week</option>
+                  <option value="day" data-i18n="reports.sections.filters.periodDay">Day</option>
+                </select>
+              </div>
+            </div>
           </div>
           <div class="form-field required">
             <label data-i18n="reports.field.title">Title</label>

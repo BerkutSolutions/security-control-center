@@ -1615,7 +1615,7 @@ func (h *IncidentsHandler) DownloadAttachment(w http.ResponseWriter, r *http.Req
 	}
 	h.svc.Log(r.Context(), user.Username, "incident.attachment.download", fmt.Sprintf("%s|%d", incident.RegNo, att.ID))
 	h.addTimeline(r.Context(), incident.ID, "attachment.download", att.Filename, user.ID)
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+safeFileName(att.Filename)+"\"")
+	w.Header().Set("Content-Disposition", attachmentDisposition(safeFileName(att.Filename)))
 	w.Header().Set("Content-Type", att.ContentType)
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)
@@ -1838,7 +1838,7 @@ func (h *IncidentsHandler) DownloadArtifactFile(w http.ResponseWriter, r *http.R
 	}
 	h.svc.Log(r.Context(), user.Username, "incident.artifact.download", fmt.Sprintf("%s|%s|%d", incident.RegNo, artifactID, fileID))
 	h.addTimeline(r.Context(), incident.ID, "artifact.file.download", fmt.Sprintf("%s:%s", artifactID, fileRec.Filename), user.ID)
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+fileRec.Filename+"\"")
+	w.Header().Set("Content-Disposition", attachmentDisposition(fileRec.Filename))
 	w.Header().Set("Content-Type", fileRec.ContentType)
 	_, _ = w.Write(plain)
 }
@@ -2029,7 +2029,7 @@ func (h *IncidentsHandler) Export(w http.ResponseWriter, r *http.Request) {
 	filename := fmt.Sprintf("%s.%s", safeFileName(incident.RegNo), format)
 	h.svc.Log(r.Context(), user.Username, "incident.export", fmt.Sprintf("%s|%s", incident.RegNo, format))
 	h.addTimeline(r.Context(), incident.ID, "incident.export", fmt.Sprintf("export %s", format), user.ID)
-	w.Header().Set("Content-Disposition", "attachment; filename=\""+filename+"\"")
+	w.Header().Set("Content-Disposition", attachmentDisposition(filename))
 	w.Header().Set("Content-Type", contentType)
 	w.Header().Set("Cache-Control", "no-store")
 	w.WriteHeader(http.StatusOK)

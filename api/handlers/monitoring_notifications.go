@@ -45,18 +45,11 @@ func (h *MonitoringHandler) ListNotificationChannels(w http.ResponseWriter, r *h
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
 	}
-	canManage := hasPermission(r, h.policy, "monitoring.notifications.manage")
 	var out []notificationChannelView
 	for _, ch := range items {
-		tokenMasked := ""
+		tokenValue := ""
 		if len(ch.TelegramBotTokenEnc) > 0 {
-			tokenMasked = "******"
-		}
-		tokenValue := tokenMasked
-		if canManage && h.encryptor != nil && len(ch.TelegramBotTokenEnc) > 0 {
-			if raw, err := h.encryptor.DecryptBlob(ch.TelegramBotTokenEnc); err == nil {
-				tokenValue = string(raw)
-			}
+			tokenValue = "******"
 		}
 		out = append(out, notificationChannelView{
 			ID:               ch.ID,

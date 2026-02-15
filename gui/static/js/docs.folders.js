@@ -11,7 +11,6 @@
       if (state.selectedFolder && !state.folderMap[state.selectedFolder]) {
         state.selectedFolder = null;
       }
-      console.log('[docs] loadFolders', { count: state.folders.length });
       fillFolderSelects();
       DocsPage.renderDocs(state.docs);
     } catch (err) {

@@ -90,6 +90,9 @@
       els.body.value = monitor.request_body || '';
       els.bodyType.value = monitor.request_body_type || 'none';
       setSelectedOptions(els.tags, monitor.tags || []);
+      if (els.tags) {
+        els.tags.dispatchEvent(new Event('change', { bubbles: true }));
+      }
       if (els.autoIncident) {
         els.autoIncident.checked = !!monitor.auto_incident;
       }
@@ -144,9 +147,19 @@
       } else {
         const created = await Api.post('/api/monitoring/monitors', payload);
         id = created?.id || created?.ID || null;
+        if (id) {
+          MonitoringPage.state.selectedId = id;
+        }
       }
       if (id && MonitoringPage.hasPermission('monitoring.notifications.manage')) {
         await saveMonitorNotifications(id);
+      }
+      if (id && MonitoringPage.hasPermission('monitoring.manage')) {
+        try {
+          await Api.post(`/api/monitoring/monitors/${id}/check-now`, {});
+        } catch (_) {
+          // Initial check is best-effort: keep save flow successful even if engine is busy.
+        }
       }
       els.modal.hidden = true;
       modalState.editingId = null;

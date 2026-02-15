@@ -7,18 +7,56 @@ const DocEditor = (() => {
   let dirty = false;
   let callbacks = {};
   const els = {};
+  const EDITABLE_FORMATS = new Set(['md', 'txt']);
+  let onlyOfficeActive = false;
+  let onlyOfficeOpenAttempts = 0;
+  let modeSwitchInFlight = false;
+  let pendingDocxMode = null;
+  let saveInFlight = false;
+  let currentDocVersion = 0;
+
+  function isEditableFormat(format) {
+    return EDITABLE_FORMATS.has((format || '').toLowerCase());
+  }
+
+  function isBinaryFormat(format) {
+    const next = (format || '').toLowerCase();
+    return next === 'docx' || next === 'pdf';
+  }
+
+  function canEditFormat(format) {
+    const next = (format || '').toLowerCase();
+    if (isEditableFormat(next)) return true;
+    if (next !== 'docx') return false;
+    return !!(window.DocsOnlyOffice && typeof window.DocsOnlyOffice.open === 'function');
+  }
+
+  function localizeError(err, fallbackKey) {
+    const raw = String((err && err.message) || '').trim();
+    if (raw && typeof BerkutI18n !== 'undefined' && typeof BerkutI18n.t === 'function') {
+      const translated = BerkutI18n.t(raw);
+      if (translated && translated !== raw) return translated;
+    }
+    if (fallbackKey && typeof BerkutI18n !== 'undefined' && typeof BerkutI18n.t === 'function') {
+      return BerkutI18n.t(fallbackKey);
+    }
+    return raw || fallbackKey || 'Error';
+  }
 
   function init(opts = {}) {
     callbacks = opts;
     els.panel = document.getElementById('doc-editor');
     if (!els.panel) return;
-    console.log('[editor] init: panel found, initial hidden=', els.panel.hidden);
     els.title = document.getElementById('editor-title');
     els.content = document.getElementById('editor-content');
     els.viewer = document.getElementById('editor-viewer');
     els.pdfFrame = document.getElementById('editor-pdf-frame');
+    els.onlyOfficeWrap = document.getElementById('editor-onlyoffice-wrap');
+    els.onlyOfficeLoading = document.getElementById('editor-onlyoffice-loading');
+    els.onlyOfficeHost = document.getElementById('editor-onlyoffice-host');
     els.nonMdBlock = document.getElementById('editor-nonmd');
     els.nonMdHint = document.getElementById('editor-nonmd-hint');
+    els.onlyOfficeOpenBtn = document.getElementById('editor-open-onlyoffice');
     els.downloadBtn = document.getElementById('editor-download');
     els.convertBtn = document.getElementById('editor-convert');
     els.reason = document.getElementById('editor-reason');
@@ -86,6 +124,7 @@ const DocEditor = (() => {
     }
     if (els.convertBtn) els.convertBtn.onclick = () => convertToMarkdown();
     if (els.downloadBtn) els.downloadBtn.onclick = () => download();
+    if (els.onlyOfficeOpenBtn) els.onlyOfficeOpenBtn.onclick = () => openOnlyOffice();
     if (els.addLink) els.addLink.onclick = () => addLink();
     if (els.addLinkInline) els.addLinkInline.onclick = () => addLink();
     if (els.aclSave) els.aclSave.onclick = () => saveAcl();
@@ -94,17 +133,18 @@ const DocEditor = (() => {
 
   async function open(docId, opts = {}) {
     if (!els.panel) return;
+    teardownOnlyOffice();
+    onlyOfficeOpenAttempts = 0;
     currentDocId = docId;
     currentMode = opts.mode === 'edit' ? 'edit' : 'view';
     setDirty(false);
     showAlert('');
     if (els.reason) els.reason.value = '';
-    console.log('[editor] open', { docId, panelHidden: els.panel.hidden });
     try {
       meta = await Api.get(`/api/docs/${docId}`);
       let cont;
       try {
-        cont = await Api.get(`/api/docs/${docId}/content`);
+        cont = await Api.get(`/api/docs/${docId}/content?audit=0`);
       } catch (err) {
         const msg = (err && err.message ? err.message : '').toLowerCase();
         if (msg.includes('not found')) {
@@ -114,13 +154,16 @@ const DocEditor = (() => {
         }
       }
       currentFormat = cont.format || 'md';
+      currentDocVersion = Number(cont.version || 0);
+      if (!canEditFormat(currentFormat) && currentMode === 'edit') {
+        currentMode = 'view';
+      }
       renderMeta(meta);
       await renderContent(cont);
       await loadLinks();
       await loadAclOptions();
       await loadAcl();
       els.panel.hidden = false;
-      console.log('[editor] open success', { docId, format: currentFormat, hidden: els.panel.hidden });
       return meta;
     } catch (err) {
       console.error('[editor] open failed', { docId, err: err.message });
@@ -154,10 +197,10 @@ const DocEditor = (() => {
 
   async function renderContent(res) {
     const format = (res.format || '').toLowerCase();
-    console.log('[editor] renderContent', { docId: currentDocId, format, viewerHidden: els.viewer.hidden, contentHidden: els.content.hidden });
+    currentFormat = format || 'md';
+    if (els.onlyOfficeWrap) els.onlyOfficeWrap.hidden = true;
+    onlyOfficeActive = false;
     if (format === 'md' || format === 'txt') {
-      currentFormat = format;
-      els.panel.style.display = 'flex';
       initialContent = res.content || '';
       setDirty(false);
       if (currentMode === 'view') {
@@ -175,7 +218,7 @@ const DocEditor = (() => {
         els.content.focus();
       }
     } else if (format === 'pdf') {
-      els.panel.style.display = 'flex';
+      currentFormat = format;
       if (els.mdView) els.mdView.hidden = true;
       els.content.hidden = true;
       els.viewer.hidden = false;
@@ -184,7 +227,6 @@ const DocEditor = (() => {
       els.pdfFrame.src = `/api/docs/${currentDocId}/export?format=pdf&inline=1`;
     } else if (format === 'docx') {
       currentFormat = format;
-      els.panel.style.display = 'flex';
       if (els.content) els.content.hidden = true;
       if (els.viewer) els.viewer.hidden = true;
       if (els.pdfFrame) els.pdfFrame.hidden = true;
@@ -193,16 +235,8 @@ const DocEditor = (() => {
         els.mdView.hidden = false;
         els.mdView.innerHTML = '';
       }
-      const docxUrl = `/api/docs/${currentDocId}/export?format=docx&inline=1`;
-      const rendered = await renderDocxView(docxUrl);
-      if (!rendered) {
-        if (els.mdView) els.mdView.hidden = true;
-        if (els.viewer) els.viewer.hidden = false;
-        if (els.nonMdBlock) els.nonMdBlock.hidden = false;
-        if (els.nonMdHint) els.nonMdHint.textContent = BerkutI18n.t('docs.nonEditable');
-      }
+      await switchDocxModeWithLoader();
     } else {
-      els.panel.style.display = 'flex';
       if (els.mdView) els.mdView.hidden = true;
       els.content.hidden = true;
       els.viewer.hidden = false;
@@ -213,11 +247,127 @@ const DocEditor = (() => {
     applyMode();
   }
 
+  function showBinaryFallback(hintKey) {
+    teardownOnlyOffice();
+    if (els.mdView) els.mdView.hidden = true;
+    if (els.viewer) els.viewer.hidden = false;
+    if (els.nonMdBlock) els.nonMdBlock.hidden = false;
+    if (els.nonMdHint) els.nonMdHint.textContent = BerkutI18n.t(hintKey || 'docs.nonEditable');
+    if (els.pdfFrame) els.pdfFrame.hidden = true;
+    if (els.onlyOfficeOpenBtn) els.onlyOfficeOpenBtn.hidden = true;
+    if (els.convertBtn) els.convertBtn.hidden = true;
+  }
+
+  async function openOnlyOffice(mode) {
+    if (currentFormat !== 'docx' || !currentDocId) return false;
+    if (!window.DocsOnlyOffice || typeof window.DocsOnlyOffice.open !== 'function') {
+      showBinaryFallback('docs.onlyoffice.unavailable');
+      return false;
+    }
+    try {
+      if (els.viewer) els.viewer.hidden = true;
+      if (els.mdView) els.mdView.hidden = true;
+      if (els.content) els.content.hidden = true;
+      if (els.onlyOfficeWrap) els.onlyOfficeWrap.hidden = false;
+      if (els.onlyOfficeLoading) els.onlyOfficeLoading.hidden = false;
+      const requestedMode = mode === 'edit' ? 'edit' : 'view';
+      await window.DocsOnlyOffice.open(currentDocId, 'editor-onlyoffice-host', requestedMode);
+      if (els.onlyOfficeLoading) els.onlyOfficeLoading.hidden = true;
+      onlyOfficeActive = true;
+      onlyOfficeOpenAttempts = 0;
+      return true;
+    } catch (err) {
+      if (els.onlyOfficeLoading) els.onlyOfficeLoading.hidden = true;
+      if (onlyOfficeOpenAttempts < 1) {
+        onlyOfficeOpenAttempts += 1;
+        await new Promise((resolve) => setTimeout(resolve, 600));
+        const retryMode = mode === 'edit' ? 'edit' : 'view';
+        return openOnlyOffice(retryMode);
+      }
+      showAlert(localizeError(err, 'docs.onlyoffice.unavailable'));
+      showBinaryFallback('docs.onlyoffice.unavailable');
+      return false;
+    }
+  }
+
+  function teardownOnlyOffice() {
+    onlyOfficeActive = false;
+    if (els.onlyOfficeLoading) els.onlyOfficeLoading.hidden = true;
+    if (window.DocsOnlyOffice && typeof window.DocsOnlyOffice.destroy === 'function') {
+      window.DocsOnlyOffice.destroy();
+    }
+    if (els.onlyOfficeWrap) els.onlyOfficeWrap.hidden = true;
+  }
+
+  async function switchDocxToEditWithLoader() {
+    return switchDocxModeWithLoader();
+  }
+
+  async function switchDocxModeWithLoader() {
+    const requestedMode = currentMode === 'edit' ? 'edit' : 'view';
+    if (modeSwitchInFlight) {
+      pendingDocxMode = requestedMode;
+      return false;
+    }
+    pendingDocxMode = null;
+    modeSwitchInFlight = true;
+    teardownOnlyOffice();
+    if (els.viewer) els.viewer.hidden = true;
+    if (els.mdView) els.mdView.hidden = true;
+    if (els.content) els.content.hidden = true;
+    if (els.onlyOfficeWrap) els.onlyOfficeWrap.hidden = false;
+    if (els.onlyOfficeLoading) els.onlyOfficeLoading.hidden = false;
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 500));
+      return await openOnlyOffice(requestedMode);
+    } finally {
+      modeSwitchInFlight = false;
+      if (pendingDocxMode && pendingDocxMode !== requestedMode) {
+        const nextMode = pendingDocxMode;
+        pendingDocxMode = null;
+        currentMode = nextMode;
+        setTimeout(() => {
+          void switchDocxModeWithLoader();
+        }, 0);
+      }
+    }
+  }
+
   async function save() {
     if (!currentDocId) return;
+    if (saveInFlight) return;
     const reason = (els.reason && els.reason.value || '').trim();
     if (!reason) {
       showAlert(BerkutI18n.t('editor.reasonRequired'));
+      return;
+    }
+    if (currentFormat === 'docx') {
+      if (!window.DocsOnlyOffice || typeof window.DocsOnlyOffice.forceSave !== 'function') {
+        showAlert(BerkutI18n.t('docs.onlyoffice.unavailable'));
+        return;
+      }
+      if (window.DocsOnlyOffice.isReady && !window.DocsOnlyOffice.isReady()) {
+        showAlert(BerkutI18n.t('docs.onlyoffice.loading'));
+        return;
+      }
+      try {
+        saveInFlight = true;
+        if (els.saveBtn) els.saveBtn.disabled = true;
+        const baseVersion = await fetchCurrentDocVersion();
+        await window.DocsOnlyOffice.forceSave(currentDocId, reason);
+        const nextVersion = await waitForDocxVersionUpdate(baseVersion, 12000);
+        if (!nextVersion || nextVersion <= baseVersion) {
+          throw new Error('docs.onlyoffice.forceSaveNoVersion');
+        }
+        currentDocVersion = nextVersion;
+        showAlert(BerkutI18n.t('docs.onlyoffice.status.saved'), true);
+        if (callbacks.onSave) callbacks.onSave(currentDocId);
+      } catch (err) {
+        showAlert(localizeError(err, 'docs.onlyoffice.forceSaveFailed'));
+      } finally {
+        saveInFlight = false;
+        if (els.saveBtn) els.saveBtn.disabled = false;
+      }
       return;
     }
     if (currentFormat !== 'md' && currentFormat !== 'txt') {
@@ -225,6 +375,8 @@ const DocEditor = (() => {
       return;
     }
     try {
+      saveInFlight = true;
+      if (els.saveBtn) els.saveBtn.disabled = true;
       const format = currentFormat === 'txt' ? 'txt' : 'md';
       await Api.put(`/api/docs/${currentDocId}/content`, { content: els.content.value, format, reason });
       await maybeUpdateClassification();
@@ -234,7 +386,32 @@ const DocEditor = (() => {
       if (callbacks.onSave) callbacks.onSave(currentDocId);
     } catch (err) {
       showAlert(err.message || 'save failed');
+    } finally {
+      saveInFlight = false;
+      if (els.saveBtn) els.saveBtn.disabled = false;
     }
+  }
+
+  async function fetchCurrentDocVersion() {
+    if (!currentDocId) return 0;
+    try {
+      const latest = await Api.get(`/api/docs/${currentDocId}/content?audit=0`);
+      const ver = Number((latest && latest.version) || 0);
+      if (ver > 0) {
+        currentDocVersion = ver;
+      }
+    } catch (_) {}
+    return currentDocVersion || 0;
+  }
+
+  async function waitForDocxVersionUpdate(baseVersion, timeoutMs) {
+    const started = Date.now();
+    while (Date.now() - started < timeoutMs) {
+      const ver = await fetchCurrentDocVersion();
+      if (ver > baseVersion) return ver;
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    }
+    return currentDocVersion || 0;
   }
 
   async function maybeUpdateClassification() {
@@ -437,12 +614,16 @@ const DocEditor = (() => {
   }
 
   function close(opts = {}) {
+    teardownOnlyOffice();
     if (els.panel) {
       els.panel.hidden = true;
-      els.panel.style.display = 'none';
     }
-    console.log('[editor] close', { panelHidden: els.panel?.hidden });
     currentDocId = null;
+    currentFormat = 'md';
+    initialContent = '';
+    if (els.content) els.content.value = '';
+    if (els.mdView) els.mdView.innerHTML = '';
+    if (els.pdfFrame) els.pdfFrame.src = 'about:blank';
     setDirty(false);
     if (!opts.silent && callbacks.onClose) callbacks.onClose();
   }
@@ -464,10 +645,26 @@ const DocEditor = (() => {
   }
 
   function setMode(mode) {
-    currentMode = mode === 'edit' ? 'edit' : 'view';
+    const requestedMode = mode === 'edit' ? 'edit' : 'view';
+    if (requestedMode === 'edit' && !canEditFormat(currentFormat)) {
+      currentMode = 'view';
+      showAlert(BerkutI18n.t('editor.readonly'));
+    } else {
+      currentMode = requestedMode;
+    }
     applyMode();
     if (callbacks.onModeChange && currentDocId) {
       callbacks.onModeChange(currentDocId, currentMode);
+    }
+    if (currentFormat === 'docx') {
+      // For DOCX, always prefer full tab reopen flow (same as context-menu Edit)
+      // to avoid reusing stale OnlyOffice runtime state inside the same session.
+      if (callbacks.onModeChange) {
+        teardownOnlyOffice();
+        return;
+      }
+      void switchDocxModeWithLoader();
+      return;
     }
     if (currentFormat === 'md' || currentFormat === 'txt') {
       if (currentMode === 'view') {
@@ -490,11 +687,24 @@ const DocEditor = (() => {
 
   function applyMode() {
     if (!els.panel) return;
-    const viewOnly = currentMode !== 'edit';
+    const editable = canEditFormat(currentFormat);
+    const binary = isBinaryFormat(currentFormat);
+    if (!editable && currentMode === 'edit') {
+      currentMode = 'view';
+    }
+    const viewOnly = currentMode !== 'edit' || !editable;
     els.panel.classList.toggle('view-only', viewOnly);
+    els.panel.classList.toggle('binary-mode', binary);
     if (els.editToggle) {
+      els.editToggle.hidden = !editable;
       els.editToggle.textContent = viewOnly ? (BerkutI18n.t('editor.edit') || 'Edit') : (BerkutI18n.t('editor.view') || 'View');
     }
+    if (els.reason) els.reason.hidden = viewOnly;
+    if (els.saveBtn) els.saveBtn.hidden = !canEditFormat(currentFormat) || viewOnly;
+    if (els.toolbar) els.toolbar.hidden = !isEditableFormat(currentFormat) || viewOnly;
+    if (els.convertBtn) els.convertBtn.hidden = binary || viewOnly;
+    if (els.onlyOfficeOpenBtn) els.onlyOfficeOpenBtn.hidden = true;
+    if (els.downloadBtn) els.downloadBtn.hidden = true;
     const disableInputs = [
       els.classification,
       els.tags,
@@ -516,33 +726,6 @@ const DocEditor = (() => {
       els.mdView.innerHTML = rendered.html || '';
     } else {
       els.mdView.textContent = content || '';
-    }
-  }
-
-  async function renderDocxView(docxUrl) {
-    if (!els.mdView) return false;
-    if (!window.mammoth || !window.mammoth.convertToHtml) {
-      return false;
-    }
-    try {
-      const res = await fetch(docxUrl, { credentials: 'include' });
-      if (!res.ok) {
-        throw new Error(await res.text());
-      }
-      const arrayBuffer = await res.arrayBuffer();
-      const result = await window.mammoth.convertToHtml({ arrayBuffer });
-      els.mdView.hidden = false;
-      const sanitize = (typeof DocsPage !== 'undefined' && DocsPage.sanitizeHtmlFragment)
-        ? DocsPage.sanitizeHtmlFragment
-        : (html) => String(html || '').replace(/<[^>]*>/g, '');
-      els.mdView.innerHTML = `<div class="docx-view">${sanitize(result.value || '')}</div>`;
-      if (result.messages && result.messages.length) {
-        console.warn('docx render warnings', result.messages);
-      }
-      return true;
-    } catch (err) {
-      console.warn('docx render failed', err);
-      return false;
     }
   }
 

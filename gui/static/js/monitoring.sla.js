@@ -130,9 +130,16 @@
   function renderHistory() {
     if (!els.history) return;
     const policyByMonitor = new Map(state.items.map((item) => [item.monitor_id, (item.policy?.incident_period || 'day')]));
+    const createdByMonitor = new Map(state.items.map((item) => [item.monitor_id, item.created_at || null]));
     const filtered = state.history.filter((item) => {
       const period = policyByMonitor.get(item.monitor_id);
-      return !period || period === item.period_type;
+      if (period && period !== item.period_type) return false;
+      const createdAt = createdByMonitor.get(item.monitor_id);
+      if (!createdAt) return true;
+      const createdTs = Date.parse(createdAt);
+      const periodEndTs = Date.parse(item.period_end || '');
+      if (!Number.isFinite(createdTs) || !Number.isFinite(periodEndTs)) return true;
+      return periodEndTs > createdTs;
     });
     if (!filtered.length) {
       els.history.innerHTML = `<div class="muted">${escapeHtml(MonitoringPage.t('monitoring.sla.historyEmpty'))}</div>`;

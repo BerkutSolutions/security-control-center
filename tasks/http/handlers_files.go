@@ -98,7 +98,7 @@ func (h *Handler) DownloadFile(w http.ResponseWriter, r *http.Request) {
 	}
 	path := filepath.Join(taskFilesDir(task.ID), file.StoredName)
 	w.Header().Set("Content-Type", file.ContentType)
-	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", file.Name))
+	w.Header().Set("Content-Disposition", attachmentDisposition(file.Name))
 	http.ServeFile(w, r, path)
 }
 

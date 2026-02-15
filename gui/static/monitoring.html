@@ -1,4 +1,4 @@
-<div class="page" id="monitoring-page">
+﻿<div class="page" id="monitoring-page">
   <div class="tabs browser-tabs" id="monitoring-tabs">
     <button class="tab-btn active" data-tab="monitoring-tab-home" data-i18n="monitoring.tabs.home">Home</button>
     <button class="tab-btn" data-tab="monitoring-tab-events" data-i18n="monitoring.tabs.events">Events center</button>
@@ -12,53 +12,68 @@
     <div class="tab-panel" id="monitoring-tab-home" data-tab="monitoring-tab-home">
       <div class="monitoring-layout">
         <aside class="monitoring-sidebar">
+          <div class="card monitoring-toolbar">
+            <div class="card-body">
+              <div class="monitoring-toolbar-row">
+                <div class="monitoring-toolbar-main">
+                  <div class="monitoring-toolbar-top">
+                    <button class="btn ghost monitoring-bulk-icon-btn" id="monitor-bulk-toggle" type="button" title="Select monitors">✓</button>
+                    <button class="btn primary" id="monitor-new-btn" data-i18n="monitoring.newMonitor">Create</button>
+                    <div class="monitoring-search">
+                      <input type="search" id="monitor-search" class="input" placeholder="Search" data-i18n-placeholder="monitoring.searchPlaceholder">
+                    </div>
+                  </div>
+                  <div class="monitoring-toolbar-filters monitoring-filter-buttons">
+                    <div class="monitoring-filter-menu">
+                      <button class="btn ghost monitoring-filter-btn" id="monitor-filter-status-btn" type="button" data-menu-toggle="monitor-filter-status-menu">
+                        <span data-i18n="monitoring.filter.status">РЎС‚Р°С‚СѓСЃ</span>
+                      </button>
+                      <div class="monitoring-filter-dropdown" id="monitor-filter-status-menu" hidden></div>
+                    </div>
+                    <div class="monitoring-filter-menu">
+                      <button class="btn ghost monitoring-filter-btn" id="monitor-filter-active-btn" type="button" data-menu-toggle="monitor-filter-active-menu">
+                        <span data-i18n="monitoring.filter.active">РђРєС‚РёРІРЅРѕСЃС‚СЊ</span>
+                      </button>
+                      <div class="monitoring-filter-dropdown" id="monitor-filter-active-menu" hidden></div>
+                    </div>
+                    <div class="monitoring-filter-menu">
+                      <button class="btn ghost monitoring-filter-btn" id="monitor-filter-tags-btn" type="button" data-menu-toggle="monitor-filter-tags-menu">
+                        <span data-i18n="monitoring.filter.tags">РўРµРіРё</span>
+                      </button>
+                      <div class="monitoring-filter-dropdown" id="monitor-filter-tags-menu" hidden></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              <div class="monitoring-toolbar-actions" id="monitor-bulk-actions" hidden>
+                <label class="checkbox compact monitoring-bulk-all-wrap">
+                  <input type="checkbox" id="monitor-bulk-all">
+                  <span data-i18n="common.all">Все</span>
+                </label>
+                <button class="btn ghost" id="monitor-bulk-pause" data-i18n="monitoring.actions.pause">РџР°СѓР·Р°</button>
+                <button class="btn ghost" id="monitor-bulk-resume" data-i18n="monitoring.actions.resume">Р’РѕР·РѕР±РЅРѕРІРёС‚СЊ</button>
+                <div class="monitoring-bulk-meta muted" id="monitor-bulk-count">Выбрано: 0</div>
+              </div>
+              <select id="monitor-filter-status" hidden>
+                <option value="" data-i18n="common.all">All</option>
+                <option value="up" data-i18n="monitoring.status.up">UP</option>
+                <option value="down" data-i18n="monitoring.status.down">DOWN</option>
+                <option value="paused" data-i18n="monitoring.status.paused">PAUSED</option>
+                <option value="maintenance" data-i18n="monitoring.status.maintenance">MAINTENANCE</option>
+              </select>
+              <select id="monitor-filter-active" hidden>
+                <option value="" data-i18n="common.all">All</option>
+                <option value="true" data-i18n="monitoring.filter.enabled">Enabled</option>
+                <option value="false" data-i18n="common.disabled">Disabled</option>
+              </select>
+              <select id="monitor-filter-tags" multiple hidden></select>
+              <div class="selected-hint tag-hint monitoring-toolbar-tags-hint" data-tag-hint="monitor-filter-tags"></div>
+            </div>
+          </div>
           <div class="monitoring-list" id="monitor-list"></div>
         </aside>
 
         <section class="monitoring-detail">
-          <div class="card monitoring-toolbar">
-            <div class="card-header">
-              <div class="monitoring-toolbar-title">
-                <h3 data-i18n="monitoring.title">Monitoring</h3>
-              </div>
-              <button class="btn primary" id="monitor-new-btn" data-i18n="monitoring.newMonitor">Create</button>
-            </div>
-            <div class="card-body">
-              <div class="monitoring-toolbar-row">
-                <div class="monitoring-toolbar-main">
-                  <div class="monitoring-search">
-                    <input type="search" id="monitor-search" class="input" placeholder="Search" data-i18n-placeholder="monitoring.searchPlaceholder">
-                    <button class="btn ghost" id="monitor-refresh" data-i18n="common.refresh">Refresh</button>
-                  </div>
-                  <div class="monitoring-toolbar-filters">
-                    <div class="form-field">
-                      <label data-i18n="monitoring.filter.status">Status</label>
-                      <select id="monitor-filter-status">
-                        <option value="" data-i18n="common.all">All</option>
-                        <option value="up" data-i18n="monitoring.status.up">UP</option>
-                        <option value="down" data-i18n="monitoring.status.down">DOWN</option>
-                        <option value="paused" data-i18n="monitoring.status.paused">PAUSED</option>
-                        <option value="maintenance" data-i18n="monitoring.status.maintenance">MAINTENANCE</option>
-                      </select>
-                    </div>
-                    <div class="form-field">
-                      <label data-i18n="monitoring.filter.active">Activity</label>
-                      <select id="monitor-filter-active">
-                        <option value="" data-i18n="common.all">All</option>
-                        <option value="true" data-i18n="common.enable">Enable</option>
-                        <option value="false" data-i18n="common.disabled">Disabled</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-                <div class="form-field monitoring-toolbar-tags">
-                  <label data-i18n="monitoring.filter.tags">Tags</label>
-                  <select id="monitor-filter-tags" multiple></select>
-                  <div class="selected-hint tag-hint" data-tag-hint="monitor-filter-tags"></div>
-                </div>
-              </div>
-            </div>
-          </div>
           <div class="card" id="monitor-no-monitors" hidden>
             <div class="card-body muted" data-i18n="monitoring.emptyCreate">No monitors yet. Create your first monitor.</div>
           </div>
@@ -73,6 +88,7 @@
                   <h3 id="monitor-detail-title"></h3>
                 </div>
                 <div class="muted" id="monitor-detail-target"></div>
+                <div class="monitor-detail-tags" id="monitor-detail-tags"></div>
                 <div class="monitoring-maintenance" id="monitor-maintenance-info" hidden></div>
                 <div class="alert" id="monitor-detail-alert" hidden></div>
               </div>
@@ -503,7 +519,7 @@
           <div class="form-field full">
             <label data-i18n="monitoring.field.tags">Tags</label>
             <select id="monitor-tags" multiple></select>
-            <div class="selected-hint" data-tag-hint="monitor-tags"></div>
+            <div class="selected-hint tag-hint" data-tag-hint="monitor-tags"></div>
             <div class="tag-input-row">
               <input id="monitor-tags-new" placeholder="Tag" data-i18n-placeholder="monitoring.placeholder.tag">
               <button class="btn ghost" id="monitor-tags-add" type="button" data-i18n="common.add">Add</button>
@@ -574,7 +590,7 @@
             <label data-i18n="monitoring.notifications.token">Bot token</label>
             <div class="input-icon-field">
               <input id="notification-token" type="password" autocomplete="new-password">
-              <button class="icon-btn input-icon-btn" type="button" id="notification-token-toggle" aria-label="Show token">👁</button>
+              <button class="icon-btn input-icon-btn" type="button" id="notification-token-toggle" aria-label="Show token">рџ‘Ѓ</button>
             </div>
           </div>
           <div class="form-field required">

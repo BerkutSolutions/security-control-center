@@ -500,7 +500,6 @@
     <div class="editor-header">
       <div>
         <h3 id="editor-title"></h3>
-        <p class="muted" data-i18n="editor.subtitle">Встроенный редактор Markdown</p>
       </div>
       <div class="editor-actions">
         <input type="text" id="editor-reason" placeholder="Причина изменения" data-i18n-placeholder="editor.reason">
@@ -525,15 +524,17 @@
         <div class="editor-main">
           <textarea id="editor-content" spellcheck="false"></textarea>
           <div id="editor-md-view" class="doc-viewer-pane" hidden></div>
-          <div id="editor-viewer" class="doc-viewer" hidden>
-            <iframe id="editor-pdf-frame" hidden></iframe>
-            <div id="editor-nonmd" hidden class="doc-alt-viewer">
-              <p id="editor-nonmd-hint"></p>
-              <button class="btn ghost" id="editor-download" data-i18n="docs.download">Скачать</button>
-              <button class="btn secondary" id="editor-convert" data-i18n="docs.convertToMd">Конвертировать в MD</button>
+          <div id="editor-onlyoffice-wrap" class="doc-viewer" hidden>
+            <div id="editor-onlyoffice-loading" class="onlyoffice-loading" hidden data-i18n="docs.onlyoffice.loading">Загрузка редактора...</div>
+            <div id="editor-onlyoffice-host" class="onlyoffice-host"></div>
+          </div>
+            <div id="editor-viewer" class="doc-viewer" hidden>
+              <iframe id="editor-pdf-frame" hidden></iframe>
+              <div id="editor-nonmd" hidden class="doc-alt-viewer">
+                <p id="editor-nonmd-hint"></p>
+              </div>
             </div>
           </div>
-        </div>
         <div class="editor-meta">
           <h4 data-i18n="editor.meta">Метаданные</h4>
           <div class="form-field">
@@ -609,7 +610,3 @@
     </div>
   </div>
 </div>
-
-
-
-

@@ -26,6 +26,7 @@ func setupMonitoringStore(t *testing.T) (store.MonitoringStore, func()) {
 	if err != nil {
 		t.Fatalf("db: %v", err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	if err := store.ApplyMigrations(context.Background(), db, logger); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}

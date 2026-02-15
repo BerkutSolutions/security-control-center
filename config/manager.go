@@ -111,6 +111,13 @@ func normalizeConfig(cfg *AppConfig) {
 	cfg.Backups.Path = strings.TrimSpace(cfg.Backups.Path)
 	cfg.Backups.EncryptionKey = strings.TrimSpace(cfg.Backups.EncryptionKey)
 	cfg.Backups.PGDumpBin = strings.TrimSpace(cfg.Backups.PGDumpBin)
+	cfg.Docs.OnlyOffice.PublicURL = strings.TrimSpace(cfg.Docs.OnlyOffice.PublicURL)
+	cfg.Docs.OnlyOffice.InternalURL = strings.TrimSpace(cfg.Docs.OnlyOffice.InternalURL)
+	cfg.Docs.OnlyOffice.AppInternalURL = strings.TrimSpace(cfg.Docs.OnlyOffice.AppInternalURL)
+	cfg.Docs.OnlyOffice.JWTSecret = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTSecret)
+	cfg.Docs.OnlyOffice.JWTHeader = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTHeader)
+	cfg.Docs.OnlyOffice.JWTIssuer = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTIssuer)
+	cfg.Docs.OnlyOffice.JWTAudience = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTAudience)
 	if cfg.Backups.PGDumpBin == "" {
 		cfg.Backups.PGDumpBin = "pg_dump"
 	}
@@ -131,6 +138,24 @@ func normalizeConfig(cfg *AppConfig) {
 	}
 	if cfg.Docs.Watermark.MinLevel != "" {
 		cfg.Docs.WatermarkMinLevel = cfg.Docs.Watermark.MinLevel
+	}
+	if cfg.Docs.OnlyOffice.InternalURL == "" {
+		cfg.Docs.OnlyOffice.InternalURL = "http://onlyoffice/"
+	}
+	if cfg.Docs.OnlyOffice.AppInternalURL == "" {
+		cfg.Docs.OnlyOffice.AppInternalURL = "http://berkut:8080"
+	}
+	if cfg.Docs.OnlyOffice.JWTHeader == "" {
+		cfg.Docs.OnlyOffice.JWTHeader = "Authorization"
+	}
+	if cfg.Docs.OnlyOffice.JWTIssuer == "" {
+		cfg.Docs.OnlyOffice.JWTIssuer = "berkut-scc"
+	}
+	if cfg.Docs.OnlyOffice.JWTAudience == "" {
+		cfg.Docs.OnlyOffice.JWTAudience = "onlyoffice-document-server"
+	}
+	if cfg.Docs.OnlyOffice.RequestTimeout <= 0 {
+		cfg.Docs.OnlyOffice.RequestTimeout = 20
 	}
 	if cfg.DeploymentMode == "" {
 		cfg.DeploymentMode = "enterprise"

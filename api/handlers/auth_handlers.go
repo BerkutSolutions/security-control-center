@@ -444,6 +444,20 @@ func localized(lang, key string) string {
 	en["reports.error.chartNotFound"] = "Chart not found"
 	en["reports.error.snapshotRequired"] = "Snapshot required"
 	en["reports.error.exportChartsUnavailable"] = "Chart export requires a local converter"
+	ru["docs.onlyoffice.disabled"] = "OnlyOffice отключен"
+	ru["docs.onlyoffice.unsupportedFormat"] = "OnlyOffice поддерживает только DOCX"
+	ru["docs.onlyoffice.invalidToken"] = "Недействительный токен OnlyOffice"
+	ru["docs.onlyoffice.misconfigured"] = "OnlyOffice настроен некорректно"
+	ru["docs.onlyoffice.saveReason"] = "Редактирование в OnlyOffice"
+	ru["docs.onlyoffice.forceSaveFailed"] = "Не удалось выполнить сохранение в OnlyOffice"
+	ru["docs.onlyoffice.forceSaveNoVersion"] = "Сохранение запрошено, но новая версия документа не была создана"
+	en["docs.onlyoffice.disabled"] = "OnlyOffice is disabled"
+	en["docs.onlyoffice.unsupportedFormat"] = "Only DOCX is supported for OnlyOffice editing"
+	en["docs.onlyoffice.invalidToken"] = "Invalid OnlyOffice token"
+	en["docs.onlyoffice.misconfigured"] = "OnlyOffice is misconfigured"
+	en["docs.onlyoffice.saveReason"] = "Edited in OnlyOffice"
+	en["docs.onlyoffice.forceSaveFailed"] = "OnlyOffice save failed"
+	en["docs.onlyoffice.forceSaveNoVersion"] = "Save was requested, but a new document version was not created"
 	if lang == "ru" {
 		if v, ok := ru[key]; ok {
 			return v

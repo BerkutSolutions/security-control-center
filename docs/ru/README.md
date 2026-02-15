@@ -12,6 +12,8 @@
 7. Wiki по функционалу: `docs/ru/wiki/features.md`
 8. Актуальный план развития: `docs/ru/roadmap.md`
 9. Бэкапы (.bscc): `docs/ru/backups.md`
+10. HTTPS + OnlyOffice: `docs/ru/https_onlyoffice.md`
+11. Пример compose для HTTPS: `docs/ru/docker-compose.https.yml`
 
 ## Контекст
 Документация синхронизирована с текущей моделью:

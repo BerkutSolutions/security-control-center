@@ -23,17 +23,18 @@ import (
 )
 
 type DocsHandler struct {
-	cfg      *config.AppConfig
-	store    store.DocsStore
-	links    store.EntityLinksStore
-	controls store.ControlsStore
-	users    store.UsersStore
-	policy   *rbac.Policy
-	svc      *docs.Service
-	audits   store.AuditStore
-	logger   *utils.Logger
-	uploads  map[string]uploadItem
-	mu       sync.Mutex
+	cfg         *config.AppConfig
+	store       store.DocsStore
+	links       store.EntityLinksStore
+	controls    store.ControlsStore
+	users       store.UsersStore
+	policy      *rbac.Policy
+	svc         *docs.Service
+	audits      store.AuditStore
+	logger      *utils.Logger
+	uploads     map[string]uploadItem
+	officeSaves map[string]onlyOfficePendingSave
+	mu          sync.Mutex
 }
 
 type uploadItem struct {
@@ -47,7 +48,19 @@ type uploadItem struct {
 }
 
 func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.EntityLinksStore, controls store.ControlsStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, audits store.AuditStore, logger *utils.Logger) *DocsHandler {
-	return &DocsHandler{cfg: cfg, store: ds, links: links, controls: controls, users: us, policy: policy, svc: svc, audits: audits, logger: logger, uploads: map[string]uploadItem{}}
+	return &DocsHandler{
+		cfg:         cfg,
+		store:       ds,
+		links:       links,
+		controls:    controls,
+		users:       us,
+		policy:      policy,
+		svc:         svc,
+		audits:      audits,
+		logger:      logger,
+		uploads:     map[string]uploadItem{},
+		officeSaves: map[string]onlyOfficePendingSave{},
+	}
 }
 
 func (h *DocsHandler) List(w http.ResponseWriter, r *http.Request) {
@@ -224,17 +237,34 @@ func (h *DocsHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		tmpDir = os.TempDir()
 	}
 	if err := os.MkdirAll(tmpDir, 0o700); err != nil {
-		http.Error(w, "server error", http.StatusInternalServerError)
-		return
+		if h.logger != nil {
+			h.logger.Errorf("docs upload mkdir temp failed (%s): %v", tmpDir, err)
+		}
+		tmpDir = os.TempDir()
+		if err := os.MkdirAll(tmpDir, 0o700); err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
 	}
-	tmpPath := filepath.Join(tmpDir, fmt.Sprintf("upload-%s.%s", uploadID, format))
-	dst, err := os.Create(tmpPath)
+	tmpFile, err := os.CreateTemp(tmpDir, fmt.Sprintf("upload-*.%s", format))
 	if err != nil {
+		if h.logger != nil {
+			h.logger.Errorf("docs upload create temp failed (%s): %v", tmpDir, err)
+		}
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	size, _ := io.Copy(dst, file)
-	_ = dst.Close()
+	tmpPath := tmpFile.Name()
+	size, copyErr := io.Copy(tmpFile, file)
+	closeErr := tmpFile.Close()
+	if copyErr != nil || closeErr != nil {
+		if h.logger != nil {
+			h.logger.Errorf("docs upload write failed: copy=%v close=%v", copyErr, closeErr)
+		}
+		_ = os.Remove(tmpPath)
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
 	item := uploadItem{
 		ID:         uploadID,
 		Path:       tmpPath,
@@ -482,7 +512,9 @@ func (h *DocsHandler) GetContent(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	h.svc.Log(r.Context(), user.Username, "doc.view", doc.RegNumber)
+	if strings.TrimSpace(r.URL.Query().Get("audit")) != "0" {
+		h.svc.Log(r.Context(), user.Username, "doc.view", doc.RegNumber)
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"format":  ver.Format,
 		"version": ver.Version,

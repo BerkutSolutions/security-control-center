@@ -22,6 +22,7 @@ type monitorSLAOverviewItem struct {
 	MonitorID int64                  `json:"monitor_id"`
 	Name      string                 `json:"name"`
 	Type      string                 `json:"type"`
+	CreatedAt time.Time              `json:"created_at"`
 	IsActive  bool                   `json:"is_active"`
 	IsPaused  bool                   `json:"is_paused"`
 	Status    string                 `json:"status"`
@@ -96,6 +97,7 @@ func (h *MonitoringHandler) ListSLAOverview(w http.ResponseWriter, r *http.Reque
 			MonitorID: mon.ID,
 			Name:      mon.Name,
 			Type:      mon.Type,
+			CreatedAt: mon.CreatedAt,
 			IsActive:  mon.IsActive,
 			IsPaused:  mon.IsPaused,
 			Status:    mon.Status,

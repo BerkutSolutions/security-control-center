@@ -94,3 +94,29 @@ func TestValidateRequiresBackupKeyOutsideDev(t *testing.T) {
 		t.Fatalf("expected error for missing backups key")
 	}
 }
+
+func TestValidateOnlyOfficeRequiresPublicURLAndSecret(t *testing.T) {
+	cfg := &AppConfig{
+		DBDriver:   "postgres",
+		DBURL:      "postgres://localhost/test",
+		AppEnv:     "dev",
+		CSRFKey:    "csrf",
+		Pepper:     "pepper",
+		TLSEnabled: false,
+		Docs: DocsConfig{
+			EncryptionKey: "docskey",
+			OnlyOffice: OnlyOfficeConfig{
+				Enabled: true,
+			},
+		},
+	}
+	if err := Validate(cfg); err == nil {
+		t.Fatalf("expected onlyoffice config validation error")
+	}
+	cfg.Docs.OnlyOffice.PublicURL = "https://scc.local/office/"
+	cfg.Docs.OnlyOffice.AppInternalURL = "http://berkut:8080"
+	cfg.Docs.OnlyOffice.JWTSecret = "test-secret"
+	if err := Validate(cfg); err != nil {
+		t.Fatalf("unexpected error for valid onlyoffice config: %v", err)
+	}
+}

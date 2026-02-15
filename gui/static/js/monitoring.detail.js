@@ -6,6 +6,10 @@
     eventsRange: '1h',
     pollTimer: null,
     pollInFlight: false,
+    chartMetrics: [],
+    chartMeta: null,
+    chartResizeObserver: null,
+    chartResizeRaf: 0,
   };
 
   function bindDetail() {
@@ -13,6 +17,7 @@
     els.empty = document.getElementById('monitor-empty');
     els.title = document.getElementById('monitor-detail-title');
     els.target = document.getElementById('monitor-detail-target');
+    els.tags = document.getElementById('monitor-detail-tags');
     els.maintenance = document.getElementById('monitor-maintenance-info');
     els.detailAlert = document.getElementById('monitor-detail-alert');
     els.dot = document.getElementById('monitor-status-dot');
@@ -28,6 +33,7 @@
     els.eventsRange = document.getElementById('monitor-events-range');
     els.clearStats = document.getElementById('monitor-events-clear');
     ensureChartTooltip();
+    bindChartAutoResize();
 
     if (els.latencyRange) {
       els.latencyRange.value = detailState.metricsRange;
@@ -92,6 +98,7 @@
 
   async function loadDetail(id) {
     if (!id) return;
+    renderChartLoading();
     try {
       const canEvents = MonitoringPage.hasPermission('monitoring.events.view');
       const canMaintenance = MonitoringPage.hasPermission('monitoring.maintenance.view');
@@ -135,6 +142,7 @@
     if (els.target) els.target.textContent = HOST_TARGET_TYPES.has((mon.type || '').toLowerCase())
       ? (mon.port ? `${mon.host}:${mon.port}` : (mon.host || '-'))
       : (mon.url || mon.host || '-');
+    renderMonitorTags(mon?.tags || []);
     if (els.dot) els.dot.className = `status-dot ${statusClass(state?.status || mon.status)}`;
     const current = MonitoringPage.state.monitors.find(m => m.id === mon.id);
     if (current) {
@@ -148,6 +156,8 @@
     renderMaintenanceInfo(mon, state, maintenance);
     renderStatusStrip(metrics);
     renderStats(mon, state);
+    detailState.chartMetrics = Array.isArray(metrics) ? metrics.slice() : [];
+    detailState.chartMeta = metricsMeta || null;
     renderLatencyChart(metrics, metricsMeta || null);
     renderEvents(events);
     updateActionLabels(mon);
@@ -159,6 +169,28 @@
     stopDetailRefresh();
     if (els.detail) els.detail.hidden = true;
     if (els.empty) els.empty.hidden = (MonitoringPage.state.monitors || []).length === 0;
+    if (els.tags) {
+      els.tags.hidden = true;
+      els.tags.innerHTML = '';
+    }
+  }
+
+  function renderMonitorTags(tags) {
+    if (!els.tags) return;
+    const values = Array.isArray(tags) ? tags.filter(Boolean) : [];
+    els.tags.innerHTML = '';
+    if (!values.length) {
+      els.tags.hidden = true;
+      return;
+    }
+    values.forEach((tagCode) => {
+      const chip = document.createElement('span');
+      chip.className = 'monitor-item-tag';
+      chip.textContent = MonitoringPage.tagLabel ? MonitoringPage.tagLabel(tagCode) : tagCode;
+      chip.title = chip.textContent;
+      els.tags.appendChild(chip);
+    });
+    els.tags.hidden = false;
   }
 
   function renderStatusStrip(metrics) {
@@ -256,6 +288,37 @@
     tip.hidden = true;
     els.chart.appendChild(tip);
     els.chartTip = tip;
+  }
+
+  function bindChartAutoResize() {
+    if (!els.chart || detailState.chartResizeObserver || typeof ResizeObserver === 'undefined') return;
+    detailState.chartResizeObserver = new ResizeObserver(() => {
+      if (detailState.chartResizeRaf) {
+        window.cancelAnimationFrame(detailState.chartResizeRaf);
+      }
+      detailState.chartResizeRaf = window.requestAnimationFrame(() => {
+        detailState.chartResizeRaf = 0;
+        rerenderChartFromCache();
+      });
+    });
+    detailState.chartResizeObserver.observe(els.chart);
+  }
+
+  function rerenderChartFromCache() {
+    if (!els.chart) return;
+    if (els.detail && els.detail.hidden) return;
+    if (!Array.isArray(detailState.chartMetrics) || !detailState.chartMetrics.length) return;
+    renderLatencyChart(detailState.chartMetrics, detailState.chartMeta || null);
+  }
+
+  function renderChartLoading() {
+    if (!els.chart) return;
+    els.chart.innerHTML = '';
+    const loading = document.createElement('div');
+    loading.className = 'muted';
+    const text = MonitoringPage.t('common.loading');
+    loading.textContent = text && text !== 'common.loading' ? text : '...';
+    els.chart.appendChild(loading);
   }
 
   function showChartTooltip(text) {

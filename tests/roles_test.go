@@ -101,6 +101,7 @@ func setupRolesHandler(t *testing.T) (*handlers.AccountsHandler, store.RolesStor
 	cfg := &config.AppConfig{DBPath: filepath.Join(dir, "roles.db")}
 	logger := utils.NewLogger()
 	db, _ := store.NewDB(cfg, logger)
+	t.Cleanup(func() { _ = db.Close() })
 	_ = store.ApplyMigrations(context.Background(), db, logger)
 	roles := store.NewRolesStore(db)
 	audits := store.NewAuditStore(db)

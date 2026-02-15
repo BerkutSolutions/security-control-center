@@ -52,6 +52,8 @@ func (h *ReportsHandler) buildReportSections(ctx context.Context, doc *store.Doc
 			res = h.buildControlsSection(ctx, sec, user, roles, totals)
 		case "monitoring":
 			res = h.buildMonitoringSection(ctx, sec, user, roles, periodFrom, periodTo, totals)
+		case "sla_summary":
+			res = h.buildSLASummarySection(ctx, sec, user, roles, periodFrom, periodTo, totals)
 		case "audit":
 			res = h.buildAuditSection(ctx, sec, user, roles, periodFrom, periodTo, totals)
 		case "custom_md":

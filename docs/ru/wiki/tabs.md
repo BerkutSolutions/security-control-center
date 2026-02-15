@@ -57,6 +57,3 @@ General/Advanced/HTTPS/Tags/Incidents/Controls/About.
 
 ## Logs
 Просмотр аудита операций.
-
-## Findings
-Зарезервирован как placeholder.

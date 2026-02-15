@@ -734,7 +734,62 @@ var migrations = []string{
 }
 
 func ApplyMigrations(ctx context.Context, db *sql.DB, logger *utils.Logger) error {
+	isPG, err := isPostgresDB(ctx, db)
+	if err != nil {
+		return err
+	}
+	if !isPG {
+		if !isTestRuntime() {
+			return fmt.Errorf("only postgres is supported outside go test runtime")
+		}
+		return applySQLiteTestMigrations(ctx, db, logger)
+	}
 	return applyGooseMigrations(ctx, db, logger)
+}
+
+func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Logger) error {
+	if logger != nil {
+		logger.Printf("applying sqlite test migrations")
+	}
+	for i, stmt := range migrations {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("sqlite migration #%d failed: %w", i+1, err)
+		}
+	}
+	post := []func(context.Context, *sql.DB) error{
+		ensureUserColumns,
+		ensureRoleColumns,
+		ensureGroupColumns,
+		ensureSessionColumns,
+		ensureTemplateColumns,
+		ensureDocsColumns,
+		ensureApprovalColumns,
+		ensureApprovalParticipantsSchema,
+		ensureMonitoringColumns,
+		ensureIncidentColumns,
+		ensureIncidentStageColumns,
+		ensureIncidentLinkColumns,
+		ensureIncidentTimelineColumns,
+		ensureIncidentArtifactFiles,
+		ensureTaskColumns,
+		ensureTaskCommentColumns,
+		ensureTaskBoardColumns,
+		ensureTaskColumnColumns,
+		ensureTaskSpaceBackfill,
+		ensureTaskBoardSpaceGuards,
+		ensureControlViolationColumns,
+		ensureEntityLinksSchema,
+		ensureControlTypes,
+	}
+	for _, fn := range post {
+		if err := fn(ctx, db); err != nil {
+			return err
+		}
+	}
+	if logger != nil {
+		logger.Printf("sqlite test migrations applied")
+	}
+	return nil
 }
 
 func ensureControlTypes(ctx context.Context, db *sql.DB) error {

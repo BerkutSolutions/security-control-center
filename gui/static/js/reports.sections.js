@@ -7,6 +7,7 @@
     { type: 'docs', titleKey: 'reports.sections.docs' },
     { type: 'controls', titleKey: 'reports.sections.controls' },
     { type: 'monitoring', titleKey: 'reports.sections.monitoring' },
+    { type: 'sla_summary', titleKey: 'reports.sections.slaSummary' },
     { type: 'audit', titleKey: 'reports.sections.audit' },
     { type: 'custom_md', titleKey: 'reports.sections.custom' }
   ];
@@ -173,6 +174,26 @@
           <div class="form-field">
             <label class="checkbox"><input type="checkbox" data-field="important_only" ${cfg.important_only ? 'checked' : ''}>
             <span>${t('reports.sections.filters.importantOnly')}</span></label>
+          </div>
+          <div class="form-field"><label>${t('reports.sections.filters.limit')}</label>
+            <input type="number" class="input" data-field="limit" value="${cfg.limit || 50}">
+          </div>`;
+      case 'sla_summary':
+        return `
+          <div class="form-field"><label>${t('reports.sections.filters.slaPeriod')}</label>
+            <select class="select" data-field="period_type">
+              <option value="day" ${(cfg.period_type || 'month') === 'day' ? 'selected' : ''}>${t('reports.sections.filters.periodDay')}</option>
+              <option value="week" ${(cfg.period_type || 'month') === 'week' ? 'selected' : ''}>${t('reports.sections.filters.periodWeek')}</option>
+              <option value="month" ${(cfg.period_type || 'month') === 'month' ? 'selected' : ''}>${t('reports.sections.filters.periodMonth')}</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label class="checkbox"><input type="checkbox" data-field="only_violations" ${cfg.only_violations ? 'checked' : ''}>
+            <span>${t('reports.sections.filters.onlyViolations')}</span></label>
+          </div>
+          <div class="form-field">
+            <label class="checkbox"><input type="checkbox" data-field="include_current" ${cfg.include_current !== false ? 'checked' : ''}>
+            <span>${t('reports.sections.filters.includeCurrent')}</span></label>
           </div>
           <div class="form-field"><label>${t('reports.sections.filters.limit')}</label>
             <input type="number" class="input" data-field="limit" value="${cfg.limit || 50}">

@@ -26,15 +26,16 @@ import (
 )
 
 type reportEnv struct {
-	cfg       *config.AppConfig
-	user      *store.User
-	handler   *handlers.ReportsHandler
-	docsSvc   *docs.Service
-	docs      store.DocsStore
-	users     store.UsersStore
-	reports   store.ReportsStore
-	incidents store.IncidentsStore
-	cleanup   func()
+	cfg        *config.AppConfig
+	user       *store.User
+	handler    *handlers.ReportsHandler
+	docsSvc    *docs.Service
+	docs       store.DocsStore
+	users      store.UsersStore
+	reports    store.ReportsStore
+	monitoring store.MonitoringStore
+	incidents  store.IncidentsStore
+	cleanup    func()
 }
 
 func setupReportsBuilder(t *testing.T) reportEnv {
@@ -64,6 +65,7 @@ func setupReportsBuilder(t *testing.T) reportEnv {
 	if err != nil {
 		t.Fatalf("db: %v", err)
 	}
+	t.Cleanup(func() { _ = db.Close() })
 	if err := store.ApplyMigrations(context.Background(), db, logger); err != nil {
 		t.Fatalf("migrate: %v", err)
 	}
@@ -103,15 +105,16 @@ func setupReportsBuilder(t *testing.T) reportEnv {
 	taskSvc := tasks.NewService(taskstore.NewStore(db))
 	handler := handlers.NewReportsHandler(cfg, docsStore, reportsStore, users, policy, docsSvc, incStore, incSvc, ctrlStore, monStore, taskSvc, audits, logger)
 	return reportEnv{
-		cfg:       cfg,
-		user:      u,
-		handler:   handler,
-		docsSvc:   docsSvc,
-		docs:      docsStore,
-		users:     users,
-		reports:   reportsStore,
-		incidents: incStore,
-		cleanup:   func() { db.Close() },
+		cfg:        cfg,
+		user:       u,
+		handler:    handler,
+		docsSvc:    docsSvc,
+		docs:       docsStore,
+		users:      users,
+		reports:    reportsStore,
+		monitoring: monStore,
+		incidents:  incStore,
+		cleanup:    func() { db.Close() },
 	}
 }
 
@@ -226,5 +229,114 @@ func TestCreateReportFromIncident(t *testing.T) {
 	sections, _ := env.reports.ListReportSections(context.Background(), resp.ReportID)
 	if len(sections) < 4 {
 		t.Fatalf("expected incident report sections, got %d", len(sections))
+	}
+}
+
+func TestReportBuildSLASummarySection(t *testing.T) {
+	env := setupReportsBuilder(t)
+	defer env.cleanup()
+	doc := &store.Document{
+		Title:               "SLA Exec Report",
+		Status:              docs.StatusDraft,
+		ClassificationLevel: int(docs.ClassificationInternal),
+		DocType:             "report",
+		InheritACL:          true,
+		CreatedBy:           env.user.ID,
+	}
+	acl := []store.ACLRule{
+		{SubjectType: "user", SubjectID: env.user.Username, Permission: "view"},
+		{SubjectType: "user", SubjectID: env.user.Username, Permission: "edit"},
+		{SubjectType: "user", SubjectID: env.user.Username, Permission: "manage"},
+		{SubjectType: "user", SubjectID: env.user.Username, Permission: "export"},
+	}
+	docID, err := env.docs.CreateDocument(context.Background(), doc, acl, env.cfg.Docs.RegTemplate, env.cfg.Docs.PerFolderSequence)
+	if err != nil {
+		t.Fatalf("create doc: %v", err)
+	}
+	doc.ID = docID
+	start := time.Now().UTC().AddDate(0, 0, -31)
+	end := time.Now().UTC()
+	if err := env.reports.UpsertReportMeta(context.Background(), &store.ReportMeta{
+		DocID:      docID,
+		Status:     "draft",
+		PeriodFrom: &start,
+		PeriodTo:   &end,
+	}); err != nil {
+		t.Fatalf("report meta: %v", err)
+	}
+	sections := []store.ReportSection{
+		{
+			SectionType: "sla_summary",
+			Title:       "SLA executive summary",
+			IsEnabled:   true,
+			Config: map[string]any{
+				"period_type":     "month",
+				"only_violations": false,
+				"include_current": true,
+				"limit":           20,
+			},
+		},
+	}
+	if err := env.reports.ReplaceReportSections(context.Background(), docID, sections); err != nil {
+		t.Fatalf("sections: %v", err)
+	}
+	mon := &store.Monitor{
+		Name:             "API Gateway",
+		Type:             "http",
+		URL:              "https://example.org/health",
+		Method:           "GET",
+		IntervalSec:      60,
+		TimeoutSec:       10,
+		Retries:          2,
+		RetryIntervalSec: 30,
+		AllowedStatus:    []string{"200-299"},
+		IsActive:         true,
+		CreatedBy:        env.user.ID,
+	}
+	monID, err := env.monitoring.CreateMonitor(context.Background(), mon)
+	if err != nil {
+		t.Fatalf("create monitor: %v", err)
+	}
+	if err := env.monitoring.UpsertMonitorState(context.Background(), &store.MonitorState{
+		MonitorID:         monID,
+		Status:            "down",
+		MaintenanceActive: false,
+		Uptime24h:         97.8,
+		Uptime30d:         98.1,
+		AvgLatency24h:     125,
+	}); err != nil {
+		t.Fatalf("insert monitor state: %v", err)
+	}
+
+	body, _ := json.Marshal(map[string]any{"reason": "exec sla", "mode": "replace"})
+	req := httptest.NewRequest(http.MethodPost, "/api/reports/1/build", bytes.NewReader(body))
+	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", doc.ID)})
+	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: env.user.ID, Username: env.user.Username}))
+	rr := httptest.NewRecorder()
+	env.handler.Build(rr, req)
+	if rr.Code != http.StatusOK {
+		t.Fatalf("build status: %d", rr.Code)
+	}
+	loaded, err := env.docs.GetDocument(context.Background(), doc.ID)
+	if err != nil || loaded == nil {
+		t.Fatalf("doc reload failed")
+	}
+	ver, err := env.docs.GetVersion(context.Background(), loaded.ID, loaded.CurrentVersion)
+	if err != nil || ver == nil {
+		t.Fatalf("version fetch failed")
+	}
+	content, err := env.docsSvc.LoadContent(context.Background(), ver)
+	if err != nil {
+		t.Fatalf("load content: %v", err)
+	}
+	text := string(content)
+	if !bytes.Contains(content, []byte("SLA executive summary")) {
+		t.Fatalf("expected SLA section title, got: %s", text)
+	}
+	if !bytes.Contains(content, []byte("API Gateway")) {
+		t.Fatalf("expected monitor in SLA section")
+	}
+	if !bytes.Contains(content, []byte("Current trend")) {
+		t.Fatalf("expected current SLA trend block")
 	}
 }

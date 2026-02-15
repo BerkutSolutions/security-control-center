@@ -114,7 +114,7 @@
         <td>${escapeHtml(doc.title || '')}</td>
         <td>${escapeHtml(doc.reg_number || '')}</td>
         <td>${escapeHtml(ReportsPage.formatPeriod(meta))}</td>
-        <td>${escapeHtml(statusLabel(meta.report_status || meta.status))}</td>
+        <td><span class="badge status-${escapeHtml(meta.report_status || meta.status || 'draft')}">${escapeHtml(statusLabel(meta.report_status || meta.status))}</span></td>
         <td>${escapeHtml(DocUI.levelName(doc.classification_level))}</td>
         <td>${escapeHtml(ownerLabel(doc.created_by))}</td>
         <td>${escapeHtml(ReportsPage.formatDate(doc.updated_at || doc.created_at))}</td>
@@ -205,6 +205,12 @@
       actions.push({
         label: BerkutI18n.t('docs.menu.edit'),
         handler: () => ReportsPage.openEditor(docId)
+      });
+    }
+    if (ReportsPage.hasPermission('reports.export')) {
+      actions.push({
+        label: BerkutI18n.t('docs.menu.export') || BerkutI18n.t('reports.action.export'),
+        handler: () => ReportsPage.exportReport(docId)
       });
     }
     if (ReportsPage.hasPermission('docs.approval.start') && typeof DocsPage !== 'undefined' && DocsPage.openApprovalModal) {

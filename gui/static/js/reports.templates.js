@@ -74,6 +74,10 @@
   function openTemplateForm(tpl) {
     const form = document.getElementById('reports-template-form');
     if (!form) return;
+    const list = document.getElementById('reports-templates-list');
+    if (list && form.previousElementSibling !== null) {
+      list.parentNode.insertBefore(form, list);
+    }
     form.hidden = false;
     document.getElementById('reports-template-id').value = tpl?.id || '';
     document.getElementById('reports-template-name').value = tpl?.name || '';
@@ -81,6 +85,7 @@
     document.getElementById('reports-template-markdown').value = tpl?.template_markdown || '';
     const delBtn = document.getElementById('reports-template-delete');
     if (delBtn) delBtn.hidden = !tpl?.id;
+    form.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function saveTemplate() {

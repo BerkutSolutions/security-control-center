@@ -1,6 +1,12 @@
 (() => {
   const state = DocsPage.state;
   const selectedValues = (selector) => Array.from(document.querySelector(selector)?.selectedOptions || []).map(o => o.value);
+  const isEditableFormat = (format) => {
+    const fmt = String(format || '').toLowerCase();
+    if (fmt === 'md' || fmt === 'txt') return true;
+    if (fmt !== 'docx') return false;
+    return !!(window.DocsOnlyOffice && typeof window.DocsOnlyOffice.open === 'function');
+  };
 
   function openCreateModal() {
     DocUI.populateClassificationSelect(document.getElementById('create-classification'));
@@ -185,13 +191,15 @@
 
   async function openEditor(docId) {
     try {
+      const doc = (state.docs || []).find(d => d.id === docId);
+      const mode = isEditableFormat(doc?.format) ? 'edit' : 'view';
       if (DocsPage.openDocTab) {
-        DocsPage.openDocTab(docId, 'edit');
+        DocsPage.openDocTab(docId, mode);
       } else {
         if (DocsPage.updateDocsPath) {
-          DocsPage.updateDocsPath(docId, 'edit');
+          DocsPage.updateDocsPath(docId, mode);
         }
-        await DocEditor.open(docId, { mode: 'edit' });
+        await DocEditor.open(docId, { mode });
       }
     } catch (err) {
       console.error('open editor', err);

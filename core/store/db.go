@@ -1,9 +1,9 @@
 package store
 
 import (
-	"flag"
 	"database/sql"
 	"errors"
+	"flag"
 	"strings"
 
 	"berkut-scc/config"

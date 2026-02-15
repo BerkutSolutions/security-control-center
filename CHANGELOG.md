@@ -25,8 +25,3 @@
   - `docs/ru/runbook.md`, `docs/eng/runbook.md`
   - `docs/ru/https_onlyoffice.md`, `docs/eng/https_onlyoffice.md`
   - `docs/ru/docker-compose.https.yml`
-
-## 1.0.3 — 13.02.2026
-- Базовый релиз платформы с модулями backup/SLA/monitoring и обновлённой серверной архитектурой.
-
-

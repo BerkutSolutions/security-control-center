@@ -1,0 +1,797 @@
+<div class="page" id="accounts-page">
+  <div class="tabs browser-tabs">
+    <a class="tab-btn active" href="/accounts" data-tab="accounts-dashboard" data-i18n="accounts.tabs.dashboard">Главная</a>
+    <a class="tab-btn" href="/accounts/groups" data-tab="accounts-groups" data-i18n="accounts.tabs.groups">Группы</a>
+    <a class="tab-btn" href="/accounts/users" data-tab="accounts-users" data-i18n="accounts.tabs.users">Пользователи</a>
+  </div>
+
+  <div class="tab-panel" id="accounts-dashboard">
+    <div class="card-grid metrics-grid">
+      <div class="card metric">
+        <div class="metric-value" id="metric-total">0</div>
+        <div class="metric-label" data-i18n="accounts.metrics.total">Всего</div>
+      </div>
+      <div class="card metric">
+        <div class="metric-value" id="metric-active">0</div>
+        <div class="metric-label" data-i18n="accounts.metrics.active">Активны</div>
+      </div>
+      <div class="card metric">
+        <div class="metric-value" id="metric-blocked">0</div>
+        <div class="metric-label" data-i18n="accounts.metrics.blocked">Блокировки</div>
+      </div>
+      <div class="card metric">
+        <div class="metric-value" id="metric-online">0</div>
+        <div class="metric-label" data-i18n="accounts.metrics.online">Онлайн</div>
+      </div>
+    </div>
+    <div class="card dashboard-section">
+      <div class="card-header">
+        <h3 data-i18n="accounts.onlineNow">Online</h3>
+      </div>
+      <div class="card-body">
+        <input type="file" id="user-import-file" accept=".csv" hidden>
+        <div class="table-responsive">
+          <table class="data-table" id="online-users-table">
+            <thead>
+              <tr>
+                <th data-i18n="accounts.username">Login</th>
+                <th data-i18n="accounts.fullName">Full Name</th>
+                <th data-i18n="accounts.department">Dept</th>
+                <th data-i18n="accounts.lastSeen">Last seen</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+    <div class="card dashboard-section security-card">
+      <div class="card-header">
+        <h3 data-i18n="accounts.metrics.security">Безопасность</h3>
+      </div>
+      <div class="card-body">
+        <ul class="metric-list">
+          <li><span data-i18n="accounts.metrics.passwordsMissing">Без пароля</span> <strong id="metric-without-password">0</strong></li>
+          <li><span data-i18n="accounts.metrics.passwordChange">Требуют смену</span> <strong id="metric-require-change">0</strong></li>
+          <li><span data-i18n="accounts.metrics.no2fa">Без 2FA</span> <strong id="metric-without-2fa">0</strong></li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="accounts-groups" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 data-i18n="accounts.groups.title">Группы</h3>
+          <p data-i18n="accounts.groups.subtitle">Роли, допуски и доступ к вкладкам</p>
+        </div>
+        <button class="btn primary" id="open-group-create" data-i18n="accounts.groups.create">Создать группу</button>
+      </div>
+      <div class="card-body">
+        
+<div class="split-frame" id="groups-frame">
+  <div class="frame-left">
+    <div class="frame-left-header">
+      <input id="groups-search" placeholder="Search" data-i18n-placeholder="common.search">
+    </div>
+    <div class="tile-list" id="groups-list"></div>
+  </div>
+  <div class="frame-right">
+      <div class="frame-right-header">
+      <div>
+        <h4 id="group-detail-title"></h4>
+        <div class="muted small" id="group-detail-meta"></div>
+      </div>
+      <div class="icon-actions" id="group-detail-actions">
+        <button class="btn ghost icon-btn" id="group-edit-btn" aria-label="Edit">&#128221;</button>
+        <button class="btn ghost icon-btn danger" id="group-delete-btn" aria-label="Delete">&#128465;</button>
+        <button class="btn ghost icon-btn" id="group-save-btn" aria-label="Save" hidden>&#9989;</button>
+        <button class="btn ghost icon-btn" id="group-cancel-btn" aria-label="Cancel" hidden>&#10060;</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="alert" id="group-detail-alert" hidden></div>
+      <div class="empty-state" id="group-detail-empty" data-i18n="accounts.groups.selectPrompt" hidden>Select a group</div>
+      <div class="detail-view" id="group-detail-view" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label" data-i18n="accounts.groups.name">Name</div>
+            <div class="detail-value" id="group-view-name"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label" data-i18n="accounts.groups.clearance">Clearance</div>
+            <div class="detail-value" id="group-view-clearance"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.groups.description">Description</div>
+            <div class="detail-value" id="group-view-description"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.clearanceTags">Clearance tags</div>
+            <div class="detail-tags" id="group-view-clearance-tags"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.groups.roles">Roles</div>
+            <div class="detail-tags" id="group-view-roles"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.groupMenuAccess">Menu access</div>
+            <div class="detail-tags" id="group-view-menu"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.groupMembers">Members</div>
+            <div class="detail-tags" id="group-view-members"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.groups.impact">Effective impact</div>
+            <div class="detail-tags" id="group-view-impact"></div>
+          </div>
+        </div>
+      </div>
+      <form id="group-detail-form" class="form-grid two-column" hidden>
+        <div class="form-field required">
+          <label data-i18n="accounts.groups.name">Name</label>
+          <input name="name" id="group-detail-name" required disabled>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.groups.description">Description</label>
+          <input name="description" id="group-detail-description" disabled>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.groups.clearance">Clearance</label>
+          <select name="clearance_level" id="group-detail-clearance" disabled>
+            <option value="0" data-i18n="accounts.clearanceLevel.public">Public</option>
+            <option value="1" data-i18n="accounts.clearanceLevel.internal">Internal</option>
+            <option value="2" data-i18n="accounts.clearanceLevel.confidential">Confidential</option>
+            <option value="3" data-i18n="accounts.clearanceLevel.restricted">Restricted</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.clearanceTags">Clearance tags</label>
+          <div id="group-detail-clearance-tags" class="checkbox-grid"></div>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.groups.roles">Roles</label>
+          <select name="roles" id="group-detail-roles" multiple disabled></select>
+          <div class="selected-hint" id="group-detail-roles-hint"></div>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.groupMenuAccess">Menu access</label>
+          <div id="group-detail-menu" class="checkbox-list"></div>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.groupMembers">Members</label>
+          <select name="users" id="group-detail-users" multiple disabled></select>
+          <div class="selected-hint" id="group-detail-users-hint"></div>
+        </div>
+        <div class="form-field wide">
+          <label data-i18n="accounts.groups.impact">Effective impact</label>
+          <div id="group-detail-impact" class="tag-list"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+      </div>
+    </div>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 data-i18n="accounts.roles.title">Роли</h3>
+        </div>
+        <div class="actions">
+          <button class="btn secondary" id="open-role-template" data-i18n="accounts.roleFromTemplate">Создать из шаблона</button>
+          <button class="btn primary" id="open-role-create" data-i18n="accounts.roleCreate">Создать роль</button>
+        </div>
+      </div>
+      <div class="card-body">
+        
+<div class="split-frame" id="roles-frame">
+  <div class="frame-left">
+    <div class="frame-left-header">
+      <input id="roles-search" placeholder="Search" data-i18n-placeholder="common.search">
+    </div>
+    <div class="tile-list" id="roles-list"></div>
+  </div>
+  <div class="frame-right">
+      <div class="frame-right-header">
+      <div>
+        <h4 id="role-detail-title"></h4>
+        <div class="muted small" id="role-detail-meta"></div>
+      </div>
+      <div class="icon-actions" id="role-detail-actions">
+        <button class="btn ghost icon-btn" id="role-edit-btn" aria-label="Edit">&#128221;</button>
+        <button class="btn ghost icon-btn danger" id="role-delete-btn" aria-label="Delete">&#128465;</button>
+        <button class="btn ghost icon-btn" id="role-save-btn" aria-label="Save" hidden>&#9989;</button>
+        <button class="btn ghost icon-btn" id="role-cancel-btn" aria-label="Cancel" hidden>&#10060;</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="alert" id="role-detail-alert" hidden></div>
+      <div class="empty-state" id="role-detail-empty" data-i18n="accounts.roles.selectPrompt" hidden>Select a role</div>
+      <div class="detail-view" id="role-detail-view" hidden>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label" data-i18n="accounts.role">Role</div>
+            <div class="detail-value" id="role-view-name"></div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label" data-i18n="accounts.type">Type</div>
+            <div class="detail-value" id="role-view-type"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.description">Description</div>
+            <div class="detail-value" id="role-view-description"></div>
+          </div>
+          <div class="detail-item wide">
+            <div class="detail-label" data-i18n="accounts.permissions">Permissions</div>
+            <div class="detail-tags" id="role-view-permissions"></div>
+          </div>
+        </div>
+      </div>
+      <form id="role-detail-form" class="form-grid two-column" hidden>
+        <div class="form-field required">
+          <label data-i18n="accounts.role">Role</label>
+          <input id="role-detail-name" disabled>
+        </div>
+        <div class="form-field">
+          <label data-i18n="accounts.type">Type</label>
+          <input id="role-detail-type" disabled>
+        </div>
+        <div class="form-field wide">
+          <label data-i18n="accounts.description">Description</label>
+          <textarea id="role-detail-description" rows="2" disabled></textarea>
+        </div>
+        <div class="form-field wide">
+          <label data-i18n="accounts.permissions">Permissions</label>
+          <select id="role-detail-permissions" multiple disabled></select>
+          <div class="selected-hint" id="role-detail-permissions-hint"></div>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="tab-panel" id="accounts-users" hidden>
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <h3 data-i18n="accounts.users.title">Пользователи</h3>
+          <p data-i18n="accounts.users.subtitle">IAM управление</p>
+        </div>
+        <div class="actions">
+<<<<<<< HEAD
+          <button class="btn secondary" id="refresh-users" data-i18n="common.refresh">????????</button>
+          <button class="btn secondary" id="open-import" data-i18n="accounts.importCsv">?????? CSV</button>
+          <button class="btn primary" id="open-create" data-i18n="accounts.create">???????</button>
+=======
+          <button class="btn secondary" id="refresh-users" data-i18n="common.refresh">Обновить</button>
+          <button class="btn secondary" id="open-import" data-i18n="accounts.importCsv">Импортировать CSV-файл</button>
+          <button class="btn primary" id="open-create" data-i18n="accounts.create">Создать пользователя</button>
+>>>>>>> 2adc2fe (v1.0.5)
+        </div>
+      </div>
+      <div class="card-body">
+        <input type="file" id="user-import-file" accept=".csv" hidden>
+        <div class="filters" id="users-filters">
+          <select id="filter-status">
+            <option value="" data-i18n="accounts.filters.status.all">Все статусы</option>
+            <option value="active" data-i18n="accounts.active">Активны</option>
+            <option value="disabled" data-i18n="accounts.disabled">Отключены</option>
+            <option value="locked" data-i18n="accounts.blocked">Заблокированы</option>
+          </select>
+          <select id="filter-dept" data-i18n="accounts.filterDepartment">
+            <option value="" data-i18n="common.all">Все</option>
+          </select>
+          <select id="filter-role">
+            <option value="" data-i18n="accounts.filterRole">Все</option>
+          </select>
+          <select id="filter-group">
+            <option value="" data-i18n="accounts.filterGroup">Все</option>
+          </select>
+          <select id="filter-password">
+            <option value="" data-i18n="accounts.filterPassword">Все</option>
+            <option value="has_password" data-i18n="accounts.hasPassword">Пароль есть</option>
+            <option value="no_password" data-i18n="accounts.passwordNotSetIndicator">Пароль не задан</option>
+          </select>
+          <select id="filter-clearance">
+            <option value="" data-i18n="accounts.filterClearanceAll">All clearances</option>
+            <option value="0" data-i18n="accounts.clearanceLevel.public">Public</option>
+            <option value="1" data-i18n="accounts.clearanceLevel.internal">Internal</option>
+                <option value="3" data-i18n="accounts.clearanceLevel.restricted">Restricted</option>
+                <option value="2" data-i18n="accounts.clearanceLevel.confidential">Confidential</option>
+              </select>
+          <input id="filter-search" placeholder="Search" data-i18n-placeholder="common.search">
+        </div>
+        <div class="bulk-bar" id="bulk-actions" hidden>
+          <div class="bulk-info">
+            <strong data-i18n="accounts.selectedCount">Selected</strong>: <span id="bulk-selected-count">0</span>
+          </div>
+          <div class="actions">
+            <button class="btn secondary" data-bulk="assign_role" id="bulk-assign-role" data-i18n="accounts.bulkAssignRole">Assign role</button>
+            <button class="btn secondary" data-bulk="assign_group" id="bulk-assign-group" data-i18n="accounts.bulkAssignGroup">Assign group</button>
+            <button class="btn secondary" data-bulk="reset_password" id="bulk-reset-password" data-i18n="accounts.bulkResetPassword">Reset passwords</button>
+            <button class="btn secondary" data-bulk="lock" id="bulk-lock" data-i18n="accounts.bulkLock">Lock</button>
+            <button class="btn secondary" data-bulk="unlock" id="bulk-unlock" data-i18n="accounts.bulkUnlock">Unlock</button>
+            <button class="btn secondary" data-bulk="disable" id="bulk-disable" data-i18n="accounts.bulkDisable">Disable</button>
+            <button class="btn secondary" data-bulk="enable" id="bulk-enable" data-i18n="accounts.bulkEnable">Enable</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="users-table">
+            <thead>
+              <tr>
+                <th><input type="checkbox" id="select-all-users" aria-label="Select all" data-i18n="accounts.selectAll"></th>
+                <th data-i18n="accounts.username">Логин</th>
+                <th data-i18n="accounts.fullName">ФИО</th>
+                <th data-i18n="accounts.department">Отдел</th>
+                <th data-i18n="accounts.position">Должность</th>
+                <th data-i18n="accounts.roles">Роли</th>
+                <th data-i18n="accounts.groups.title">Группы</th>
+                <th data-i18n="accounts.status">Статус</th>
+                <th data-i18n="accounts.actions">Действия</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="user-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="modal-title" data-i18n="accounts.create">Создать пользователя</h3>
+        <button class="btn ghost" id="close-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="modal-alert" hidden></div>
+        <form id="user-form" class="form-grid three-column user-form">
+          <div class="form-column">
+            <div class="form-field required">
+<<<<<<< HEAD
+              <label data-i18n="accounts.username">?>????????</label>
+              <input name="username" required>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="accounts.fullName">??????</label>
+              <input name="full_name" required>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.department">???'?????></label>
+              <input name="department">
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.position">?"???>?????????'??</label>
+=======
+              <label data-i18n="accounts.username">Логин</label>
+              <input name="username" required>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="accounts.fullName">ФИО</label>
+              <input name="full_name" required>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.department">Отдел</label>
+              <input name="department">
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.position">Должность</label>
+>>>>>>> 2adc2fe (v1.0.5)
+              <input name="position">
+            </div>
+          </div>
+          <div class="form-column">
+            <div class="form-field">
+<<<<<<< HEAD
+              <label data-i18n="accounts.clearanceTags">???????? ???????????????</label>
+              <div id="user-clearance-tags" class="checkbox-grid"></div>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.roles">?????>??</label>
+              <select name="roles" id="user-roles" multiple></select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.groups.title">?"?????????<</label>
+              <select name="groups" id="user-groups" multiple></select>
+            </div>
+            <div class="form-actions centered">
+              <button type="submit" class="btn primary" data-i18n="common.save">?????:?????????'??</button>
+              <button type="button" class="btn ghost" id="cancel-modal" data-i18n="common.cancel">???'????????</button>
+=======
+              <label data-i18n="accounts.clearanceTags">Теги допуска</label>
+              <div id="user-clearance-tags" class="checkbox-grid"></div>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.roles">Роли</label>
+              <select name="roles" id="user-roles" multiple></select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.groups.title">Группы</label>
+              <select name="groups" id="user-groups" multiple></select>
+            </div>
+            <div class="form-actions centered">
+              <button type="submit" class="btn primary" data-i18n="common.save">Сохранить</button>
+              <button type="button" class="btn ghost" id="cancel-modal" data-i18n="common.cancel">Отмена</button>
+>>>>>>> 2adc2fe (v1.0.5)
+            </div>
+          </div>
+          <div class="form-column">
+            <div class="form-field">
+<<<<<<< HEAD
+              <label data-i18n="accounts.password">?????????>??</label>
+=======
+              <label data-i18n="accounts.password">Пароль</label>
+>>>>>>> 2adc2fe (v1.0.5)
+              <div class="input-icon-field two-icons">
+                <input name="password" id="user-password" type="password" autocomplete="new-password">
+                <button type="button" class="input-icon-btn alt" id="toggle-password-visibility" aria-label="Toggle password visibility" title="Toggle password visibility">&#128065;</button>
+                <button type="button" class="input-icon-btn" id="generate-password" aria-label="Generate password" title="Generate password">&#128273;</button>
+              </div>
+            </div>
+            <div class="form-field">
+<<<<<<< HEAD
+              <label data-i18n="accounts.passwordConfirm">???????'?????????????????? ?????????>??</label>
+              <input name="password_confirm" id="user-password-confirm" type="password" autocomplete="new-password">
+            </div>
+            <div class="form-field checkbox">
+              <label><input type="checkbox" name="require_password_change"> <span data-i18n="accounts.requireChange">???????+???????'?? ?????????? ?????????>??</span></label>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.status">???'???'????</label>
+              <select name="status">
+                <option value="active" data-i18n="accounts.active">?????'????????</option>
+                <option value="disabled" data-i18n="accounts.disabled">???'???>??????????</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.clearance">?????????????? ???????????????</label>
+=======
+              <label data-i18n="accounts.passwordConfirm">Подтверждение пароля</label>
+              <input name="password_confirm" id="user-password-confirm" type="password" autocomplete="new-password">
+            </div>
+            <div class="form-field checkbox">
+              <label><input type="checkbox" name="require_password_change"> <span data-i18n="accounts.requireChange">Требовать смену пароля</span></label>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.status">Статус</label>
+              <select name="status">
+                <option value="active" data-i18n="accounts.active">Активна</option>
+                <option value="disabled" data-i18n="accounts.disabled">Отключена</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="accounts.clearance">Уровень допуска</label>
+>>>>>>> 2adc2fe (v1.0.5)
+              <select name="clearance_level" id="user-clearance">
+                <option value="0" data-i18n="accounts.clearanceLevel.public">Public</option>
+                <option value="1" data-i18n="accounts.clearanceLevel.internal">Internal</option>
+                <option value="2" data-i18n="accounts.clearanceLevel.confidential">Confidential</option>
+                <option value="3" data-i18n="accounts.clearanceLevel.restricted">Restricted</option>
+              </select>
+            </div>
+          </div>
+        </form>
+        <div class="card subtle permissions-card" id="user-effective" hidden>
+          <h4 data-i18n="accounts.effectivePermissions">Эффективные права</h4>
+          <p><strong data-i18n="accounts.groupClearance">Допуск</strong>: <span id="effective-clearance">-</span></p>
+          <p><strong data-i18n="accounts.groupRoles">Роли</strong>: <span id="effective-roles">-</span></p>
+          <p><strong data-i18n="accounts.groupMenuAccess">Меню</strong>: <span id="effective-menu">-</span></p>
+          <div id="effective-sources" class="muted small"></div>
+          <details open>
+            <summary data-i18n="accounts.effectivePermissions">Эффективные разрешения</summary>
+            <div id="effective-permissions-grouped"></div>
+          </details>
+          <div>
+            <p data-i18n="accounts.groups.title">Группы</p>
+            <div id="effective-groups" class="pill-row"></div>
+          </div>
+        </div>
+        <div class="card subtle" id="user-sessions" hidden>
+          <div class="card-header">
+            <h4 data-i18n="accounts.sessions">Sessions</h4>
+            <button class="btn secondary" type="button" id="kill-all-sessions" data-i18n="accounts.killAllSessions"></button>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive">
+              <table class="data-table" id="sessions-table">
+                <thead>
+                  <tr>
+                    <th data-i18n="accounts.ip">IP</th>
+                    <th data-i18n="accounts.userAgent">User Agent</th>
+                    <th data-i18n="accounts.sessionCreated">Created</th>
+                    <th data-i18n="accounts.lastSeen">Last seen</th>
+                    <th data-i18n="accounts.actions">Actions</th>
+                  </tr>
+                </thead>
+                <tbody></tbody>
+              </table>
+            </div>
+            <div class="alert info" id="sessions-empty" hidden data-i18n="accounts.noActiveSessions"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="bulk-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="bulk-modal-title" data-i18n="accounts.bulkActions">Bulk actions</h3>
+        <button class="btn ghost" id="close-bulk-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="bulk-modal-alert" hidden></div>
+        <form id="bulk-form">
+          <div id="bulk-form-fields" class="form-grid two-column"></div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" id="bulk-submit" data-i18n="common.save">Сохранить</button>
+            <button type="button" class="btn ghost" id="bulk-cancel" data-i18n="common.cancel">Отмена</button>
+          </div>
+        </form>
+        <div class="card subtle" id="bulk-result" hidden>
+          <h4 data-i18n="accounts.bulkResult">Bulk result</h4>
+          <div id="bulk-result-body"></div>
+          <div id="bulk-passwords" hidden>
+            <div id="bulk-password-table"></div>
+            <button class="btn secondary" id="bulk-download-passwords" data-i18n="accounts.importDownloadPasswords">Download CSV</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="group-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="group-modal-title" data-i18n="accounts.groups.create">Создать группу</h3>
+        <button class="btn ghost" id="close-group-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="group-modal-alert" hidden></div>
+        <form id="group-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="accounts.groups.name">Название</label>
+            <input name="name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groups.description">Описание</label>
+            <input name="description">
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groups.clearance">Уровень допуска</label>
+            <select name="clearance_level" id="group-clearance">
+              <option value="0" data-i18n="accounts.clearanceLevel.public">Public</option>
+              <option value="1" data-i18n="accounts.clearanceLevel.internal">Internal</option>
+              <option value="2" data-i18n="accounts.clearanceLevel.confidential">Confidential</option>
+              <option value="3" data-i18n="accounts.clearanceLevel.restricted">Restricted</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.clearanceTags">Теги допуска</label>
+            <div id="group-clearance-tags" class="checkbox-grid"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groups.roles">Роли</label>
+            <select name="roles" id="group-roles" multiple></select>
+            <div class="selected-hint" id="group-roles-hint"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groupMenuAccess">Доступное меню</label>
+            <div id="group-menu" class="checkbox-list"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groupMembers">Участники</label>
+            <select name="users" id="group-users" multiple></select>
+            <div class="selected-hint" id="group-users-hint"></div>
+          </div>
+          <div class="form-field wide">
+            <label data-i18n="accounts.groups.impact">Эффект группы</label>
+            <div id="group-impact" class="tag-list"></div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" data-i18n="common.save">Сохранить</button>
+            <button type="button" class="btn ghost" id="cancel-group-modal" data-i18n="common.cancel">Отмена</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+  <div class="modal" id="user-import-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+<<<<<<< HEAD
+        <h3 data-i18n="accounts.importCsv">?????? ?????????????</h3>
+=======
+        <h3 data-i18n="accounts.importCsv">Импортировать CSV-файл</h3>
+>>>>>>> 2adc2fe (v1.0.5)
+        <button class="btn ghost" id="close-user-import" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="user-import-alert" hidden></div>
+        <div class="muted" id="user-import-file-name"></div>
+        <div id="user-import-preview"></div>
+        <form id="user-import-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="accounts.username">Login</label>
+            <select id="import-map-login" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="accounts.fullName">Full name</label>
+            <select id="import-map-full_name" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.department">Department</label>
+            <select id="import-map-department"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.position">Position</label>
+            <select id="import-map-position"></select>
+          </div>
+          <div class="form-field">
+            <label>Email</label>
+            <select id="import-map-email"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.status">Status</label>
+            <select id="import-map-status"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.roles">Roles</label>
+            <select id="import-map-roles"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groups.title">Groups</label>
+            <select id="import-map-groups"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.clearance">Clearance level</label>
+            <select id="import-map-clearance_level"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.clearanceTags">Clearance tags</label>
+            <select id="import-map-clearance_tags"></select>
+          </div>
+          <div class="form-field">
+<<<<<<< HEAD
+            <label data-i18n="accounts.importOptionTempPassword">???????????? ????????? ??????</label>
+=======
+            <label data-i18n="accounts.importOptionTempPassword">Сгенерировать временные пароли</label>
+>>>>>>> 2adc2fe (v1.0.5)
+            <div class="checkbox">
+              <label><input type="checkbox" id="import-temp-password" checked> <span data-i18n="accounts.importOptionTempPassword"></span></label>
+            </div>
+          </div>
+          <div class="form-field">
+<<<<<<< HEAD
+            <label data-i18n="accounts.importOptionMustChange">????????? ????? ??????</label>
+=======
+            <label data-i18n="accounts.importOptionMustChange">Требовать смену пароля при первом входе</label>
+>>>>>>> 2adc2fe (v1.0.5)
+            <div class="checkbox">
+              <label><input type="checkbox" id="import-must-change" checked> <span data-i18n="accounts.importOptionMustChange"></span></label>
+            </div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.role">Default role</label>
+            <select id="import-default-role"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.groups.title">Default group</label>
+            <select id="import-default-group"></select>
+          </div>
+        </form>
+        <div id="user-import-result" hidden>
+          <p id="user-import-summary" class="muted"></p>
+          <div id="user-import-errors"></div>
+          <div id="user-import-passwords" hidden>
+            <div class="actions">
+<<<<<<< HEAD
+              <button class="btn secondary" type="button" id="download-import-passwords" data-i18n="accounts.importDownloadPasswords">??????? ?????? (CSV)</button>
+=======
+              <button class="btn secondary" type="button" id="download-import-passwords" data-i18n="accounts.importDownloadPasswords">Скачать пароли (CSV)</button>
+>>>>>>> 2adc2fe (v1.0.5)
+            </div>
+            <div id="user-import-passwords-table"></div>
+          </div>
+        </div>
+        <div class="form-actions">
+<<<<<<< HEAD
+          <button type="submit" class="btn primary" form="user-import-form" data-i18n="accounts.importCommit">?????????????</button>
+          <button type="button" class="btn ghost" id="cancel-user-import" data-i18n="common.cancel">??????</button>
+=======
+          <button type="submit" class="btn primary" form="user-import-form" data-i18n="accounts.importCommit">Импорт</button>
+          <button type="button" class="btn ghost" id="cancel-user-import" data-i18n="common.cancel">Отмена</button>
+>>>>>>> 2adc2fe (v1.0.5)
+        </div>
+      </div>
+    </div>
+  </div>
+
+
+    <div class="modal" id="role-create-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="accounts.roleCreate">Create role</h3>
+        <button class="btn ghost" id="close-role-create" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="role-create-alert" hidden></div>
+        <form id="role-create-form" class="form-grid single-column">
+          <div class="form-field required">
+            <label data-i18n="accounts.role">Role</label>
+            <input id="role-create-name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.description">Description</label>
+            <textarea id="role-create-description" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.permissions">Permissions</label>
+            <select id="role-create-permissions" multiple></select>
+            <div class="selected-hint" id="role-create-permissions-hint"></div>
+            <div class="form-actions-inline role-permissions-actions">
+              <button type="button" class="btn ghost btn-sm" id="role-create-select-all" data-i18n="accounts.selectAll">Select all</button>
+              <button type="button" class="btn ghost btn-sm" id="role-create-clear-all" data-i18n="accounts.clearAll">Clear all</button>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+            <button type="button" class="btn ghost" id="cancel-role-create" data-i18n="common.cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+<div class="modal" id="role-template-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="accounts.roleFromTemplate">Создать из шаблона</h3>
+        <button class="btn ghost" id="close-role-template" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="role-template-alert" hidden></div>
+        <form id="role-template-form" class="form-grid">
+          <div class="form-field required">
+            <label data-i18n="accounts.templateSelect">Template</label>
+            <select id="role-template-select" required></select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="accounts.role">Role</label>
+            <input id="role-template-name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.description">Description</label>
+            <textarea id="role-template-description" rows="2"></textarea>
+          </div>
+          <div class="form-field">
+            <label data-i18n="accounts.permissionsPreview">Permissions (template)</label>
+            <ul id="role-template-permissions" class="tag-list"></ul>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+            <button type="button" class="btn ghost" id="cancel-role-template" data-i18n="common.cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+</div>

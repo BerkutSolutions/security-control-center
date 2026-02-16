@@ -1,0 +1,142 @@
+package store
+
+import (
+	"context"
+	"database/sql"
+	"errors"
+	"time"
+)
+
+func (s *monitoringStore) GetSettings(ctx context.Context) (*MonitorSettings, error) {
+	row := s.db.QueryRowContext(ctx, `
+<<<<<<< HEAD
+		SELECT id, retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, default_retries, default_retry_interval_sec, default_sla_target_pct, updated_at
+		FROM monitoring_settings ORDER BY id LIMIT 1`)
+	var settings MonitorSettings
+	var engineEnabled, allowPriv, notifyMaintenance int
+	if err := row.Scan(&settings.ID, &settings.RetentionDays, &settings.MaxConcurrentChecks, &settings.DefaultTimeoutSec, &settings.DefaultIntervalSec, &engineEnabled, &allowPriv, &settings.TLSRefreshHours, &settings.TLSExpiringDays, &settings.NotifySuppressMinutes, &settings.NotifyRepeatDownMinutes, &notifyMaintenance, &settings.DefaultRetries, &settings.DefaultRetryIntervalSec, &settings.DefaultSLATargetPct, &settings.UpdatedAt); err != nil {
+=======
+		SELECT id, retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, default_retries, default_retry_interval_sec, default_sla_target_pct, updated_at
+		FROM monitoring_settings ORDER BY id LIMIT 1`)
+	var settings MonitorSettings
+	var engineEnabled, allowPriv, notifyMaintenance, autoTaskOnDown, autoTLSIncident int
+	if err := row.Scan(&settings.ID, &settings.RetentionDays, &settings.MaxConcurrentChecks, &settings.DefaultTimeoutSec, &settings.DefaultIntervalSec, &engineEnabled, &allowPriv, &settings.TLSRefreshHours, &settings.TLSExpiringDays, &settings.NotifySuppressMinutes, &settings.NotifyRepeatDownMinutes, &notifyMaintenance, &autoTaskOnDown, &autoTLSIncident, &settings.AutoTLSIncidentDays, &settings.DefaultRetries, &settings.DefaultRetryIntervalSec, &settings.DefaultSLATargetPct, &settings.UpdatedAt); err != nil {
+>>>>>>> 2adc2fe (v1.0.5)
+		if !errors.Is(err, sql.ErrNoRows) {
+			return nil, err
+		}
+		settings = defaultMonitoringSettings()
+		if _, err := s.insertSettings(ctx, &settings); err != nil {
+			return nil, err
+		}
+		return &settings, nil
+	}
+	settings.EngineEnabled = engineEnabled == 1
+	settings.AllowPrivateNetworks = allowPriv == 1
+	settings.NotifyMaintenance = notifyMaintenance == 1
+<<<<<<< HEAD
+=======
+	settings.AutoTaskOnDown = autoTaskOnDown == 1
+	settings.AutoTLSIncident = autoTLSIncident == 1
+>>>>>>> 2adc2fe (v1.0.5)
+	return &settings, nil
+}
+
+func (s *monitoringStore) UpdateSettings(ctx context.Context, settings *MonitorSettings) error {
+	now := time.Now().UTC()
+	res, err := s.db.ExecContext(ctx, `
+		UPDATE monitoring_settings
+<<<<<<< HEAD
+		SET retention_days=?, max_concurrent_checks=?, default_timeout_sec=?, default_interval_sec=?, engine_enabled=?, allow_private_networks=?, tls_refresh_hours=?, tls_expiring_days=?, notify_suppress_minutes=?, notify_repeat_down_minutes=?, notify_maintenance=?, default_retries=?, default_retry_interval_sec=?, default_sla_target_pct=?, updated_at=?
+=======
+		SET retention_days=?, max_concurrent_checks=?, default_timeout_sec=?, default_interval_sec=?, engine_enabled=?, allow_private_networks=?, tls_refresh_hours=?, tls_expiring_days=?, notify_suppress_minutes=?, notify_repeat_down_minutes=?, notify_maintenance=?, auto_task_on_down=?, auto_tls_incident=?, auto_tls_incident_days=?, default_retries=?, default_retry_interval_sec=?, default_sla_target_pct=?, updated_at=?
+>>>>>>> 2adc2fe (v1.0.5)
+		WHERE id=?`,
+		settings.RetentionDays, settings.MaxConcurrentChecks, settings.DefaultTimeoutSec, settings.DefaultIntervalSec,
+		boolToInt(settings.EngineEnabled), boolToInt(settings.AllowPrivateNetworks), settings.TLSRefreshHours, settings.TLSExpiringDays,
+		settings.NotifySuppressMinutes, settings.NotifyRepeatDownMinutes, boolToInt(settings.NotifyMaintenance),
+<<<<<<< HEAD
+=======
+		boolToInt(settings.AutoTaskOnDown), boolToInt(settings.AutoTLSIncident), settings.AutoTLSIncidentDays,
+>>>>>>> 2adc2fe (v1.0.5)
+		settings.DefaultRetries, settings.DefaultRetryIntervalSec, settings.DefaultSLATargetPct, now, settings.ID)
+	if err != nil {
+		return err
+	}
+	affected, _ := res.RowsAffected()
+	if affected > 0 {
+		settings.UpdatedAt = now
+		return nil
+	}
+	settings.UpdatedAt = now
+	if _, err := s.insertSettings(ctx, settings); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *monitoringStore) insertSettings(ctx context.Context, settings *MonitorSettings) (int64, error) {
+	now := time.Now().UTC()
+	res, err := s.db.ExecContext(ctx, `
+<<<<<<< HEAD
+		INSERT INTO monitoring_settings(retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, default_retries, default_retry_interval_sec, default_sla_target_pct, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		settings.RetentionDays, settings.MaxConcurrentChecks, settings.DefaultTimeoutSec, settings.DefaultIntervalSec,
+		boolToInt(settings.EngineEnabled), boolToInt(settings.AllowPrivateNetworks), settings.TLSRefreshHours, settings.TLSExpiringDays,
+		settings.NotifySuppressMinutes, settings.NotifyRepeatDownMinutes, boolToInt(settings.NotifyMaintenance),
+=======
+		INSERT INTO monitoring_settings(retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, default_retries, default_retry_interval_sec, default_sla_target_pct, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		settings.RetentionDays, settings.MaxConcurrentChecks, settings.DefaultTimeoutSec, settings.DefaultIntervalSec,
+		boolToInt(settings.EngineEnabled), boolToInt(settings.AllowPrivateNetworks), settings.TLSRefreshHours, settings.TLSExpiringDays,
+		settings.NotifySuppressMinutes, settings.NotifyRepeatDownMinutes, boolToInt(settings.NotifyMaintenance),
+		boolToInt(settings.AutoTaskOnDown), boolToInt(settings.AutoTLSIncident), settings.AutoTLSIncidentDays,
+>>>>>>> 2adc2fe (v1.0.5)
+		settings.DefaultRetries, settings.DefaultRetryIntervalSec, settings.DefaultSLATargetPct, now)
+	if err != nil {
+		return 0, err
+	}
+	id, _ := res.LastInsertId()
+	settings.ID = id
+	settings.UpdatedAt = now
+	return id, nil
+}
+
+func defaultMonitoringSettings() MonitorSettings {
+	return MonitorSettings{
+<<<<<<< HEAD
+		RetentionDays:       30,
+		MaxConcurrentChecks: 10,
+		DefaultTimeoutSec:   20,
+		DefaultIntervalSec:  30,
+		EngineEnabled:       true,
+		AllowPrivateNetworks: true,
+		TLSRefreshHours:     24,
+		TLSExpiringDays:     30,
+		NotifySuppressMinutes: 5,
+		NotifyRepeatDownMinutes: 30,
+		NotifyMaintenance:   false,
+		DefaultRetries:      2,
+		DefaultRetryIntervalSec: 30,
+		DefaultSLATargetPct: 90,
+=======
+		RetentionDays:           30,
+		MaxConcurrentChecks:     10,
+		DefaultTimeoutSec:       20,
+		DefaultIntervalSec:      30,
+		EngineEnabled:           true,
+		AllowPrivateNetworks:    false,
+		TLSRefreshHours:         24,
+		TLSExpiringDays:         30,
+		NotifySuppressMinutes:   5,
+		NotifyRepeatDownMinutes: 30,
+		NotifyMaintenance:       false,
+		AutoTaskOnDown:          true,
+		AutoTLSIncident:         true,
+		AutoTLSIncidentDays:     14,
+		DefaultRetries:          2,
+		DefaultRetryIntervalSec: 30,
+		DefaultSLATargetPct:     90,
+>>>>>>> 2adc2fe (v1.0.5)
+	}
+}

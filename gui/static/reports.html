@@ -1,0 +1,425 @@
+<div class="page" id="reports-page">
+  <div class="tabs browser-tabs reports-tabs" id="reports-tabs">
+    <button class="tab-btn active" data-tab="reports-tab-home" data-i18n="reports.tabs.home">Home</button>
+    <button class="tab-btn" data-tab="reports-tab-templates" data-i18n="reports.tabs.templates">Templates</button>
+    <button class="tab-btn" data-tab="reports-tab-settings" data-i18n="reports.tabs.settings">Settings</button>
+  </div>
+
+  <div class="tab-panels reports-panels">
+    <div class="tab-panel reports-panel" id="reports-tab-home" data-tab="reports-tab-home">
+      <div class="docs-layout">
+        <div class="docs-sidebar">
+          <div class="card">
+            <div class="card-header">
+              <div class="btn-group">
+                <button class="btn primary" id="reports-new-btn" data-i18n="reports.new">New report</button>
+                <button class="btn ghost" id="reports-refresh-btn" data-i18n="common.refresh">Refresh</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="docs-search">
+                <input type="search" id="reports-search" placeholder="Search reports" data-i18n-placeholder="reports.searchPlaceholder">
+                <button class="btn ghost" id="reports-search-btn" data-i18n="common.search">Search</button>
+              </div>
+<<<<<<< HEAD
+=======
+              <div class="backups-actions reports-audit-actions">
+                <button class="btn ghost" id="reports-audit-package-btn" data-i18n="reports.auditPackage.action">Download audit package</button>
+              </div>
+>>>>>>> 2adc2fe (v1.0.5)
+              <div class="filters-inline">
+                <label class="checkbox">
+                  <input type="checkbox" id="reports-filter-mine">
+                  <span data-i18n="reports.filter.mine">Only mine</span>
+                </label>
+              </div>
+              <div class="filters-grid">
+                <div class="form-field">
+                  <label data-i18n="reports.filter.status">Status</label>
+                  <select id="reports-filter-status">
+                    <option value="" data-i18n="common.all">All</option>
+                    <option value="draft" data-i18n="reports.status.draft">Draft</option>
+                    <option value="final" data-i18n="reports.status.final">Final</option>
+                    <option value="archived" data-i18n="reports.status.archived">Archived</option>
+                  </select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="reports.filter.classification">Classification</label>
+                  <select id="reports-filter-classification"></select>
+                </div>
+                <div class="form-field">
+                  <label data-i18n="reports.filter.periodFrom">Period from</label>
+                  <input type="date" id="reports-filter-period-from" class="input date-input" lang="ru">
+                </div>
+                <div class="form-field">
+                  <label data-i18n="reports.filter.periodTo">Period to</label>
+                  <input type="date" id="reports-filter-period-to" class="input date-input" lang="ru">
+                </div>
+                <div class="form-field">
+                  <label data-i18n="reports.filter.tags">Tags</label>
+                  <select id="reports-filter-tags" multiple></select>
+                  <div class="selected-hint" data-tag-hint="reports-filter-tags"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="docs-main">
+          <div class="card reports-list-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="reports.listTitle">Reports list</h3>
+                <p class="muted" data-i18n="reports.listSubtitle">Reports available with current filters</p>
+              </div>
+              <div class="inline-actions">
+                <span class="muted" id="reports-count"></span>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="table-responsive">
+                <table class="data-table" id="reports-table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="reports.table.title">Title</th>
+                      <th data-i18n="reports.table.number">Number</th>
+                      <th data-i18n="reports.table.period">Period</th>
+                      <th data-i18n="reports.table.status">Status</th>
+                      <th data-i18n="reports.table.classification">Classification</th>
+                      <th data-i18n="reports.table.owner">Owner</th>
+                      <th data-i18n="reports.table.updated">Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel reports-panel" id="reports-tab-templates" data-tab="reports-tab-templates" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div class="btn-group">
+            <button class="btn primary" id="reports-template-new" data-i18n="common.create">Create</button>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="alert" id="reports-templates-alert" hidden></div>
+          <div class="templates-list" id="reports-templates-list"></div>
+          <form id="reports-template-form" class="form-grid two-column" hidden>
+            <input type="hidden" id="reports-template-id">
+            <div class="form-field required">
+              <label data-i18n="reports.template.name">Name</label>
+              <input id="reports-template-name" required>
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.template.description">Description</label>
+              <input id="reports-template-description">
+            </div>
+            <div class="form-field full">
+              <label data-i18n="reports.template.content">Template markdown</label>
+              <textarea id="reports-template-markdown" rows="8"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" type="submit" data-i18n="common.save">Save</button>
+              <button class="btn ghost danger" type="button" id="reports-template-delete" hidden data-i18n="common.delete">Delete</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel reports-panel" id="reports-tab-settings" data-tab="reports-tab-settings" hidden>
+      <div class="card">
+        <div class="card-body">
+          <div class="alert" id="reports-settings-alert" hidden></div>
+          <form id="reports-settings-form" class="form-grid two-column">
+            <div class="form-field">
+              <label data-i18n="reports.settings.defaultClassification">Default classification</label>
+              <select id="reports-settings-classification"></select>
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.settings.defaultTemplate">Default template</label>
+              <select id="reports-settings-template"></select>
+            </div>
+            <div class="form-field checkbox-field">
+              <label class="checkbox">
+                <input type="checkbox" id="reports-settings-header-enabled">
+                <span data-i18n="reports.settings.headerEnabled">Include header</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.settings.headerLogo">Logo path</label>
+              <input id="reports-settings-logo" placeholder="/gui/static/logo.png">
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.settings.headerTitle">Header title</label>
+              <input id="reports-settings-title">
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.settings.watermarkThreshold">Watermark threshold</label>
+              <select id="reports-settings-watermark"></select>
+            </div>
+          </form>
+          <div class="form-actions">
+            <button class="btn primary" type="submit" form="reports-settings-form" data-i18n="common.save">Save</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="report-editor" class="editor-panel" hidden>
+    <div class="editor-header">
+      <div>
+        <h3 id="report-editor-title"></h3>
+        <p class="muted" data-i18n="reports.editor.subtitle">Markdown editor for report</p>
+      </div>
+      <div class="editor-actions">
+        <input type="text" id="report-editor-reason" placeholder="Change reason" data-i18n-placeholder="editor.reason">
+        <button class="btn primary" id="report-editor-save" data-i18n="editor.save">Save</button>
+        <button class="btn ghost" id="report-editor-close" data-i18n="common.close">Close</button>
+      </div>
+    </div>
+    <div class="editor-body">
+      <div class="alert" id="report-editor-alert" hidden></div>
+      <div class="editor-toolbar" id="report-editor-toolbar">
+        <button data-action="bold" title="Bold">B</button>
+        <button data-action="italic" title="Italic">I</button>
+        <button data-action="heading" title="Heading">H</button>
+        <button data-action="list" title="List">-</button>
+        <button data-action="quote" title="Quote">""</button>
+        <button data-action="code" title="Code">{} </button>
+        <button data-action="link" title="Link">link</button>
+        <button data-action="table" title="Table">#</button>
+      </div>
+      <div class="editor-columns">
+        <div class="editor-main">
+          <textarea id="report-editor-content" spellcheck="false"></textarea>
+          <div id="report-editor-preview" class="doc-viewer" hidden></div>
+        </div>
+        <div class="editor-meta">
+          <h4 data-i18n="reports.editor.meta">Metadata</h4>
+          <div class="form-field">
+            <label data-i18n="reports.field.title">Title</label>
+            <input id="report-editor-title-input">
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.status">Status</label>
+            <select id="report-editor-status">
+              <option value="draft" data-i18n="reports.status.draft">Draft</option>
+              <option value="final" data-i18n="reports.status.final">Final</option>
+              <option value="archived" data-i18n="reports.status.archived">Archived</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.periodFrom">Period from</label>
+            <input type="date" id="report-editor-period-from" class="input date-input" lang="ru">
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.periodTo">Period to</label>
+            <input type="date" id="report-editor-period-to" class="input date-input" lang="ru">
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.classification">Classification</label>
+            <select id="report-editor-classification"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.tags">Tags</label>
+            <select id="report-editor-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="report-editor-tags"></div>
+          </div>
+          <div class="form-actions">
+            <button class="btn secondary" id="report-editor-meta-save" type="button" data-i18n="common.save">Save</button>
+            <button class="btn ghost" id="report-editor-preview-btn" type="button" data-i18n="reports.editor.preview">Preview</button>
+          </div>
+          <div class="editor-meta-section">
+            <h4 data-i18n="reports.sections.title">Sections</h4>
+            <div class="form-field">
+              <label data-i18n="reports.sections.periodFrom">Period from</label>
+              <input type="date" id="report-sections-period-from" class="input date-input" lang="ru">
+            </div>
+            <div class="form-field">
+              <label data-i18n="reports.sections.periodTo">Period to</label>
+              <input type="date" id="report-sections-period-to" class="input date-input" lang="ru">
+            </div>
+            <div id="report-sections-editor"></div>
+            <div class="form-actions">
+              <button class="btn ghost" id="report-sections-save" type="button" data-i18n="reports.sections.save">Save sections</button>
+              <button class="btn primary" id="report-sections-build" type="button" data-i18n="reports.sections.build">Build report</button>
+              <button class="btn ghost" id="report-sections-rebuild" type="button" data-i18n="reports.sections.rebuild">Rebuild</button>
+              <button class="btn ghost" id="report-snapshots-view" type="button" data-i18n="reports.sections.snapshots">Snapshots</button>
+            </div>
+            <div class="report-snapshots" id="report-snapshots" hidden></div>
+          </div>
+          <div class="editor-meta-section">
+            <div class="section-head">
+              <h4 data-i18n="reports.charts.title">Charts</h4>
+              <button class="btn ghost btn-sm" id="report-exec-btn" type="button" data-i18n="reports.charts.executive">Executive report</button>
+            </div>
+            <div id="report-charts-editor"></div>
+            <div class="form-actions">
+              <button class="btn ghost" id="report-charts-save" type="button" data-i18n="reports.charts.save">Save charts</button>
+            </div>
+            <div class="report-charts-preview" id="report-charts-preview" hidden></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="context-menu" id="reports-context-menu" hidden></div>
+
+  <div class="modal" id="report-create-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="reports.new">New report</h3>
+        <button class="btn ghost" data-close="#report-create-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="report-create-alert" hidden></div>
+        <form id="report-create-form" class="form-grid two-column">
+          <div class="form-field full">
+            <label data-i18n="reports.builder.mode">Source</label>
+            <div class="radio-group">
+              <label class="checkbox">
+                <input type="radio" name="mode" value="empty" checked>
+                <span data-i18n="reports.builder.mode.empty">Empty report</span>
+              </label>
+              <label class="checkbox">
+                <input type="radio" name="mode" value="template">
+                <span data-i18n="reports.builder.mode.template">From template</span>
+              </label>
+              <label class="checkbox">
+                <input type="radio" name="mode" value="export">
+                <span data-i18n="reports.builder.mode.export">From export</span>
+              </label>
+            </div>
+          </div>
+          <div class="form-field full" id="report-template-row" hidden>
+            <label data-i18n="reports.builder.template">Template</label>
+            <select id="report-template-select"></select>
+          </div>
+          <div class="form-field full" id="report-export-row" hidden>
+            <div class="section-head">
+              <label data-i18n="reports.builder.exportModules">Export modules</label>
+              <div class="inline-actions">
+                <button class="btn ghost btn-sm" type="button" id="report-export-all" data-i18n="reports.export.selectAll">Select all</button>
+                <button class="btn ghost btn-sm" type="button" id="report-export-none" data-i18n="reports.export.clearAll">Clear</button>
+              </div>
+            </div>
+            <div class="reports-export-modules">
+              <label class="checkbox"><input type="checkbox" data-export-module="tasks" checked><span data-i18n="reports.export.module.tasks">Tasks</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="controls" checked><span data-i18n="reports.export.module.controls">Controls</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="monitoring" checked><span data-i18n="reports.export.module.monitoring">Monitoring</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="sla" checked><span data-i18n="reports.export.module.sla">SLA</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="maintenance" checked><span data-i18n="reports.export.module.maintenance">Maintenance</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="approvals" checked><span data-i18n="reports.export.module.approvals">Approvals</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="incidents" checked><span data-i18n="reports.export.module.incidents">Incidents</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="logs" checked><span data-i18n="reports.export.module.logs">Logs</span></label>
+              <label class="checkbox"><input type="checkbox" data-export-module="docs" checked><span data-i18n="reports.export.module.docs">Documents</span></label>
+            </div>
+<<<<<<< HEAD
+            <div class="form-grid two-column" style="margin-top:10px;">
+=======
+            <div class="form-grid two-column reports-export-grid-top">
+>>>>>>> 2adc2fe (v1.0.5)
+              <div class="form-field">
+                <label data-i18n="reports.export.limit">Rows per section</label>
+                <input type="number" id="report-export-limit" class="input" min="1" max="1000" value="100">
+              </div>
+              <div class="form-field">
+                <label data-i18n="reports.builder.exportSlaPeriod">SLA period</label>
+                <select id="report-export-sla-period">
+                  <option value="month" data-i18n="reports.sections.filters.periodMonth">Month</option>
+                  <option value="week" data-i18n="reports.sections.filters.periodWeek">Week</option>
+                  <option value="day" data-i18n="reports.sections.filters.periodDay">Day</option>
+                </select>
+              </div>
+            </div>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="reports.field.title">Title</label>
+            <input name="title" id="report-title" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.owner">Owner</label>
+            <select name="owner" id="report-owner"></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.periodFrom">Period from</label>
+            <input type="date" name="period_from" id="report-period-from" class="input date-input" lang="ru">
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.periodTo">Period to</label>
+            <input type="date" name="period_to" id="report-period-to" class="input date-input" lang="ru">
+          </div>
+          <div class="form-field required">
+            <label data-i18n="reports.field.classification">Classification</label>
+            <select name="classification_level" id="report-classification" required></select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.tags">Tags</label>
+            <select id="report-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="report-tags"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.aclRoles">ACL (roles)</label>
+            <select name="acl_roles" id="report-acl-roles" multiple></select>
+            <div class="selected-hint" data-select-hint="report-acl-roles"></div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="reports.field.aclUsers">ACL (users)</label>
+            <select name="acl_users" id="report-acl-users" multiple></select>
+            <div class="selected-hint" data-select-hint="report-acl-users"></div>
+          </div>
+          <div class="form-field">
+            <label class="checkbox">
+              <input type="checkbox" name="inherit_acl" id="report-inherit-acl" checked>
+              <span data-i18n="reports.field.inheritAcl">Inherit ACL</span>
+            </label>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="report-create-form" data-i18n="common.create">Create</button>
+          <button class="btn ghost" type="button" data-close="#report-create-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="start-approval-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="docs.approvalTitle">Отправить на согласование</h3>
+        <button class="btn ghost" data-close="#start-approval-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="approval-alert" hidden></div>
+        <form id="approval-form" class="form-grid three-column">
+          <div class="form-field full">
+            <div class="stage-header">
+<<<<<<< HEAD
+              <label data-i18n="docs.field.approvers">Этапы согласования</label>
+              <button class="btn ghost" type="button" id="approval-add-stage" data-i18n="docs.approvalAddStage">+ Этап</button>
+=======
+              <label data-i18n="docs.field.approvers">Согласователи</label>
+              <button class="btn ghost" type="button" id="approval-add-stage" data-i18n="docs.approvalAddStage">Добавить этап</button>
+>>>>>>> 2adc2fe (v1.0.5)
+            </div>
+            <div id="approval-stages"></div>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="approval-form" data-i18n="docs.approvalStart">Запустить</button>
+          <button class="btn ghost" type="button" data-close="#start-approval-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

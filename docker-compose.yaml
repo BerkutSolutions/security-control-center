@@ -1,0 +1,85 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-berkut}
+      POSTGRES_USER: ${POSTGRES_USER:-berkut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-berkut}
+    volumes:
+      - berkut_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-berkut} -d ${POSTGRES_DB:-berkut}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  berkut:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    image: ${IMAGE_NAME:-berkut-scc}:${IMAGE_TAG:-latest}
+    env_file:
+      - .env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      APP_CONFIG: ${APP_CONFIG:-/app/config/app.yaml}
+      ENV: ${ENV:-prod}
+      APP_ENV: ${APP_ENV:-prod}
+      PORT: ${PORT:-8080}
+      DATA_PATH: ${DATA_PATH:-/app/data}
+      BERKUT_LISTEN_ADDR: ${BERKUT_LISTEN_ADDR:-0.0.0.0:8080}
+      BERKUT_DB_DRIVER: ${BERKUT_DB_DRIVER:-postgres}
+      BERKUT_DB_URL: ${BERKUT_DB_URL:-postgres://berkut:berkut@postgres:5432/berkut?sslmode=disable}
+      BERKUT_DOCS_STORAGE_DIR: ${BERKUT_DOCS_STORAGE_DIR:-/app/data/docs}
+      BERKUT_INCIDENTS_STORAGE_DIR: ${BERKUT_INCIDENTS_STORAGE_DIR:-/app/data/incidents}
+      BERKUT_TLS_ENABLED: ${BERKUT_TLS_ENABLED:-false}
+      BERKUT_TLS_CERT: ${BERKUT_TLS_CERT:-}
+      BERKUT_TLS_KEY: ${BERKUT_TLS_KEY:-}
+      BERKUT_SECURITY_TRUSTED_PROXIES: ${BERKUT_SECURITY_TRUSTED_PROXIES:-}
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      - berkut_data:${DATA_PATH:-/app/data}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/login >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  onlyoffice:
+    image: onlyoffice/documentserver:8.3
+    environment:
+      JWT_ENABLED: ${ONLYOFFICE_JWT_ENABLED:-true}
+      JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-}
+      JWT_HEADER: ${ONLYOFFICE_JWT_HEADER:-Authorization}
+    volumes:
+      - onlyoffice_data:/var/www/onlyoffice/Data
+      - onlyoffice_logs:/var/log/onlyoffice
+    restart: unless-stopped
+
+  nginx:
+    image: nginx:1.27-alpine
+    profiles: ["proxy"]
+    depends_on:
+      berkut:
+        condition: service_healthy
+      onlyoffice:
+        condition: service_started
+    ports:
+      - "${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_HTTPS_PORT:-443}:443"
+    volumes:
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+      - ${TLS_CERTS_PATH:-./docker/certs}:/etc/nginx/certs:ro
+    restart: unless-stopped
+
+volumes:
+  berkut_data:
+  berkut_pgdata:
+  onlyoffice_data:
+  onlyoffice_logs:

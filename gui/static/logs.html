@@ -1,0 +1,59 @@
+<div class="page" id="logs-page">
+  <div class="card">
+    <div class="card-body">
+      <div class="filter-card">
+        <div class="filter-grid">
+          <div class="form-field">
+            <label for="logs-filter-section" data-i18n="logs.filter.section">Вкладка</label>
+            <select id="logs-filter-section" class="select"></select>
+          </div>
+          <div class="form-field">
+            <label for="logs-filter-action" data-i18n="logs.filter.event">Событие</label>
+            <input id="logs-filter-action" class="input" data-i18n-placeholder="logs.filter.eventPlaceholder" placeholder="Например: авторизация">
+          </div>
+          <div class="form-field">
+            <label for="logs-filter-user" data-i18n="logs.filter.user">Пользователь</label>
+            <input id="logs-filter-user" class="input" data-i18n-placeholder="logs.filter.userPlaceholder" placeholder="Логин или имя">
+          </div>
+          <div class="form-field">
+            <div class="log-filter-range">
+              <div class="range-field">
+                <span data-i18n="logs.filter.from">С</span>
+                <input id="logs-filter-from" class="input" type="datetime-local">
+              </div>
+              <div class="range-field">
+                <span data-i18n="logs.filter.to">По</span>
+                <input id="logs-filter-to" class="input" type="datetime-local">
+              </div>
+            </div>
+          </div>
+          <div class="log-filter-actions align-end">
+            <button class="btn ghost" id="logs-filter-reset" data-i18n="logs.filter.reset">Сбросить</button>
+          </div>
+        </div>
+      </div>
+      <div class="table-actions">
+        <button class="btn ghost" id="logs-refresh" data-i18n="common.refresh">Обновить</button>
+<<<<<<< HEAD
+=======
+        <button class="btn ghost" id="logs-save-view" data-i18n="logs.views.save">Save view</button>
+        <select id="logs-saved-views" class="select"></select>
+        <button class="btn ghost" id="logs-export" data-i18n="logs.export">Export CSV</button>
+>>>>>>> 2adc2fe (v1.0.5)
+      </div>
+      <div class="table-responsive">
+        <table class="data-table" id="logs-table">
+          <thead>
+            <tr>
+              <th data-i18n="logs.table.time">Время</th>
+              <th data-i18n="logs.table.user">Пользователь</th>
+              <th data-i18n="logs.table.action">Действие</th>
+              <th data-i18n="logs.table.details">Детали</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>

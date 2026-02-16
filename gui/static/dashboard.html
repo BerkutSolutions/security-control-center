@@ -1,0 +1,81 @@
+<div class="page" id="dashboard-page">
+  <div class="dashboard-toolbar">
+    <div class="dashboard-actions">
+      <span class="edit-hint" id="dashboard-edit-hint" hidden data-i18n="dashboard.editHint">Режим редактирования включён</span>
+      <button class="btn primary" id="dashboard-edit-btn" data-i18n="dashboard.edit">Редактировать</button>
+      <div class="dashboard-edit-actions" id="dashboard-edit-actions" hidden>
+        <button class="btn primary" id="dashboard-save-btn" data-i18n="common.save">Сохранить</button>
+        <button class="btn ghost" id="dashboard-cancel-btn" data-i18n="common.cancel">Отменить</button>
+      </div>
+      <button class="btn secondary" id="dashboard-config-btn" hidden data-i18n="dashboard.configure">Настроить дашборд</button>
+    </div>
+  </div>
+
+  <div class="dashboard-board" id="dashboard-grid"></div>
+  <div class="empty-state" id="dashboard-empty" hidden data-i18n="dashboard.empty">Нет доступных фреймов.</div>
+
+  <div class="modal" id="dashboard-config-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="dashboard.configureTitle">Настройка дашборда</h3>
+        <button class="btn ghost" id="dashboard-config-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="checkbox-list" id="dashboard-config-list"></div>
+        <div class="modal-actions">
+          <button class="btn secondary" id="dashboard-reset-btn" data-i18n="dashboard.reset">Сбросить по умолчанию</button>
+          <button class="btn primary" id="dashboard-config-save" data-i18n="common.save">Сохранить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dashboard-frame-settings-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="dashboard-frame-settings-title"></h3>
+        <button class="btn ghost" id="dashboard-frame-settings-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="dashboard-frame-settings-body"></div>
+        <div class="modal-actions">
+          <button class="btn primary" id="dashboard-frame-settings-save" data-i18n="common.save">Сохранить</button>
+          <button class="btn ghost" id="dashboard-frame-settings-cancel" data-i18n="common.cancel">Отменить</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="dashboard-unsaved-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="dashboard-unsaved-title" data-i18n="dashboard.unsavedTitle">Несохранённые изменения</h3>
+        <button class="btn ghost" id="dashboard-unsaved-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="dashboard-unsaved-message" class="confirm-message" data-i18n="dashboard.unsavedMessage">У вас есть несохранённые изменения дашборда. Сохранить перед выходом?</div>
+        <div class="modal-actions">
+          <button type="button" class="btn primary" id="dashboard-unsaved-save" data-i18n="dashboard.unsavedSave">Сохранить и выйти</button>
+          <button type="button" class="btn ghost" id="dashboard-unsaved-discard" data-i18n="dashboard.unsavedDiscard">Выйти без сохранения</button>
+          <button type="button" class="btn ghost" id="dashboard-unsaved-cancel" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="dashboard-detail-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="dashboard-detail-title"></h3>
+        <button class="btn ghost" id="dashboard-detail-close" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div id="dashboard-detail-body"></div>
+      </div>
+    </div>
+  </div>
+</div>

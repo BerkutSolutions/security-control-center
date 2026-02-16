@@ -1,0 +1,127 @@
+﻿<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Berkut Solutions | App</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/favicon64.png">
+  <link rel="icon" type="image/x-icon" href="/static/favicon32.ico">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar">
+      <div class="sidebar-header">
+        <div class="brand-text no-select">
+          <div class="brand-title">Berkut Solutions</div>
+          <div class="brand-subtitle">Security Control Center</div>
+        </div>
+      </div>
+      <div class="sidebar-content">
+        <nav id="menu" class="sidebar-nav"></nav>
+      </div>
+      <div class="sidebar-footer">
+        <select id="language-switcher">
+          <option value="ru">RU</option>
+          <option value="en">EN</option>
+        </select>
+        <div id="app-version" class="muted app-version"></div>
+        <div id="app-update-badge" class="banner" hidden></div>
+        <div id="user-info" class="sidebar-user"></div>
+        <button id="logout-btn" class="btn ghost" data-i18n="app.logout">Выйти</button>
+      </div>
+    </aside>
+    <main id="content">
+      <header class="app-header">
+        <div>
+          <h1 id="page-title"></h1>
+          <div id="page-desc" class="muted"></div>
+        </div>
+      </header>
+      <section id="content-area"></section>
+    </main>
+  </div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/vendor/mammoth.browser.min.js"></script>
+  <script src="/static/js/tags.js"></script>
+  <script src="/static/js/classifications.js"></script>
+  <script src="/static/js/accounts.core.js"></script>
+  <script src="/static/js/accounts.dashboard.js"></script>
+  <script src="/static/js/accounts.roles.js"></script>
+  <script src="/static/js/accounts.groups.js"></script>
+  <script src="/static/js/accounts.users.js"></script>
+  <script src="/static/js/accounts.bulk.js"></script>
+  <script src="/static/js/accounts.import.js"></script>
+  <script src="/static/js/docs.onlyoffice.js"></script>
+  <script src="/static/js/editor.js"></script>
+  <script src="/static/js/docs.core.js"></script>
+  <script src="/static/js/docs.ui.js"></script>
+  <script src="/static/js/docs.tabs.js"></script>
+  <script src="/static/js/docs.folders.js"></script>
+  <script src="/static/js/docs.users.js"></script>
+  <script src="/static/js/docs.list.js"></script>
+  <script src="/static/js/docs.editor.js"></script>
+  <script src="/static/js/docs.templates.js"></script>
+  <script src="/static/js/approvals.workflow.js"></script>
+  <script src="/static/js/docs.viewer.js"></script>
+  <script src="/static/js/approvals.js"></script>
+  <script src="/static/js/logs.js"></script>
+  <script src="/static/js/settings.js"></script>
+  <script src="/static/js/incidents.core.js"></script>
+  <script src="/static/js/incidents.data.js"></script>
+  <script src="/static/js/incidents.tabs.js"></script>
+  <script src="/static/js/incidents.dashboard.js"></script>
+  <script src="/static/js/incidents.list.js"></script>
+  <script src="/static/js/incidents.create.js"></script>
+  <script src="/static/js/incidents.detail.core.js"></script>
+  <script src="/static/js/incidents.detail.decisions.js"></script>
+  <script src="/static/js/incidents.detail.stage-blocks.js"></script>
+  <script src="/static/js/incidents.detail.stages.js"></script>
+  <script src="/static/js/incidents.detail.links.js"></script>
+  <script src="/static/js/incidents.detail.attachments.js"></script>
+  <script src="/static/js/incidents.detail.timeline.js"></script>
+  <script src="/static/js/incidents.detail.export.js"></script>
+  <script src="/static/js/tasks.core.js"></script>
+  <script src="/static/js/tasks.board.js"></script>
+  <script src="/static/js/tasks.sidebar.js"></script>
+  <script src="/static/js/tasks.templates.js"></script>
+  <script src="/static/js/tasks.templates.home.js"></script>
+  <script src="/static/js/tasks.template-picker.js"></script>
+  <script src="/static/js/tasks.recurring.js"></script>
+  <script src="/static/js/dashboard.core.js"></script>
+  <script src="/static/js/dashboard.layout.js"></script>
+  <script src="/static/js/dashboard.frames.js"></script>
+  <script src="/static/js/dashboard.details.js"></script>
+  <script src="/static/js/controls.core.js"></script>
+  <script src="/static/js/controls.comments.js"></script>
+  <script src="/static/js/monitoring.core.js"></script>
+  <script src="/static/js/monitoring.tabs.js"></script>
+  <script src="/static/js/monitoring.list.js"></script>
+  <script src="/static/js/monitoring.detail.js"></script>
+  <script src="/static/js/monitoring.modal.js"></script>
+  <script src="/static/js/monitoring.settings.js"></script>
+  <script src="/static/js/monitoring.certs.js"></script>
+  <script src="/static/js/monitoring.events.js"></script>
+  <script src="/static/js/monitoring.maintenance.utils.js"></script>
+  <script src="/static/js/monitoring.maintenance.js"></script>
+  <script src="/static/js/monitoring.notifications.js"></script>
+  <script src="/static/js/monitoring.sla.js"></script>
+  <script src="/static/js/reports.core.js"></script>
+  <script src="/static/js/reports.list.js"></script>
+  <script src="/static/js/reports.builder.js"></script>
+  <script src="/static/js/reports.sections.js"></script>
+  <script src="/static/js/reports.charts.js"></script>
+  <script src="/static/js/reports.templates.js"></script>
+  <script src="/static/js/reports.settings.js"></script>
+  <script src="/static/js/backups/backups_page.js"></script>
+  <script src="/static/js/backups/tabs/overview.js"></script>
+  <script src="/static/js/backups/tabs/history.js"></script>
+  <script src="/static/js/backups/tabs/restore.js"></script>
+  <script src="/static/js/backups/tabs/plan.js"></script>
+  <script src="/static/js/app.js"></script>
+</body>
+</html>

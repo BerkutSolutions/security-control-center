@@ -87,7 +87,7 @@ var roles = []Role{
 	{Name: "doc_viewer", Permissions: []Permission{"app.view", "dashboard.view", "docs.view", "docs.versions.view"}},
 	{Name: "auditor", Permissions: []Permission{"app.view", "dashboard.view", "docs.view", "docs.versions.view", "docs.export", "incidents.view", "reports.view", "reports.export", "logs.view"}},
 	{Name: "manager", Permissions: []Permission{"app.view", "dashboard.view", "reports.view"}},
-	{Name: "analyst", Permissions: []Permission{"app.view", "dashboard.view", "docs.view", "controls.view", "controls.checks.view", "controls.violations.view", "controls.frameworks.view", "tasks.view", "tasks.create", "tasks.edit", "tasks.comment", "findings.view", "incidents.view"}},
+	{Name: "analyst", Permissions: []Permission{"app.view", "dashboard.view", "docs.view", "controls.view", "controls.checks.view", "controls.violations.view", "controls.frameworks.view", "monitoring.view", "monitoring.events.view", "tasks.view", "tasks.create", "tasks.edit", "tasks.comment", "findings.view", "incidents.view"}},
 }
 
 func DefaultRoles() []Role {

@@ -463,6 +463,10 @@ func (s *Server) requirePermission(perm rbac.Permission) func(http.HandlerFunc) 
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
+			if !s.allowedByMenu(w, r, sess) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 		}
 	}
@@ -491,6 +495,10 @@ func (s *Server) requireAnyPermission(perms ...rbac.Permission) func(http.Handle
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
+			if !s.allowedByMenu(w, r, sess) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 		}
 	}
@@ -512,6 +520,10 @@ func (s *Server) requirePermissionFromPath(resolver func(string) rbac.Permission
 					http.Error(w, "forbidden", http.StatusForbidden)
 					return
 				}
+				if !s.allowedByMenu(w, r, sess) {
+					http.Error(w, "forbidden", http.StatusForbidden)
+					return
+				}
 				next.ServeHTTP(w, r)
 				return
 			}
@@ -520,9 +532,89 @@ func (s *Server) requirePermissionFromPath(resolver func(string) rbac.Permission
 				http.Error(w, "forbidden", http.StatusForbidden)
 				return
 			}
+			if !s.allowedByMenu(w, r, sess) {
+				http.Error(w, "forbidden", http.StatusForbidden)
+				return
+			}
 			next.ServeHTTP(w, r)
 		}
 	}
+}
+
+func (s *Server) requiredMenuKeys(path string) []string {
+	p := strings.TrimSpace(path)
+	if p == "" {
+		return nil
+	}
+	if p == "/" || p == "/app" {
+		return nil
+	}
+	if strings.HasPrefix(p, "/static/") {
+		return nil
+	}
+	if strings.HasPrefix(p, "/api/auth/") || strings.HasPrefix(p, "/api/app/") || strings.HasPrefix(p, "/api/page/") {
+		return nil
+	}
+
+	switch {
+	case strings.HasPrefix(p, "/dashboard") || strings.HasPrefix(p, "/api/dashboard"):
+		return []string{"dashboard"}
+	case strings.HasPrefix(p, "/monitoring") || strings.HasPrefix(p, "/api/monitoring"):
+		return []string{"monitoring"}
+	case strings.HasPrefix(p, "/controls") || strings.HasPrefix(p, "/api/controls"):
+		return []string{"controls"}
+	case strings.HasPrefix(p, "/tasks") || strings.HasPrefix(p, "/api/tasks"):
+		return []string{"tasks"}
+	case strings.HasPrefix(p, "/incidents") || strings.HasPrefix(p, "/api/incidents"):
+		return []string{"incidents"}
+	case strings.HasPrefix(p, "/reports") || strings.HasPrefix(p, "/api/reports"):
+		return []string{"reports"}
+	case strings.HasPrefix(p, "/backups") || strings.HasPrefix(p, "/api/backups"):
+		return []string{"backups"}
+	case strings.HasPrefix(p, "/docs") || strings.HasPrefix(p, "/api/docs"):
+		return []string{"docs"}
+	case strings.HasPrefix(p, "/approvals") || strings.HasPrefix(p, "/api/approvals"):
+		return []string{"approvals"}
+	case strings.HasPrefix(p, "/accounts") || strings.HasPrefix(p, "/api/accounts"):
+		return []string{"accounts"}
+	case strings.HasPrefix(p, "/settings") || strings.HasPrefix(p, "/api/settings"):
+		return []string{"settings"}
+	case strings.HasPrefix(p, "/logs") || strings.HasPrefix(p, "/api/logs"):
+		return []string{"logs"}
+	case strings.HasPrefix(p, "/api/templates"):
+		return []string{"docs"}
+	default:
+		return nil
+	}
+}
+
+func (s *Server) allowedByMenu(w http.ResponseWriter, r *http.Request, sess *store.SessionRecord) bool {
+	keys := s.requiredMenuKeys(r.URL.Path)
+	if len(keys) == 0 {
+		return true
+	}
+	if s.users == nil {
+		return true
+	}
+	user, _, err := s.users.Get(r.Context(), sess.UserID)
+	if err != nil || user == nil {
+		return false
+	}
+	groups, _ := s.users.UserGroups(r.Context(), sess.UserID)
+	eff := auth.CalculateEffectiveAccess(user, sess.Roles, groups, s.policy)
+	if len(eff.MenuPermissions) == 0 {
+		return true
+	}
+	allowed := map[string]struct{}{}
+	for _, m := range eff.MenuPermissions {
+		allowed[m] = struct{}{}
+	}
+	for _, k := range keys {
+		if _, ok := allowed[k]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 var loginLimiter = newLimiter(5, time.Minute)

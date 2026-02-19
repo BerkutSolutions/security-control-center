@@ -573,7 +573,7 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		if h.logger != nil {
 			h.logger.Errorf("create user invalid username=%s: %v", p.Username, err)
 		}
-		http.Error(w, "invalid username", http.StatusBadRequest)
+		http.Error(w, invalidUsernameMessage(preferredLang(r)), http.StatusBadRequest)
 		return
 	}
 	email := strings.TrimSpace(p.Email)
@@ -602,7 +602,7 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 			if h.logger != nil {
 				h.logger.Errorf("create user invalid password username=%s: %v", p.Username, err)
 			}
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			http.Error(w, passwordPolicyMessage(preferredLang(r), err), http.StatusBadRequest)
 			return
 		}
 	}
@@ -623,7 +623,7 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 
 	roles := sanitizeRoles(p.Roles, p.Role)
 	if len(roles) == 0 {
-		http.Error(w, "role required", http.StatusBadRequest)
+		http.Error(w, localized(preferredLang(r), "accounts.roleRequired"), http.StatusBadRequest)
 		return
 	}
 	if containsRole(roles, "superadmin") && (sess == nil || !containsRole(sess.Roles, "superadmin")) {
@@ -631,7 +631,7 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	tags := sanitizeTags(p.ClearanceTags)
-	if !h.canAssignTags(&store.User{ClearanceTags: actorEff.ClearanceTags}, tags) {
+	if !h.canAssignTagsEff(actorEff, tags) {
 		http.Error(w, localized(preferredLang(r), "accounts.clearanceTagsNotAllowed"), http.StatusForbidden)
 		return
 	}
@@ -877,7 +877,7 @@ func (h *AccountsHandler) ResetPassword(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 	if err := utils.ValidatePassword(payload.Password); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, passwordPolicyMessage(preferredLang(r), err), http.StatusBadRequest)
 		return
 	}
 	history, _ := h.users.PasswordHistory(ctx, id, 10)
@@ -1080,7 +1080,7 @@ func (h *AccountsHandler) CreateGroup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, localized(preferredLang(r), "accounts.clearanceTooHigh"), http.StatusForbidden)
 		return
 	}
-	if !h.canAssignTags(&store.User{ClearanceTags: actorEff.ClearanceTags}, clearanceTags) {
+	if !h.canAssignTagsEff(actorEff, clearanceTags) {
 		http.Error(w, localized(preferredLang(r), "accounts.clearanceTagsNotAllowed"), http.StatusForbidden)
 		return
 	}
@@ -1157,7 +1157,7 @@ func (h *AccountsHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 	}
 	if payload.ClearanceTags != nil {
 		tags := sanitizeTags(payload.ClearanceTags)
-		if !h.canAssignTags(&store.User{ClearanceTags: actorEff.ClearanceTags}, tags) {
+		if !h.canAssignTagsEff(actorEff, tags) {
 			http.Error(w, localized(preferredLang(r), "accounts.clearanceTagsNotAllowed"), http.StatusForbidden)
 			return
 		}
@@ -1180,7 +1180,7 @@ func (h *AccountsHandler) UpdateGroup(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, localized(preferredLang(r), "accounts.clearanceTooHigh"), http.StatusForbidden)
 			return
 		}
-		if !h.canAssignTags(&store.User{ClearanceTags: actorEff.ClearanceTags}, existing.ClearanceTags) {
+		if !h.canAssignTagsEff(actorEff, existing.ClearanceTags) {
 			http.Error(w, localized(preferredLang(r), "accounts.clearanceTagsNotAllowed"), http.StatusForbidden)
 			return
 		}
@@ -1318,7 +1318,7 @@ func (h *AccountsHandler) AddGroupMember(w http.ResponseWriter, r *http.Request)
 		http.Error(w, localized(preferredLang(r), "accounts.clearanceTooHigh"), http.StatusForbidden)
 		return
 	}
-	if !h.canAssignTags(&store.User{ClearanceTags: actorEff.ClearanceTags}, group.ClearanceTags) {
+	if !h.canAssignTagsEff(actorEff, group.ClearanceTags) {
 		http.Error(w, localized(preferredLang(r), "accounts.clearanceTagsNotAllowed"), http.StatusForbidden)
 		return
 	}
@@ -2129,11 +2129,12 @@ type roleTemplate struct {
 
 func defaultRoleTemplates() []roleTemplate {
 	return []roleTemplate{
-		{ID: "doc_viewer", Name: "Doc Viewer", Description: "View documents and versions", Permissions: []string{"docs.view", "docs.versions.view"}},
-		{ID: "doc_editor", Name: "Doc Editor", Description: "Edit documents and upload files", Permissions: []string{"docs.view", "docs.create", "docs.edit", "docs.upload", "docs.versions.view"}},
-		{ID: "doc_admin", Name: "Doc Admin", Description: "Manage documents, approvals and templates", Permissions: []string{"docs.manage", "docs.classification.set", "docs.approval.start", "docs.approval.view", "docs.approval.approve", "folders.manage", "templates.manage"}},
-		{ID: "auditor", Name: "Auditor", Description: "Read-only access with audit visibility", Permissions: []string{"docs.view", "logs.view", "accounts.view_dashboard"}},
-		{ID: "security_officer", Name: "Security Officer", Description: "Security oversight for docs", Permissions: []string{"docs.classification.set", "logs.view"}},
+		{ID: "doc_viewer", Name: "Doc Viewer", Description: "View documents and versions", Permissions: []string{"app.view", "dashboard.view", "docs.view", "docs.versions.view"}},
+		{ID: "doc_editor", Name: "Doc Editor", Description: "Edit documents and upload files", Permissions: []string{"app.view", "dashboard.view", "docs.view", "docs.create", "docs.upload", "docs.edit", "docs.versions.view", "docs.approval.start", "docs.approval.view"}},
+		{ID: "doc_admin", Name: "Doc Admin", Description: "Manage documents, approvals and templates", Permissions: []string{"app.view", "dashboard.view", "docs.view", "docs.manage", "docs.classification.set", "docs.export", "docs.versions.view", "docs.versions.restore", "docs.approval.start", "docs.approval.view", "docs.approval.approve", "folders.manage", "templates.manage", "incidents.view", "incidents.create", "incidents.edit", "logs.view"}},
+		{ID: "auditor", Name: "Auditor", Description: "Read-only access with audit visibility", Permissions: []string{"app.view", "dashboard.view", "docs.view", "docs.versions.view", "docs.export", "incidents.view", "reports.view", "reports.export", "logs.view"}},
+		{ID: "security_officer", Name: "Security Officer", Description: "Security oversight for documents", Permissions: []string{"app.view", "dashboard.view", "docs.classification.set", "docs.manage", "docs.view", "docs.export", "docs.versions.view", "folders.manage", "incidents.view", "incidents.create", "incidents.edit", "logs.view"}},
+		{ID: "analyst", Name: "Analyst", Description: "Controls, findings and monitoring visibility", Permissions: []string{"app.view", "dashboard.view", "docs.view", "controls.view", "controls.checks.view", "controls.violations.view", "controls.frameworks.view", "monitoring.view", "monitoring.events.view", "tasks.view", "tasks.create", "tasks.edit", "tasks.comment", "findings.view", "incidents.view"}},
 	}
 }
 

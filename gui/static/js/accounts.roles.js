@@ -252,7 +252,7 @@
   }
 
   async function deleteRole(role) {
-    if (!confirm('Delete this role?')) return;
+    if (!confirm(BerkutI18n.t('accounts.roles.deleteConfirm') || 'Delete this role?')) return;
     try {
       await Api.del(`/api/accounts/roles/${role.id}`);
       await loadRoles();
@@ -272,8 +272,12 @@
     const form = document.getElementById('role-create-form');
     const select = document.getElementById('role-create-permissions');
     const hint = document.getElementById('role-create-permissions-hint');
+    const search = document.getElementById('role-create-permissions-search');
     const selectAllBtn = document.getElementById('role-create-select-all');
     const clearAllBtn = document.getElementById('role-create-clear-all');
+    const packSel = document.getElementById('role-create-permissions-pack');
+    const packAddBtn = document.getElementById('role-create-pack-add');
+    const packRemoveBtn = document.getElementById('role-create-pack-remove');
     openBtn.addEventListener('click', () => openRoleCreateModal());
     document.getElementById('close-role-create').onclick = closeRoleCreateModal;
     document.getElementById('cancel-role-create').onclick = closeRoleCreateModal;
@@ -304,6 +308,23 @@
       select.addEventListener('change', () => renderSelectedOptions(select, hint));
       select.addEventListener('selectionrefresh', () => renderSelectedOptions(select, hint));
     }
+    if (search && select) {
+      search.addEventListener('input', () => {
+        const q = (search.value || '').toLowerCase().trim();
+        const selected = AccountsPage.getSelectedValues(select);
+        const base = state.roleCreateAllPermissions || [];
+        const filtered = !q
+          ? base
+          : base.filter(item => (item.value || '').includes(q) || (item.label || '').toLowerCase().includes(q));
+        fillSelect(select, filtered.map(p => ({ value: p.value, label: p.label })));
+        Array.from(select.options).forEach(opt => {
+          opt.dataset.label = opt.textContent;
+        });
+        enhanceMultiSelects([select.id]);
+        setMultiSelect(select, selected);
+        renderSelectedOptions(select, hint);
+      });
+    }
     if (selectAllBtn && select) {
       selectAllBtn.addEventListener('click', () => {
         Array.from(select.options).forEach(opt => {
@@ -322,12 +343,73 @@
         select.dispatchEvent(new Event('change', { bubbles: true }));
       });
     }
+
+    const applyPack = (mode) => {
+      if (!select || !packSel) return;
+      const packKey = (packSel.value || '').trim();
+      if (!packKey) return;
+      const base = (state.roleCreateAllPermissions || []).map(p => p.value);
+      const packPerms = computePermissionPack(packKey, base);
+      const selected = new Set(AccountsPage.getSelectedValues(select));
+      if (mode === 'add') {
+        packPerms.forEach(p => selected.add(p));
+      } else if (mode === 'remove') {
+        packPerms.forEach(p => selected.delete(p));
+      }
+      if (search) search.value = '';
+      fillSelect(select, (state.roleCreateAllPermissions || []).map(p => ({ value: p.value, label: p.label })));
+      Array.from(select.options).forEach(opt => {
+        opt.dataset.label = opt.textContent;
+      });
+      enhanceMultiSelects([select.id]);
+      setMultiSelect(select, Array.from(selected));
+      renderSelectedOptions(select, hint);
+      select.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+
+    if (packAddBtn) packAddBtn.addEventListener('click', () => applyPack('add'));
+    if (packRemoveBtn) packRemoveBtn.addEventListener('click', () => applyPack('remove'));
+  }
+
+  function computePermissionPack(packKey, allPerms) {
+    const perms = Array.isArray(allPerms) ? allPerms : [];
+    const onlyViewRead = (p) => p.endsWith('.view') || p.endsWith('.read');
+    switch (packKey) {
+      case 'dashboard':
+        return perms.filter(p => p === 'dashboard.view');
+      case 'monitoring':
+        return perms.filter(p => p.startsWith('monitoring.') && onlyViewRead(p));
+      case 'controls':
+        return perms.filter(p => p.startsWith('controls.') && onlyViewRead(p));
+      case 'tasks':
+        return perms.filter(p => p === 'tasks.view');
+      case 'docs':
+        return perms.filter(p => ((p.startsWith('docs.') && !p.startsWith('docs.approval.')) || p.startsWith('folders.') || p.startsWith('templates.')) && onlyViewRead(p));
+      case 'approvals':
+        return perms.filter(p => p.startsWith('docs.approval.') && onlyViewRead(p));
+      case 'incidents':
+        return perms.filter(p => p === 'incidents.view');
+      case 'reports':
+        return perms.filter(p => p === 'reports.view');
+      case 'accounts':
+        return perms.filter(p => ['accounts.view', 'accounts.view_dashboard', 'groups.view', 'roles.view'].includes(p));
+      case 'settings':
+        return perms.filter(p => p === 'app.view');
+      case 'backups':
+        return perms.filter(p => p === 'backups.read');
+      case 'logs':
+        return perms.filter(p => p === 'logs.view');
+      default:
+        return [];
+    }
   }
 
   function openRoleCreateModal(role) {
     const modal = document.getElementById('role-create-modal');
     const select = document.getElementById('role-create-permissions');
     const hint = document.getElementById('role-create-permissions-hint');
+    const search = document.getElementById('role-create-permissions-search');
+    const packSel = document.getElementById('role-create-permissions-pack');
     if (!modal || !select) return;
     state.editingRoleId = role ? role.id : null;
     const title = modal.querySelector('h3');
@@ -335,7 +417,27 @@
       title.textContent = state.editingRoleId ? (BerkutI18n.t('accounts.roleEdit') || 'Edit role') : (BerkutI18n.t('accounts.roleCreate') || 'Create role');
     }
     const perms = availablePermissions();
-    fillSelect(select, perms.map(p => ({ value: p, label: permissionLabel(p) })));
+    state.roleCreateAllPermissions = perms.map(p => ({ value: p, label: permissionLabel(p) }));
+    if (search) search.value = '';
+    if (packSel) {
+      const packs = [
+        { key: 'dashboard', labelKey: 'nav.dashboard' },
+        { key: 'tasks', labelKey: 'nav.tasks' },
+        { key: 'controls', labelKey: 'nav.controls' },
+        { key: 'monitoring', labelKey: 'nav.monitoring' },
+        { key: 'docs', labelKey: 'nav.docs' },
+        { key: 'approvals', labelKey: 'nav.approvals' },
+        { key: 'incidents', labelKey: 'nav.incidents' },
+        { key: 'reports', labelKey: 'nav.reports' },
+        { key: 'accounts', labelKey: 'nav.accounts' },
+        { key: 'settings', labelKey: 'nav.settings' },
+        { key: 'backups', labelKey: 'nav.backups' },
+        { key: 'logs', labelKey: 'nav.logs' },
+      ];
+      fillSelect(packSel, packs.map(p => ({ value: p.key, label: BerkutI18n.t(p.labelKey) || p.key })));
+      if (!packSel.value) packSel.value = 'monitoring';
+    }
+    fillSelect(select, state.roleCreateAllPermissions.map(p => ({ value: p.value, label: p.label })));
     Array.from(select.options).forEach(opt => {
       opt.dataset.label = opt.textContent;
     });

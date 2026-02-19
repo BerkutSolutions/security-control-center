@@ -97,7 +97,11 @@
     if (editBtn) {
       editBtn.title = editLabel;
       editBtn.setAttribute('aria-label', editLabel);
-      editBtn.addEventListener('click', () => setGroupDetailEditState(true));
+      editBtn.addEventListener('click', async () => {
+        await ensureUsersLoadedForGroupDetails();
+        setGroupDetailEditState(true);
+        renderGroupDetails();
+      });
     }
     if (deleteBtn) {
       deleteBtn.title = deleteLabel;
@@ -128,6 +132,7 @@
     state.selectedGroupId = id;
     renderGroups();
     renderGroupDetails();
+    ensureUsersLoadedForGroupDetails();
     loadGroupDetails(id);
   }
 
@@ -136,13 +141,26 @@
     return state.groupDetails[state.selectedGroupId] || state.groups.find(g => g.id === state.selectedGroupId) || null;
   }
 
+  async function ensureUsersLoadedForGroupDetails() {
+    if (!AccountsPage.loadUsers) return;
+    const usersSel = document.getElementById('group-detail-users');
+    if (usersSel && usersSel.options && usersSel.options.length > 0) return;
+    if (Array.isArray(state.users) && state.users.length > 0) return;
+    try {
+      await AccountsPage.loadUsers();
+    } catch (err) {
+      console.error('users load (for group details)', err);
+    }
+  }
+
   async function loadGroupDetails(id) {
     if (!id) return;
     if (state.groupDetails[id] && state.groupDetails[id]._full) return;
     try {
       const res = await Api.get(`/api/accounts/groups/${id}`);
       if (res.group) {
-        state.groupDetails[id] = { ...res.group, _full: true };
+        const members = Array.isArray(res.members) ? res.members : [];
+        state.groupDetails[id] = { ...res.group, users: members, user_count: members.length, _full: true };
         if (state.selectedGroupId === id) renderGroupDetails();
       }
     } catch (err) {
@@ -288,7 +306,7 @@
       clearance_tags: getCheckedValues(document.getElementById('group-detail-clearance-tags')),
       roles: AccountsPage.getSelectedValues(form.roles),
       menu_permissions: getCheckedValues(document.getElementById('group-detail-menu')),
-      users: AccountsPage.getSelectedValues(form.users),
+      users: AccountsPage.getSelectedValues(form.users).map(v => Number(v)).filter(v => Number.isFinite(v) && v > 0),
     };
     try {
       await Api.put(`/api/accounts/groups/${group.id}`, payload);
@@ -319,7 +337,7 @@
           clearance_tags: getCheckedValues(document.getElementById('group-clearance-tags')),
           roles: AccountsPage.getSelectedValues(form.roles),
           menu_permissions: getCheckedValues(document.getElementById('group-menu')),
-          users: AccountsPage.getSelectedValues(form.users),
+          users: AccountsPage.getSelectedValues(form.users).map(v => Number(v)).filter(v => Number.isFinite(v) && v > 0),
         };
         if (!payload.name) {
           showAlert('group-modal-alert', BerkutI18n.t('accounts.groupNameRequired') || 'Name required');
@@ -341,6 +359,16 @@
   }
 
   async function openGroupModal(group) {
+    if (AccountsPage.loadUsers) {
+      const usersSelect = document.getElementById('group-users');
+      if (!usersSelect || !(usersSelect.options && usersSelect.options.length)) {
+        try {
+          await AccountsPage.loadUsers();
+        } catch (err) {
+          console.error('users load (for group modal)', err);
+        }
+      }
+    }
     const modal = document.getElementById('group-modal');
     const form = document.getElementById('group-form');
     form.reset();
@@ -392,7 +420,7 @@
   }
 
   async function deleteGroup(id) {
-    if (!confirm(BerkutI18n.t('accounts.groups.deleteConfirm') || 'Удалить группу?')) return;
+    if (!confirm(BerkutI18n.t('accounts.groups.deleteConfirm') || 'Delete this group?')) return;
     await Api.del(`/api/accounts/groups/${id}`);
     await loadGroups();
     if (state.selectedGroupId === id) {

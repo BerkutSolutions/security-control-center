@@ -234,7 +234,7 @@ const SettingsPage = (() => {
   let fullAccess = false;
   let permissions = [];
   const TAB_PERMISSIONS = {
-    'settings-general': 'settings.general',
+    'settings-general': 'app.view',
     'settings-advanced': 'settings.advanced',
     'settings-cleanup': 'settings.advanced',
     'settings-https': 'settings.advanced',
@@ -308,20 +308,29 @@ const SettingsPage = (() => {
     bindPasswordChange(alertBox);
     bindPreferences(alertBox, onChange);
     bindTimeZoneSettings(alertBox, onChange);
-    bindRuntimeSettings(alertBox);
-    bindHTTPSSettings(alertBox);
-    bindHardeningSettings(alertBox);
-    bindApprovalsCleanup(alertBox);
-    bindMonitoringCleanup(alertBox);
-    bindTabsCleanup(alertBox);
-    bindTagSettings();
-    bindClassificationSettings();
-    bindIncidentSettings();
-    bindControlsSettings(alertBox);
     (async () => {
       const ctx = await loadCurrentUser();
       applyAccessControls(ctx, alertBox);
       renderPasswordMeta(ctx);
+      // Bind only what the current user can actually access to avoid noisy 403s in console.
+      if (canViewTab('settings-advanced')) {
+        bindRuntimeSettings(alertBox);
+        bindHTTPSSettings(alertBox);
+        bindHardeningSettings(alertBox);
+        bindApprovalsCleanup(alertBox);
+        bindMonitoringCleanup(alertBox);
+        bindTabsCleanup(alertBox);
+      }
+      if (canViewTab('settings-tags')) {
+        bindTagSettings();
+        bindClassificationSettings();
+      }
+      if (canViewTab('settings-incidents')) {
+        bindIncidentSettings();
+      }
+      if (canViewTab('settings-controls')) {
+        bindControlsSettings(alertBox);
+      }
       const target = tabFromPath();
       const initialTab = (target && canViewTab(target)) ? target : firstAllowedTab() || activeTab;
       switchTab(initialTab);

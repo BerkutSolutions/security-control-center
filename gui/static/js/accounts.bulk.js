@@ -143,7 +143,7 @@
     if (action === 'assign_role') {
       const select = document.getElementById('bulk-role-select');
       if (!select || !select.value) {
-        showAlert('bulk-modal-alert', BerkutI18n.t('accounts.bulkAssignRole') || 'Role required');
+        showAlert('bulk-modal-alert', BerkutI18n.t('accounts.roleRequired') || 'Role required');
         return false;
       }
       return { role_id: select.value };

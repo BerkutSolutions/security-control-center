@@ -6,6 +6,8 @@
 
   async function request(method, url, body) {
     const opts = { method, headers: {}, credentials: 'include' };
+    const lang = (localStorage.getItem('berkut_lang') || '').trim();
+    if (lang) opts.headers['Accept-Language'] = lang;
     if (body) {
       opts.body = JSON.stringify(body);
       opts.headers['Content-Type'] = 'application/json';

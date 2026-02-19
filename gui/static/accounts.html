@@ -84,10 +84,10 @@
         <div class="muted small" id="group-detail-meta"></div>
       </div>
       <div class="icon-actions" id="group-detail-actions">
-        <button class="btn ghost icon-btn" id="group-edit-btn" aria-label="Edit">&#128221;</button>
-        <button class="btn ghost icon-btn danger" id="group-delete-btn" aria-label="Delete">&#128465;</button>
-        <button class="btn ghost icon-btn" id="group-save-btn" aria-label="Save" hidden>&#9989;</button>
-        <button class="btn ghost icon-btn" id="group-cancel-btn" aria-label="Cancel" hidden>&#10060;</button>
+        <button class="btn ghost" id="group-edit-btn" data-i18n="common.edit">Edit</button>
+        <button class="btn ghost danger" id="group-delete-btn" data-i18n="common.delete">Delete</button>
+        <button class="btn primary" id="group-save-btn" data-i18n="common.save" hidden>Save</button>
+        <button class="btn ghost" id="group-cancel-btn" data-i18n="common.cancel" hidden>Cancel</button>
       </div>
     </div>
     <div class="card-body">
@@ -202,10 +202,10 @@
         <div class="muted small" id="role-detail-meta"></div>
       </div>
       <div class="icon-actions" id="role-detail-actions">
-        <button class="btn ghost icon-btn" id="role-edit-btn" aria-label="Edit">&#128221;</button>
-        <button class="btn ghost icon-btn danger" id="role-delete-btn" aria-label="Delete">&#128465;</button>
-        <button class="btn ghost icon-btn" id="role-save-btn" aria-label="Save" hidden>&#9989;</button>
-        <button class="btn ghost icon-btn" id="role-cancel-btn" aria-label="Cancel" hidden>&#10060;</button>
+        <button class="btn ghost" id="role-edit-btn" data-i18n="common.edit">Edit</button>
+        <button class="btn ghost danger" id="role-delete-btn" data-i18n="common.delete">Delete</button>
+        <button class="btn primary" id="role-save-btn" data-i18n="common.save" hidden>Save</button>
+        <button class="btn ghost" id="role-cancel-btn" data-i18n="common.cancel" hidden>Cancel</button>
       </div>
     </div>
     <div class="card-body">
@@ -643,7 +643,7 @@
 
     <div class="modal" id="role-create-modal" hidden>
     <div class="modal-backdrop"></div>
-    <div class="modal-body">
+    <div class="modal-body wide">
       <div class="modal-header">
         <h3 data-i18n="accounts.roleCreate">Create role</h3>
         <button class="btn ghost" id="close-role-create" aria-label="Close">x</button>
@@ -660,12 +660,22 @@
             <textarea id="role-create-description" rows="2"></textarea>
           </div>
           <div class="form-field">
+            <label data-i18n="common.search">Search</label>
+            <input id="role-create-permissions-search" placeholder="Search" data-i18n-placeholder="common.search">
+          </div>
+          <div class="form-field">
             <label data-i18n="accounts.permissions">Permissions</label>
             <select id="role-create-permissions" multiple></select>
             <div class="selected-hint" id="role-create-permissions-hint"></div>
             <div class="form-actions-inline role-permissions-actions">
               <button type="button" class="btn ghost btn-sm" id="role-create-select-all" data-i18n="accounts.selectAll">Select all</button>
               <button type="button" class="btn ghost btn-sm" id="role-create-clear-all" data-i18n="accounts.clearAll">Clear all</button>
+            </div>
+            <div class="form-actions-inline role-permissions-actions">
+              <span class="muted" data-i18n="accounts.permissionsPack">Tabs</span>
+              <select id="role-create-permissions-pack" class="select select-compact"></select>
+              <button type="button" class="btn ghost btn-sm" id="role-create-pack-add" data-i18n="accounts.permissionsPackAdd">Add</button>
+              <button type="button" class="btn ghost btn-sm" id="role-create-pack-remove" data-i18n="accounts.permissionsPackRemove">Remove</button>
             </div>
           </div>
           <div class="form-actions">

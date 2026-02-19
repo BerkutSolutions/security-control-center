@@ -311,7 +311,7 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := utils.ValidatePassword(payload.Password); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		http.Error(w, passwordPolicyMessage(preferredLang(r), err), http.StatusBadRequest)
 		return
 	}
 	if user.PasswordSet {
@@ -423,22 +423,24 @@ func preferredLang(r *http.Request) string {
 
 func localized(lang, key string) string {
 	ru := map[string]string{
-		"auth.lockoutSoon":                 "Ваша учетная запись будет заблокирована на 1 час.",
-		"auth.lockedPermanent":             "Аккаунт заблокирован. Обратитесь к администратору.",
-		"accounts.passwordReuseDenied":     "Пароль уже использовался. Выберите другой.",
-		"accounts.currentPasswordInvalid":  "Текущий пароль неверен",
-		"accounts.clearanceTooHigh":        "Нельзя выдать допуск выше своего",
-		"accounts.clearanceTagsNotAllowed": "Нельзя назначить эти теги допуска",
-		"accounts.lastSuperadminProtected": "Нельзя изменить последнего супер-админа",
-		"accounts.selfLockoutPrevented":    "Операция запрещена: привела бы к потере доступа",
-		"accounts.roleSystemProtected":     "Системную роль нельзя изменить или удалить",
-		"errors.roleTemplateNotFound":      "Шаблон роли не найден",
+		"auth.lockoutSoon":                 "\u0412\u0430\u0448\u0430 \u0443\u0447\u0435\u0442\u043d\u0430\u044f \u0437\u0430\u043f\u0438\u0441\u044c \u0431\u0443\u0434\u0435\u0442 \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d\u0430 \u043d\u0430 1 \u0447\u0430\u0441.",
+		"auth.lockedPermanent":             "\u0410\u043a\u043a\u0430\u0443\u043d\u0442 \u0437\u0430\u0431\u043b\u043e\u043a\u0438\u0440\u043e\u0432\u0430\u043d. \u041e\u0431\u0440\u0430\u0442\u0438\u0442\u0435\u0441\u044c \u043a \u0430\u0434\u043c\u0438\u043d\u0438\u0441\u0442\u0440\u0430\u0442\u043e\u0440\u0443.",
+		"accounts.passwordReuseDenied":     "\u041f\u0430\u0440\u043e\u043b\u044c \u0443\u0436\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043b\u0441\u044f. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0440\u0443\u0433\u043e\u0439.",
+		"accounts.currentPasswordInvalid":  "\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u043f\u0430\u0440\u043e\u043b\u044c \u043d\u0435\u0432\u0435\u0440\u0435\u043d",
+		"accounts.roleRequired":            "\u0420\u043e\u043b\u044c \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u0430",
+		"accounts.clearanceTooHigh":        "\u041d\u0435\u043b\u044c\u0437\u044f \u0432\u044b\u0434\u0430\u0442\u044c \u0434\u043e\u043f\u0443\u0441\u043a \u0432\u044b\u0448\u0435 \u0441\u0432\u043e\u0435\u0433\u043e",
+		"accounts.clearanceTagsNotAllowed": "\u041d\u0435\u043b\u044c\u0437\u044f \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u044d\u0442\u0438 \u0442\u0435\u0433\u0438 \u0434\u043e\u043f\u0443\u0441\u043a\u0430",
+		"accounts.lastSuperadminProtected": "\u041d\u0435\u043b\u044c\u0437\u044f \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0433\u043e \u0441\u0443\u043f\u0435\u0440-\u0430\u0434\u043c\u0438\u043d\u0430",
+		"accounts.selfLockoutPrevented":    "\u041e\u043f\u0435\u0440\u0430\u0446\u0438\u044f \u0437\u0430\u043f\u0440\u0435\u0449\u0435\u043d\u0430: \u043f\u0440\u0438\u0432\u0435\u043b\u0430 \u0431\u044b \u043a \u043f\u043e\u0442\u0435\u0440\u0435 \u0434\u043e\u0441\u0442\u0443\u043f\u0430",
+		"accounts.roleSystemProtected":     "\u0421\u0438\u0441\u0442\u0435\u043c\u043d\u0443\u044e \u0440\u043e\u043b\u044c \u043d\u0435\u043b\u044c\u0437\u044f \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0438\u043b\u0438 \u0443\u0434\u0430\u043b\u0438\u0442\u044c",
+		"errors.roleTemplateNotFound":      "\u0428\u0430\u0431\u043b\u043e\u043d \u0440\u043e\u043b\u0438 \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d",
 	}
 	en := map[string]string{
 		"auth.lockoutSoon":                 "Your account will be locked for 1 hour.",
 		"auth.lockedPermanent":             "Account is locked. Contact administrator.",
 		"accounts.passwordReuseDenied":     "Password was used recently. Choose a new one.",
 		"accounts.currentPasswordInvalid":  "Current password is invalid",
+		"accounts.roleRequired":            "Role is required",
 		"accounts.clearanceTooHigh":        "Clearance level exceeds your own",
 		"accounts.clearanceTagsNotAllowed": "Clearance tags are not allowed",
 		"accounts.lastSuperadminProtected": "Cannot modify the last superadmin",
@@ -446,21 +448,21 @@ func localized(lang, key string) string {
 		"accounts.roleSystemProtected":     "System role cannot be modified or deleted",
 		"errors.roleTemplateNotFound":      "Role template not found",
 	}
-	ru["accounts.groupSystemProtected"] = "Системную группу нельзя изменить или удалить"
+	ru["accounts.groupSystemProtected"] = "\u0421\u0438\u0441\u0442\u0435\u043c\u043d\u0443\u044e \u0433\u0440\u0443\u043f\u043f\u0443 \u043d\u0435\u043b\u044c\u0437\u044f \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u0438\u043b\u0438 \u0443\u0434\u0430\u043b\u0438\u0442\u044c"
 	en["accounts.groupSystemProtected"] = "System group cannot be modified or deleted"
-	ru["reports.error.chartNotFound"] = "График не найден"
-	ru["reports.error.snapshotRequired"] = "Нужен снапшот"
-	ru["reports.error.exportChartsUnavailable"] = "Для экспорта графиков нужен локальный конвертер"
+	ru["reports.error.chartNotFound"] = "\u0413\u0440\u0430\u0444\u0438\u043a \u043d\u0435 \u043d\u0430\u0439\u0434\u0435\u043d"
+	ru["reports.error.snapshotRequired"] = "\u041d\u0443\u0436\u0435\u043d \u0441\u043d\u0430\u043f\u0448\u043e\u0442"
+	ru["reports.error.exportChartsUnavailable"] = "\u0414\u043b\u044f \u044d\u043a\u0441\u043f\u043e\u0440\u0442\u0430 \u0433\u0440\u0430\u0444\u0438\u043a\u043e\u0432 \u043d\u0443\u0436\u0435\u043d \u043b\u043e\u043a\u0430\u043b\u044c\u043d\u044b\u0439 \u043a\u043e\u043d\u0432\u0435\u0440\u0442\u0435\u0440"
 	en["reports.error.chartNotFound"] = "Chart not found"
 	en["reports.error.snapshotRequired"] = "Snapshot required"
 	en["reports.error.exportChartsUnavailable"] = "Chart export requires a local converter"
-	ru["docs.onlyoffice.disabled"] = "OnlyOffice отключен"
-	ru["docs.onlyoffice.unsupportedFormat"] = "OnlyOffice поддерживает только DOCX"
-	ru["docs.onlyoffice.invalidToken"] = "Недействительный токен OnlyOffice"
-	ru["docs.onlyoffice.misconfigured"] = "OnlyOffice настроен некорректно"
-	ru["docs.onlyoffice.saveReason"] = "Редактирование в OnlyOffice"
-	ru["docs.onlyoffice.forceSaveFailed"] = "Не удалось выполнить сохранение в OnlyOffice"
-	ru["docs.onlyoffice.forceSaveNoVersion"] = "Сохранение запрошено, но новая версия документа не была создана"
+	ru["docs.onlyoffice.disabled"] = "OnlyOffice \u043e\u0442\u043a\u043b\u044e\u0447\u0435\u043d"
+	ru["docs.onlyoffice.unsupportedFormat"] = "OnlyOffice \u043f\u043e\u0434\u0434\u0435\u0440\u0436\u0438\u0432\u0430\u0435\u0442 \u0442\u043e\u043b\u044c\u043a\u043e DOCX"
+	ru["docs.onlyoffice.invalidToken"] = "\u041d\u0435\u0434\u0435\u0439\u0441\u0442\u0432\u0438\u0442\u0435\u043b\u044c\u043d\u044b\u0439 \u0442\u043e\u043a\u0435\u043d OnlyOffice"
+	ru["docs.onlyoffice.misconfigured"] = "OnlyOffice \u043d\u0430\u0441\u0442\u0440\u043e\u0435\u043d \u043d\u0435\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u043e"
+	ru["docs.onlyoffice.saveReason"] = "\u0420\u0435\u0434\u0430\u043a\u0442\u0438\u0440\u043e\u0432\u0430\u043d\u0438\u0435 \u0432 OnlyOffice"
+	ru["docs.onlyoffice.forceSaveFailed"] = "\u041d\u0435 \u0443\u0434\u0430\u043b\u043e\u0441\u044c \u0432\u044b\u043f\u043e\u043b\u043d\u0438\u0442\u044c \u0441\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0432 OnlyOffice"
+	ru["docs.onlyoffice.forceSaveNoVersion"] = "\u0421\u043e\u0445\u0440\u0430\u043d\u0435\u043d\u0438\u0435 \u0437\u0430\u043f\u0440\u043e\u0448\u0435\u043d\u043e, \u043d\u043e \u043d\u043e\u0432\u0430\u044f \u0432\u0435\u0440\u0441\u0438\u044f \u0434\u043e\u043a\u0443\u043c\u0435\u043d\u0442\u0430 \u043d\u0435 \u0431\u044b\u043b\u0430 \u0441\u043e\u0437\u0434\u0430\u043d\u0430"
 	en["docs.onlyoffice.disabled"] = "OnlyOffice is disabled"
 	en["docs.onlyoffice.unsupportedFormat"] = "Only DOCX is supported for OnlyOffice editing"
 	en["docs.onlyoffice.invalidToken"] = "Invalid OnlyOffice token"
@@ -482,7 +484,7 @@ func localized(lang, key string) string {
 func localizedUntil(lang, key string, until time.Time) string {
 	format := "2006-01-02 15:04"
 	if lang == "ru" {
-		return "Аккаунт заблокирован до " + until.Format(format)
+		return "Р С’Р С”Р С”Р В°РЎС“Р Р…РЎвЂљ Р В·Р В°Р В±Р В»Р С•Р С”Р С‘РЎР‚Р С•Р Р†Р В°Р Р… Р Т‘Р С• " + until.Format(format)
 	}
 	return "Account locked until " + until.Format(format)
 }

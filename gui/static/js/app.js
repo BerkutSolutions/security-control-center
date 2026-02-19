@@ -185,7 +185,17 @@
       }
     }
     setActiveLink(path);
-    await loadPage(path);
+    const loaded = await loadPage(path);
+    if (loaded && loaded.forbidden) {
+      const fallback = firstAllowedPath(path);
+      if (fallback) {
+        currentPage = fallback;
+        window.history.replaceState({}, '', `/${fallback}`);
+        setActiveLink(fallback);
+        await loadPage(fallback);
+      }
+      return false;
+    }
     return true;
   }
 
@@ -215,13 +225,19 @@
     });
   }
 
+  function firstAllowedPath(exclude) {
+    const ordered = sortMenuItems(menuResp?.menu || []);
+    const first = ordered.find(i => i && i.path && i.path !== exclude);
+    return first ? first.path : null;
+  }
+
   async function loadPage(path) {
     document.body.classList.remove('dashboard-mode');
     const res = await fetch(`/api/page/${path}`, { credentials: 'include' });
     const area = document.getElementById('content-area');
     if (!res.ok) {
       area.textContent = BerkutI18n.t('common.accessDenied');
-      return;
+      return { ok: false, forbidden: res.status === 403 };
     }
     const html = await res.text();
     area.innerHTML = html;
@@ -281,6 +297,7 @@
     if (path === 'backups' && typeof BackupsPage !== 'undefined') {
       BackupsPage.init();
     }
+    return { ok: true };
   }
 
   async function handlePreferencesChange(nextPrefs, menu, currentPath) {

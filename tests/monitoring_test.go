@@ -222,7 +222,13 @@ func TestMonitoringPermissions(t *testing.T) {
 	if !policy.Allowed([]string{"admin"}, "monitoring.incidents.link") {
 		t.Fatalf("admin should link incidents")
 	}
-	if policy.Allowed([]string{"analyst"}, "monitoring.view") {
-		t.Fatalf("analyst must not view monitoring by default")
+	if !policy.Allowed([]string{"analyst"}, "monitoring.view") {
+		t.Fatalf("analyst should view monitoring")
+	}
+	if !policy.Allowed([]string{"analyst"}, "monitoring.events.view") {
+		t.Fatalf("analyst should view monitoring events")
+	}
+	if policy.Allowed([]string{"analyst"}, "monitoring.manage") {
+		t.Fatalf("analyst must not manage monitoring")
 	}
 }

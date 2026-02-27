@@ -561,8 +561,14 @@ func (s *Server) requiredMenuKeys(path string) []string {
 		return []string{"dashboard"}
 	case strings.HasPrefix(p, "/monitoring") || strings.HasPrefix(p, "/api/monitoring"):
 		return []string{"monitoring"}
-	case strings.HasPrefix(p, "/controls") || strings.HasPrefix(p, "/api/controls"):
+	case strings.HasPrefix(p, "/controls") || strings.HasPrefix(p, "/registry") || strings.HasPrefix(p, "/api/controls"):
 		return []string{"controls"}
+	case strings.HasPrefix(p, "/assets") || strings.HasPrefix(p, "/api/assets"):
+		// Assets registry is part of "Registries" UX (controls tab), but can also be granted directly.
+		return []string{"controls", "assets"}
+	case strings.HasPrefix(p, "/software") || strings.HasPrefix(p, "/api/software"):
+		// Software registry is part of "Registries" UX (controls tab), but can also be granted directly.
+		return []string{"controls", "software"}
 	case strings.HasPrefix(p, "/tasks") || strings.HasPrefix(p, "/api/tasks"):
 		return []string{"tasks"}
 	case strings.HasPrefix(p, "/incidents") || strings.HasPrefix(p, "/api/incidents"):
@@ -575,6 +581,9 @@ func (s *Server) requiredMenuKeys(path string) []string {
 		return []string{"docs"}
 	case strings.HasPrefix(p, "/approvals") || strings.HasPrefix(p, "/api/approvals"):
 		return []string{"approvals"}
+	case strings.HasPrefix(p, "/findings") || strings.HasPrefix(p, "/api/findings"):
+		// Findings/Observations registry is part of "Registries" UX (controls tab), but can also be granted directly.
+		return []string{"controls", "findings"}
 	case strings.HasPrefix(p, "/accounts") || strings.HasPrefix(p, "/api/accounts"):
 		return []string{"accounts"}
 	case strings.HasPrefix(p, "/settings") || strings.HasPrefix(p, "/api/settings"):

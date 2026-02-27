@@ -168,6 +168,36 @@ func (h *Handler) AddLink(w http.ResponseWriter, r *http.Request) {
 		}
 	case "control":
 		// Controls module is not enforced at this stage.
+	case "asset":
+		if h.assetsStore == nil || h.policy == nil || !h.policy.Allowed(roles, "assets.view") || !allowedByMenuPermissions(eff.MenuPermissions, "assets") {
+			respondError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		assetID, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || assetID == 0 {
+			respondError(w, http.StatusBadRequest, "bad request")
+			return
+		}
+		asset, err := h.assetsStore.GetAsset(r.Context(), assetID)
+		if err != nil || asset == nil || asset.DeletedAt != nil {
+			respondError(w, http.StatusNotFound, "not found")
+			return
+		}
+	case "software":
+		if h.softwareStore == nil || h.policy == nil || !h.policy.Allowed(roles, "software.view") || !allowedByMenuPermissions(eff.MenuPermissions, "software") {
+			respondError(w, http.StatusForbidden, "forbidden")
+			return
+		}
+		prodID, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || prodID == 0 {
+			respondError(w, http.StatusBadRequest, "bad request")
+			return
+		}
+		p, err := h.softwareStore.GetProduct(r.Context(), prodID)
+		if err != nil || p == nil || p.DeletedAt != nil {
+			respondError(w, http.StatusNotFound, "not found")
+			return
+		}
 	default:
 		respondError(w, http.StatusBadRequest, "bad request")
 		return
@@ -258,4 +288,16 @@ func (h *Handler) DeleteLink(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	respondJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func allowedByMenuPermissions(menu []string, key string) bool {
+	if len(menu) == 0 {
+		return true
+	}
+	for _, m := range menu {
+		if m == key {
+			return true
+		}
+	}
+	return false
 }

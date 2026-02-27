@@ -318,6 +318,8 @@
     height: 18px;
   }
 
+  /* (reserved for future sidebar nesting) */
+
   .sidebar-footer {
     margin-top: auto;
     padding: 14px 12px 18px;
@@ -620,6 +622,24 @@
     font-size: 14px;
   }
 
+  .app-update-link {
+    display: block;
+    width: 100%;
+    margin-top: 8px;
+    text-align: center;
+    padding: 4px 10px;
+  }
+
+  .settings-updates-banner {
+    margin: 12px 0 0 0;
+    text-align: left;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+
   .btn:not(:disabled):active {
     transform: translateY(1px);
   }
@@ -687,6 +707,12 @@
     font-size: 14px;
     outline: none;
     transition: border 0.2s, box-shadow 0.2s;
+  }
+
+  .form-field input[type="date"],
+  .form-field input[type="datetime-local"] {
+    height: 40px;
+    box-sizing: border-box;
   }
 
   .form-field input:focus,
@@ -790,6 +816,10 @@
     align-items: flex-end;
     justify-content: flex-end;
     gap: 10px;
+  }
+
+  .form-actions-inline.align-start {
+    justify-content: flex-start;
   }
 
   .form-actions {
@@ -2065,6 +2095,18 @@
     gap: 12px;
   }
 
+  .modal-section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 10px;
+  }
+
+  .modal-section-header h4 {
+    margin: 0;
+  }
+
   .modal-content ul {
     list-style: none;
     margin: 0;
@@ -2634,6 +2676,10 @@
   background: #ff6b6b;
 }
 
+.status-dot.dns {
+  background: #f2994a;
+}
+
 .status-dot.paused {
   background: #f2c94c;
 }
@@ -2658,6 +2704,15 @@
   gap: 16px;
   align-items: center;
   flex-wrap: wrap;
+}
+
+.monitor-detail-link {
+  color: inherit;
+  text-decoration: underline;
+}
+
+.monitor-detail-link:hover {
+  color: rgba(125, 155, 255, 0.95);
 }
 
 .monitoring-title-row {
@@ -2690,6 +2745,10 @@
 
 .monitoring-status-strip span.down {
   background: rgba(255, 107, 107, 0.8);
+}
+
+.monitoring-status-strip span.dns {
+  background: rgba(242, 153, 74, 0.82);
 }
 
 .monitoring-status-strip span.paused {
@@ -2836,6 +2895,10 @@
 
 .monitoring-event.down {
   border: 1px solid rgba(255, 107, 107, 0.3);
+}
+
+.monitoring-event.dns {
+  border: 1px solid rgba(242, 153, 74, 0.35);
 }
 
 .monitoring-event.maintenance {

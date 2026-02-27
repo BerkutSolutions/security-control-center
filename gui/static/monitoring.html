@@ -58,6 +58,7 @@
                 <option value="" data-i18n="common.all">All</option>
                 <option value="up" data-i18n="monitoring.status.up">UP</option>
                 <option value="down" data-i18n="monitoring.status.down">DOWN</option>
+                <option value="dns" data-i18n="monitoring.status.dns">DNS</option>
                 <option value="paused" data-i18n="monitoring.status.paused">PAUSED</option>
                 <option value="maintenance" data-i18n="monitoring.status.maintenance">MAINTENANCE</option>
               </select>
@@ -89,6 +90,14 @@
                 </div>
                 <div class="muted" id="monitor-detail-target"></div>
                 <div class="monitor-detail-tags" id="monitor-detail-tags"></div>
+                <div id="monitor-assets-wrap" hidden>
+                  <div class="muted">
+                    <span data-i18n="monitoring.assets.title">Assets</span>
+                    <button class="btn ghost btn-xs" type="button" id="monitor-assets-edit" data-i18n="monitoring.assets.manage">Manage</button>
+                  </div>
+                  <div class="monitor-detail-tags" id="monitor-detail-assets"></div>
+                  <div class="muted" id="monitor-detail-assets-empty" hidden data-i18n="monitoring.assets.empty">No assets</div>
+                </div>
                 <div class="monitoring-maintenance" id="monitor-maintenance-info" hidden></div>
                 <div class="alert" id="monitor-detail-alert" hidden></div>
               </div>
@@ -142,6 +151,28 @@
         </section>
       </div>
     </div>
+
+    <div class="modal" id="monitor-assets-modal" hidden>
+      <div class="modal-backdrop"></div>
+      <div class="modal-body">
+        <div class="modal-header">
+          <h3 data-i18n="monitoring.assets.modalTitle">Assets</h3>
+          <button class="btn ghost" data-close="#monitor-assets-modal" aria-label="Close">x</button>
+        </div>
+        <div class="modal-content">
+          <div class="alert" id="monitor-assets-alert" hidden></div>
+          <div class="form-field">
+            <label data-i18n="monitoring.assets.search">Search</label>
+            <input id="monitor-assets-search" class="input" data-i18n-placeholder="monitoring.assets.searchPlaceholder" placeholder="Search">
+          </div>
+          <div class="links-list" id="monitor-assets-list"></div>
+          <div class="form-actions">
+            <button class="btn primary" type="button" id="monitor-assets-save" data-i18n="common.save">Save</button>
+            <button class="btn ghost" type="button" data-close="#monitor-assets-modal" data-i18n="common.cancel">Cancel</button>
+          </div>
+        </div>
+      </div>
+    </div>
     <div class="tab-panel" id="monitoring-tab-events" data-tab="monitoring-tab-events" hidden>
       <div class="card" id="monitor-events-center">
         <div class="card-header">
@@ -170,6 +201,7 @@
                 <option value="" data-i18n="common.all">All</option>
                 <option value="up" data-i18n="monitoring.status.up">UP</option>
                 <option value="down" data-i18n="monitoring.status.down">DOWN</option>
+                <option value="dns" data-i18n="monitoring.status.dns">DNS</option>
                 <option value="maintenance_start" data-i18n="monitoring.event.maintenanceStart">Maintenance start</option>
                 <option value="maintenance_end" data-i18n="monitoring.event.maintenanceEnd">Maintenance end</option>
                 <option value="tls_expiring" data-i18n="monitoring.event.tlsExpiring">TLS expiring</option>
@@ -423,6 +455,12 @@
               <label class="checkbox">
                 <input type="checkbox" id="monitoring-notify-maintenance">
                 <span data-i18n="monitoring.settings.notifyMaintenance">Notify maintenance start/end</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="monitoring-log-dns-events">
+                <span data-i18n="monitoring.settings.logDnsEvents">Log DNS issues as events</span>
               </label>
             </div>
             <div class="form-field">

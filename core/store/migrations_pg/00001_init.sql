@@ -761,6 +761,7 @@ CREATE TABLE IF NOT EXISTS monitoring_settings (
 		notify_suppress_minutes INTEGER NOT NULL DEFAULT 5,
 		notify_repeat_down_minutes INTEGER NOT NULL DEFAULT 30,
 		notify_maintenance INTEGER NOT NULL DEFAULT 0,
+		log_dns_events INTEGER NOT NULL DEFAULT 1,
 	auto_task_on_down INTEGER NOT NULL DEFAULT 1,
 	auto_tls_incident INTEGER NOT NULL DEFAULT 1,
 	auto_tls_incident_days INTEGER NOT NULL DEFAULT 14,

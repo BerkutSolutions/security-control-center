@@ -202,4 +202,3 @@ func (s *SQLStore) getColumnTx(ctx context.Context, tx *sql.Tx, columnID int64) 
 	c.IsActive = active == 1
 	return &c, nil
 }
-

@@ -212,4 +212,3 @@ func (s *SQLStore) getSubColumnTx(ctx context.Context, tx *sql.Tx, subcolumnID i
 	sc.IsActive = active == 1
 	return &sc, nil
 }
-

@@ -7,8 +7,19 @@ Operational overview and saved layout.
 Spaces/boards/tasks, parent-child links, comments/files, archive, recurring.
 Routes: `/tasks`, `/tasks/space/{id}`, `/tasks/space/{space}/task/{task}`.
 
-## Controls
-Controls registry, checks/violations, comments and links.
+## Registries
+Registries umbrella: controls, checks/violations, frameworks, plus Assets/Software/Findings registries and their relations.
+Tab routes:
+- `/registry/overview`
+- `/registry/controls`
+- `/registry/checks`
+- `/registry/violations`
+- `/registry/frameworks`
+- `/registry/assets`
+- `/registry/software`
+- `/registry/findings`
+
+Legacy routes `/controls/...` and direct `/assets`, `/software`, `/findings` may still exist, but the canonical UI entry is the Registries tab (`/registry/...`).
 
 ## Monitoring
 Tab routes:
@@ -53,10 +64,7 @@ Tab routes:
 Users, roles, groups, sessions, import.
 
 ## Settings
-General/Advanced/HTTPS/Tags/Incidents/Controls/About.
+General/Advanced/HTTPS/Tags/Incidents/Registries/About.
 
 ## Logs
 Audit log viewer.
-
-## Findings
-Reserved placeholder section.

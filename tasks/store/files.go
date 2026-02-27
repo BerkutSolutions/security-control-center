@@ -72,4 +72,3 @@ func (s *SQLStore) DeleteTaskFile(ctx context.Context, taskID, fileID int64) err
 	_, err := s.db.ExecContext(ctx, `DELETE FROM task_files WHERE id=? AND task_id=?`, fileID, taskID)
 	return err
 }
-

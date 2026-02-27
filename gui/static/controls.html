@@ -1,10 +1,13 @@
 <div class="page" id="controls-page">
   <div class="tabs browser-tabs controls-tabs" id="controls-tabs">
-    <button class="tab-btn active" data-tab="controls-tab-overview" data-i18n="controls.tabs.overview">Overview</button>
-    <button class="tab-btn" data-tab="controls-tab-controls" data-i18n="controls.tabs.controls">Controls</button>
-    <button class="tab-btn" data-tab="controls-tab-checks" data-i18n="controls.tabs.checks">Checks</button>
-    <button class="tab-btn" data-tab="controls-tab-violations" data-i18n="controls.tabs.violations">Violations</button>
-    <button class="tab-btn" data-tab="controls-tab-frameworks" data-i18n="controls.tabs.frameworks">Frameworks</button>
+    <a class="tab-btn active" href="/registry/overview" data-tab="controls-tab-overview" data-i18n="controls.tabs.overview">Overview</a>
+    <a class="tab-btn" href="/registry/controls" data-tab="controls-tab-controls" data-i18n="controls.tabs.controls">Controls</a>
+    <a class="tab-btn" href="/registry/checks" data-tab="controls-tab-checks" data-i18n="controls.tabs.checks">Checks</a>
+    <a class="tab-btn" href="/registry/violations" data-tab="controls-tab-violations" data-i18n="controls.tabs.violations">Violations</a>
+    <a class="tab-btn" href="/registry/frameworks" data-tab="controls-tab-frameworks" data-i18n="controls.tabs.frameworks">Frameworks</a>
+    <a class="tab-btn" href="/registry/assets" data-tab="controls-tab-assets" data-i18n="assets.title">Assets</a>
+    <a class="tab-btn" href="/registry/software" data-tab="controls-tab-software" data-i18n="software.title">Software</a>
+    <a class="tab-btn" href="/registry/findings" data-tab="controls-tab-findings" data-i18n="findings.title">Findings</a>
   </div>
 
   <div class="tab-panels controls-panels">
@@ -244,6 +247,10 @@
         </div>
       </div>
     </div>
+
+    <div class="tab-panel" id="controls-tab-assets" data-tab="controls-tab-assets" hidden></div>
+    <div class="tab-panel" id="controls-tab-software" data-tab="controls-tab-software" hidden></div>
+    <div class="tab-panel" id="controls-tab-findings" data-tab="controls-tab-findings" hidden></div>
   </div>
 
   <div class="modal" id="control-modal" hidden>
@@ -307,6 +314,8 @@
               <option value="doc" data-i18n="controls.links.type.doc">Документ</option>
               <option value="task" data-i18n="controls.links.type.task">Задача</option>
               <option value="incident" data-i18n="controls.links.type.incident">Инцидент</option>
+              <option value="asset" data-i18n="controls.links.type.asset">Актив</option>
+              <option value="software" data-i18n="controls.links.type.software">Software</option>
             </select>
             <select id="control-link-relation" class="select">
               <option value="related" data-i18n="controls.links.relation.related">Связано</option>

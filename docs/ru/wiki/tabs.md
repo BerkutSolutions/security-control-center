@@ -7,8 +7,19 @@
 Spaces/boards/tasks, parent-child связи, комментарии, файлы, архив, recurring.
 Маршруты: `/tasks`, `/tasks/space/{id}`, `/tasks/space/{space}/task/{task}`.
 
-## Controls
-Реестр контролей, checks/violations, комментарии и связи.
+## Реестры
+Единая вкладка реестров: контроли, проверки/нарушения, фреймворки, а также реестры Активов/ПО/Замечаний и их связи.
+Маршруты вкладок:
+- `/registry/overview`
+- `/registry/controls`
+- `/registry/checks`
+- `/registry/violations`
+- `/registry/frameworks`
+- `/registry/assets`
+- `/registry/software`
+- `/registry/findings`
+
+Legacy маршруты `/controls/...` и прямые `/assets`, `/software`, `/findings` могут оставаться для совместимости, но каноничный вход в UI — через «Реестры» (`/registry/...`).
 
 ## Monitoring
 Маршруты вкладок:
@@ -53,7 +64,7 @@ Builder, sections, charts, snapshots, templates, export.
 Пользователи, роли, группы, сессии, импорт.
 
 ## Settings
-General/Advanced/HTTPS/Tags/Incidents/Controls/About.
+General/Advanced/HTTPS/Tags/Incidents/Registries/About.
 
 ## Logs
 Просмотр аудита операций.

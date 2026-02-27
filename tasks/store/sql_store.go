@@ -79,4 +79,3 @@ func withTx(ctx context.Context, db *sql.DB, fn func(*sql.Tx) error) error {
 	}
 	return tx.Commit()
 }
-

@@ -3,7 +3,7 @@
   let inactivityTimer;
   let autoLogoutHandler;
   let pingTimer;
-  const MENU_ORDER = ['dashboard', 'tasks', 'controls', 'monitoring', 'docs', 'approvals', 'incidents', 'reports', 'accounts', 'settings', 'backups', 'logs'];
+  const MENU_ORDER = ['dashboard', 'tasks', 'monitoring', 'docs', 'approvals', 'incidents', 'registry', 'reports', 'accounts', 'settings', 'backups', 'logs'];
   const lang = prefs.language || localStorage.getItem('berkut_lang') || 'ru';
   await BerkutI18n.load(lang);
   BerkutI18n.apply();
@@ -60,6 +60,9 @@
           DocsPage.switchTab(nextTab);
         }
       }
+      if ((target === 'controls' || target === 'registry') && typeof ControlsPage !== 'undefined' && ControlsPage.syncRouteTab) {
+        ControlsPage.syncRouteTab();
+      }
       if (target === 'monitoring' && typeof MonitoringPage !== 'undefined' && MonitoringPage.syncRouteTab) {
         MonitoringPage.syncRouteTab();
       }
@@ -97,10 +100,13 @@
     if (base === 'settings') return 'settings';
     if (base === 'accounts') return 'accounts';
     if (base === 'dashboard') return 'dashboard';
-    if (base === 'controls') return 'controls';
+    if (base === 'registry') return 'registry';
+    if (base === 'controls') return 'registry';
     if (base === 'monitoring') return 'monitoring';
     if (base === 'backups') return 'backups';
     if (base === 'reports') return 'reports';
+    if (base === 'assets') return 'assets';
+    if (base === 'software') return 'software';
     if (base === 'findings') return 'findings';
     if (base === 'logs') return 'logs';
     return items.find(i => i.path === base)?.path || null;
@@ -199,16 +205,21 @@
     return true;
   }
 
+  window.AppNav = {
+    navigateTo: (path, updateHash = true) => navigateTo(path, updateHash),
+  };
+
   function renderMenu(items, activePath) {
     const nav = document.getElementById('menu');
     nav.innerHTML = '';
+    const activeKey = ['assets', 'software', 'findings'].includes(activePath) ? 'registry' : activePath;
     sortMenuItems(items).forEach(item => {
       const link = document.createElement('a');
       link.className = 'sidebar-link';
       link.href = `/${item.path}`;
       link.textContent = BerkutI18n.t(`nav.${item.name}`) || item.name;
       link.dataset.path = item.path;
-      if (item.path === activePath) {
+      if (item.path === activeKey) {
         link.classList.add('active');
       }
       link.addEventListener('click', async (e) => {
@@ -220,8 +231,9 @@
   }
 
   function setActiveLink(path) {
+    const effective = ['assets', 'software', 'findings'].includes(path) ? 'registry' : path;
     document.querySelectorAll('.sidebar-link').forEach(link => {
-      link.classList.toggle('active', link.dataset.path === path);
+      link.classList.toggle('active', link.dataset.path === effective);
     });
   }
 
@@ -247,7 +259,8 @@
       if (titleEl) titleEl.textContent = '';
       if (descEl) descEl.textContent = '';
     } else {
-      if (titleEl) titleEl.textContent = BerkutI18n.t(`nav.${path}`) || path;
+      const titleKey = path === 'registry' ? 'nav.controls' : `nav.${path}`;
+      if (titleEl) titleEl.textContent = BerkutI18n.t(titleKey) || path;
       if (descEl) descEl.textContent = descriptionFor(path);
     }
     BerkutI18n.apply();
@@ -285,8 +298,21 @@
     if (path === 'dashboard' && typeof DashboardPage !== 'undefined') {
       DashboardPage.init();
     }
+    // legacy "controls" route is mapped to "registry" by pathFromLocation; keep a safety init.
     if (path === 'controls' && typeof ControlsPage !== 'undefined') {
       ControlsPage.init();
+    }
+    if (path === 'registry' && typeof ControlsPage !== 'undefined') {
+      ControlsPage.init();
+    }
+    if (path === 'assets' && typeof AssetsPage !== 'undefined') {
+      AssetsPage.init();
+    }
+    if (path === 'software' && typeof SoftwarePage !== 'undefined') {
+      SoftwarePage.init();
+    }
+    if (path === 'findings' && typeof FindingsPage !== 'undefined') {
+      FindingsPage.init();
     }
     if (path === 'monitoring' && typeof MonitoringPage !== 'undefined') {
       MonitoringPage.init();
@@ -382,12 +408,24 @@
     }
     if (!badgeEl) return;
     const update = meta?.update;
-    if (update?.has_update) {
+    const updatesEnabled = !!meta?.update_checks_enabled;
+    if (updatesEnabled && update?.has_update) {
       badgeEl.hidden = false;
-      badgeEl.textContent = `${BerkutI18n.t('settings.updates.available')}: ${update.latest_version || '-'}`;
+      badgeEl.textContent = BerkutI18n.t('settings.updates.available');
+      badgeEl.href = update.release_url || meta?.repository_url || '#';
+      badgeEl.target = '_blank';
+      badgeEl.rel = 'noopener noreferrer';
+      const checkedAtRaw = update?.checked_at || '';
+      const checkedAt = checkedAtRaw && AppTime?.formatDateTime ? AppTime.formatDateTime(checkedAtRaw) : checkedAtRaw;
+      const latest = update.latest_version || '-';
+      badgeEl.title = checkedAt ? `${latest} (${checkedAt})` : `${latest}`;
     } else {
       badgeEl.hidden = true;
       badgeEl.textContent = '';
+      badgeEl.removeAttribute('href');
+      badgeEl.removeAttribute('target');
+      badgeEl.removeAttribute('rel');
+      badgeEl.removeAttribute('title');
     }
   }
 
@@ -407,6 +445,16 @@
       closeModalWithHook(openModals[openModals.length - 1]);
     });
     document.addEventListener('click', (e) => {
+      const closeBtn = e.target.closest('[data-close]');
+      if (closeBtn) {
+        e.preventDefault();
+        e.stopPropagation();
+        const sel = closeBtn.getAttribute('data-close');
+        if (!sel) return;
+        const modal = document.querySelector(sel);
+        closeModalWithHook(modal);
+        return;
+      }
       const backdrop = e.target.closest('.modal-backdrop');
       if (!backdrop) return;
       const modal = backdrop.closest('.modal');
@@ -436,7 +484,15 @@
       case 'tasks':
         return BerkutI18n.t('tasks.subtitle');
       case 'controls':
-        return BerkutI18n.t('controls.subtitle');
+        return BerkutI18n.t('registry.subtitle');
+      case 'registry':
+        return BerkutI18n.t('registry.subtitle');
+      case 'assets':
+        return BerkutI18n.t('assets.subtitle');
+      case 'software':
+        return BerkutI18n.t('software.subtitle');
+      case 'findings':
+        return BerkutI18n.t('findings.subtitle');
       case 'monitoring':
         return BerkutI18n.t('monitoring.subtitle');
       case 'logs':

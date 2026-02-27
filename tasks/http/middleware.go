@@ -28,12 +28,14 @@ type Handler struct {
 	incidentsStore cstore.IncidentsStore
 	incidentsSvc   *incidents.Service
 	controlsStore  cstore.ControlsStore
+	assetsStore    cstore.AssetsStore
+	softwareStore  cstore.SoftwareStore
 	entityLinks    cstore.EntityLinksStore
 	policy         *rbac.Policy
 	audits         cstore.AuditStore
 }
 
-func NewHandler(cfg *config.AppConfig, svc *tasks.Service, users cstore.UsersStore, docsStore cstore.DocsStore, docsSvc *docs.Service, incidentsStore cstore.IncidentsStore, incidentsSvc *incidents.Service, controlsStore cstore.ControlsStore, entityLinks cstore.EntityLinksStore, policy *rbac.Policy, audits cstore.AuditStore) *Handler {
+func NewHandler(cfg *config.AppConfig, svc *tasks.Service, users cstore.UsersStore, docsStore cstore.DocsStore, docsSvc *docs.Service, incidentsStore cstore.IncidentsStore, incidentsSvc *incidents.Service, controlsStore cstore.ControlsStore, assetsStore cstore.AssetsStore, softwareStore cstore.SoftwareStore, entityLinks cstore.EntityLinksStore, policy *rbac.Policy, audits cstore.AuditStore) *Handler {
 	return &Handler{
 		cfg:            cfg,
 		svc:            svc,
@@ -43,6 +45,8 @@ func NewHandler(cfg *config.AppConfig, svc *tasks.Service, users cstore.UsersSto
 		incidentsStore: incidentsStore,
 		incidentsSvc:   incidentsSvc,
 		controlsStore:  controlsStore,
+		assetsStore:    assetsStore,
+		softwareStore:  softwareStore,
 		entityLinks:    entityLinks,
 		policy:         policy,
 		audits:         audits,

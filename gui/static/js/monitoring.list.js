@@ -361,6 +361,7 @@
   function statusClass(status) {
     const v = (status || '').toLowerCase();
     if (v === 'up') return 'up';
+    if (v === 'dns') return 'dns';
     if (v === 'paused') return 'paused';
     if (v === 'maintenance') return 'maintenance';
     return 'down';

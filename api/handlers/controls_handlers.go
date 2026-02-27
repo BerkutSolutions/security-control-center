@@ -24,13 +24,15 @@ type ControlsHandler struct {
 	docs      store.DocsStore
 	incidents store.IncidentsStore
 	tasks     tasks.Store
+	assets    store.AssetsStore
+	software  store.SoftwareStore
 	audits    store.AuditStore
 	policy    *rbac.Policy
 	logger    *utils.Logger
 }
 
-func NewControlsHandler(cs store.ControlsStore, links store.EntityLinksStore, us store.UsersStore, ds store.DocsStore, is store.IncidentsStore, ts tasks.Store, audits store.AuditStore, policy *rbac.Policy, logger *utils.Logger) *ControlsHandler {
-	return &ControlsHandler{store: cs, links: links, users: us, docs: ds, incidents: is, tasks: ts, audits: audits, policy: policy, logger: logger}
+func NewControlsHandler(cs store.ControlsStore, links store.EntityLinksStore, us store.UsersStore, ds store.DocsStore, is store.IncidentsStore, ts tasks.Store, assets store.AssetsStore, software store.SoftwareStore, audits store.AuditStore, policy *rbac.Policy, logger *utils.Logger) *ControlsHandler {
+	return &ControlsHandler{store: cs, links: links, users: us, docs: ds, incidents: is, tasks: ts, assets: assets, software: software, audits: audits, policy: policy, logger: logger}
 }
 
 func (h *ControlsHandler) ListControls(w http.ResponseWriter, r *http.Request) {
@@ -322,9 +324,22 @@ func (h *ControlsHandler) ListControlLinks(w http.ResponseWriter, r *http.Reques
 	if !ok {
 		return
 	}
-	if _, err := h.userFromSession(r.Context(), sess); err != nil {
+	user, err := h.userFromSession(r.Context(), sess)
+	if err != nil || user == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
+	}
+	canViewAssets := false
+	if h.assets != nil && h.policy != nil {
+		if eff, err := h.effectiveAccess(r.Context(), user, sess.Roles); err == nil {
+			canViewAssets = h.policy.Allowed(sess.Roles, "assets.view") && allowedByMenuPermissions(eff.MenuPermissions, "assets")
+		}
+	}
+	canViewSoftware := false
+	if h.software != nil && h.policy != nil {
+		if eff, err := h.effectiveAccess(r.Context(), user, sess.Roles); err == nil {
+			canViewSoftware = h.policy.Allowed(sess.Roles, "software.view") && allowedByMenuPermissions(eff.MenuPermissions, "software")
+		}
 	}
 	controlID := parseInt64Default(pathParams(r)["id"], 0)
 	if controlID == 0 {
@@ -355,6 +370,14 @@ func (h *ControlsHandler) ListControlLinks(w http.ResponseWriter, r *http.Reques
 			TargetType:   l.TargetType,
 			TargetID:     l.TargetID,
 			RelationType: l.RelationType,
+		}
+		if strings.ToLower(strings.TrimSpace(l.TargetType)) == "asset" && !canViewAssets {
+			items = append(items, view)
+			continue
+		}
+		if strings.ToLower(strings.TrimSpace(l.TargetType)) == "software" && !canViewSoftware {
+			items = append(items, view)
+			continue
 		}
 		if targetTitle := h.resolveTargetTitle(r.Context(), l.TargetType, l.TargetID); targetTitle != "" {
 			view.TargetTitle = targetTitle
@@ -407,6 +430,20 @@ func (h *ControlsHandler) CreateControlLink(w http.ResponseWriter, r *http.Reque
 	if !ok {
 		http.Error(w, "controls.links.relationInvalid", http.StatusBadRequest)
 		return
+	}
+	if targetType == "asset" {
+		eff, err := h.effectiveAccess(r.Context(), user, sess.Roles)
+		if err != nil || h.policy == nil || !h.policy.Allowed(sess.Roles, "assets.view") || !allowedByMenuPermissions(eff.MenuPermissions, "assets") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+	}
+	if targetType == "software" {
+		eff, err := h.effectiveAccess(r.Context(), user, sess.Roles)
+		if err != nil || h.policy == nil || !h.policy.Allowed(sess.Roles, "software.view") || !allowedByMenuPermissions(eff.MenuPermissions, "software") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
 	}
 	if err := h.validateLinkTarget(r.Context(), targetType, targetID); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
@@ -1166,6 +1203,30 @@ func (h *ControlsHandler) validateLinkTarget(ctx context.Context, targetType, ta
 		if err != nil || task == nil {
 			return errors.New("controls.links.targetNotFound")
 		}
+	case "asset":
+		if h.assets == nil {
+			return errors.New("controls.links.typeInvalid")
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id == 0 {
+			return errors.New("controls.links.targetInvalid")
+		}
+		asset, err := h.assets.GetAsset(ctx, id)
+		if err != nil || asset == nil || asset.DeletedAt != nil {
+			return errors.New("controls.links.targetNotFound")
+		}
+	case "software":
+		if h.software == nil {
+			return errors.New("controls.links.typeInvalid")
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id == 0 {
+			return errors.New("controls.links.targetInvalid")
+		}
+		p, err := h.software.GetProduct(ctx, id)
+		if err != nil || p == nil || p.DeletedAt != nil {
+			return errors.New("controls.links.targetNotFound")
+		}
 	default:
 		return errors.New("controls.links.typeInvalid")
 	}
@@ -1206,9 +1267,46 @@ func (h *ControlsHandler) resolveTargetTitle(ctx context.Context, targetType, ta
 			return ""
 		}
 		return task.Title
+	case "asset":
+		if h.assets == nil {
+			return ""
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id == 0 {
+			return ""
+		}
+		asset, err := h.assets.GetAsset(ctx, id)
+		if err != nil || asset == nil || asset.DeletedAt != nil {
+			return ""
+		}
+		return asset.Name
+	case "software":
+		if h.software == nil {
+			return ""
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id == 0 {
+			return ""
+		}
+		p, err := h.software.GetProduct(ctx, id)
+		if err != nil || p == nil || p.DeletedAt != nil {
+			return ""
+		}
+		if strings.TrimSpace(p.Vendor) != "" {
+			return p.Name + " (" + p.Vendor + ")"
+		}
+		return p.Name
 	default:
 		return ""
 	}
+}
+
+func (h *ControlsHandler) effectiveAccess(ctx context.Context, user *store.User, roles []string) (store.EffectiveAccess, error) {
+	if h == nil || h.users == nil || user == nil {
+		return store.EffectiveAccess{}, errors.New("no user")
+	}
+	groups, _ := h.users.UserGroups(ctx, user.ID)
+	return auth.CalculateEffectiveAccess(user, roles, groups, h.policy), nil
 }
 
 func (h *ControlsHandler) autoCreateViolationFromIncident(ctx context.Context, user *store.User, control *store.Control, incidentIDRaw string) {

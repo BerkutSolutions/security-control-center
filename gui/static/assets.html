@@ -1,0 +1,271 @@
+<div class="page" id="assets-page">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 data-i18n="assets.title">Assets</h3>
+        <p data-i18n="assets.subtitle">Assets registry</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn primary" id="assets-create" data-i18n="assets.actions.create">Create</button>
+        <button class="btn ghost" id="assets-create-report" data-i18n="common.createReport">Create report</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid three-column">
+        <div class="form-field">
+          <label data-i18n="assets.filter.search">Search</label>
+          <input type="search" id="assets-filter-q" data-i18n-placeholder="assets.filter.search" placeholder="Search">
+        </div>
+        <div class="form-field">
+          <label data-i18n="assets.filter.type">Type</label>
+          <select id="assets-filter-type">
+            <option value="" data-i18n="assets.filter.all">All</option>
+            <option value="host" data-i18n="assets.type.host">Host</option>
+            <option value="service" data-i18n="assets.type.service">Service</option>
+            <option value="application" data-i18n="assets.type.application">Application</option>
+            <option value="network" data-i18n="assets.type.network">Network</option>
+            <option value="other" data-i18n="assets.type.other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="assets.filter.criticality">Criticality</label>
+          <select id="assets-filter-criticality">
+            <option value="" data-i18n="assets.filter.all">All</option>
+            <option value="low" data-i18n="assets.criticality.low">Low</option>
+            <option value="medium" data-i18n="assets.criticality.medium">Medium</option>
+            <option value="high" data-i18n="assets.criticality.high">High</option>
+            <option value="critical" data-i18n="assets.criticality.critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="assets.filter.env">Environment</label>
+          <select id="assets-filter-env">
+            <option value="" data-i18n="assets.filter.all">All</option>
+            <option value="prod" data-i18n="assets.env.prod">Prod</option>
+            <option value="stage" data-i18n="assets.env.stage">Stage</option>
+            <option value="dev" data-i18n="assets.env.dev">Dev</option>
+            <option value="test" data-i18n="assets.env.test">Test</option>
+            <option value="other" data-i18n="assets.env.other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="assets.filter.status">Status</label>
+          <select id="assets-filter-status">
+            <option value="" data-i18n="assets.filter.all">All</option>
+            <option value="active" data-i18n="assets.status.active">Active</option>
+            <option value="decommissioned" data-i18n="assets.status.decommissioned">Decommissioned</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="assets.filter.tag">Tag</label>
+          <input id="assets-filter-tag" data-i18n-placeholder="assets.filter.tag" placeholder="Tag">
+        </div>
+        <div class="form-field" id="assets-include-deleted-field" hidden>
+          <label data-i18n="assets.filter.archived">Archived</label>
+          <select id="assets-filter-include-deleted">
+            <option value="0" data-i18n="assets.filter.activeOnly">Active only</option>
+            <option value="1" data-i18n="assets.filter.includeArchived">Include archived</option>
+          </select>
+        </div>
+        <div class="form-actions-inline align-start">
+          <button class="btn ghost" id="assets-apply" data-i18n="common.apply">Apply</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="assets-table">
+          <thead>
+            <tr>
+              <th data-i18n="assets.table.name">Name</th>
+              <th data-i18n="assets.table.type">Type</th>
+              <th data-i18n="assets.table.criticality">Criticality</th>
+              <th data-i18n="assets.table.env">Env</th>
+              <th data-i18n="assets.table.status">Status</th>
+              <th data-i18n="assets.table.ip">IP</th>
+              <th data-i18n="assets.table.owner">Owner</th>
+              <th data-i18n="assets.table.admin">Admin</th>
+              <th data-i18n="assets.table.tags">Tags</th>
+              <th data-i18n="assets.table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted" id="assets-empty" hidden data-i18n="assets.empty">No assets yet.</div>
+    </div>
+  </div>
+
+  <div class="modal" id="asset-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="asset-modal-title" data-i18n="assets.modal.createTitle">New asset</h3>
+        <button class="btn ghost" data-close="#asset-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="asset-modal-alert" hidden></div>
+        <form id="asset-form" class="form-grid two-column">
+          <input type="hidden" id="asset-id">
+          <div class="form-field required">
+            <label data-i18n="assets.field.name">Name</label>
+            <input id="asset-name" required>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="assets.field.type">Type</label>
+            <select id="asset-type" required>
+              <option value="host" data-i18n="assets.type.host">Host</option>
+              <option value="service" data-i18n="assets.type.service">Service</option>
+              <option value="application" data-i18n="assets.type.application">Application</option>
+              <option value="network" data-i18n="assets.type.network">Network</option>
+              <option value="other" data-i18n="assets.type.other">Other</option>
+            </select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="assets.field.criticality">Criticality</label>
+            <select id="asset-criticality" required>
+              <option value="low" data-i18n="assets.criticality.low">Low</option>
+              <option value="medium" data-i18n="assets.criticality.medium">Medium</option>
+              <option value="high" data-i18n="assets.criticality.high">High</option>
+              <option value="critical" data-i18n="assets.criticality.critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="assets.field.env">Environment</label>
+            <select id="asset-env" required>
+              <option value="prod" data-i18n="assets.env.prod">Prod</option>
+              <option value="stage" data-i18n="assets.env.stage">Stage</option>
+              <option value="dev" data-i18n="assets.env.dev">Dev</option>
+              <option value="test" data-i18n="assets.env.test">Test</option>
+              <option value="other" data-i18n="assets.env.other">Other</option>
+            </select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="assets.field.status">Status</label>
+            <select id="asset-status" required>
+              <option value="active" data-i18n="assets.status.active">Active</option>
+              <option value="decommissioned" data-i18n="assets.status.decommissioned">Decommissioned</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.field.commissionedAt">Commissioned</label>
+            <input type="date" id="asset-commissioned-at">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.field.ip">IP addresses</label>
+            <input id="asset-ips" data-i18n-placeholder="assets.field.ipHint" placeholder="10.0.0.1, 10.0.0.2">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.field.owner">Owner</label>
+            <input id="asset-owner" data-i18n-placeholder="assets.field.ownerHint" placeholder="Owner">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.field.admin">Administrator</label>
+            <input id="asset-admin" data-i18n-placeholder="assets.field.adminHint" placeholder="Administrator">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.field.tags">Tags</label>
+            <select id="asset-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="asset-tags"></div>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="assets.field.description">Description</label>
+            <textarea id="asset-description" rows="4"></textarea>
+          </div>
+        </form>
+
+        <div class="modal-section" id="asset-software-section" hidden>
+          <div class="modal-section-header">
+            <h4 data-i18n="assets.software.title">Software</h4>
+            <div class="btn-group">
+              <button class="btn ghost" id="asset-software-refresh" data-i18n="common.refresh">Refresh</button>
+              <button class="btn ghost" id="asset-software-add" data-i18n="assets.software.actions.add">Add</button>
+            </div>
+          </div>
+          <div class="form-grid three-column" id="asset-software-filters" hidden>
+            <div class="form-field">
+              <label data-i18n="assets.software.filter.archived">Archived</label>
+              <select id="asset-software-include-deleted">
+                <option value="0" data-i18n="assets.software.filter.activeOnly">Active only</option>
+                <option value="1" data-i18n="assets.software.filter.includeArchived">Include archived</option>
+              </select>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="asset-software-table">
+              <thead>
+                <tr>
+                  <th data-i18n="assets.software.table.product">Product</th>
+                  <th data-i18n="assets.software.table.version">Version</th>
+                  <th data-i18n="assets.software.table.installedAt">Installed</th>
+                  <th data-i18n="assets.software.table.source">Source</th>
+                  <th data-i18n="assets.software.table.notes">Notes</th>
+                  <th data-i18n="assets.software.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="asset-software-empty" hidden data-i18n="assets.software.empty">No software linked.</div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn primary" id="asset-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost" data-close="#asset-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="asset-software-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="asset-software-modal-title" data-i18n="assets.software.modal.createTitle">Add software</h3>
+        <button class="btn ghost" data-close="#asset-software-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="asset-software-modal-alert" hidden></div>
+        <form id="asset-software-form" class="form-grid two-column">
+          <input type="hidden" id="asset-software-inst-id">
+          <input type="hidden" id="asset-software-product-id">
+          <div class="form-field required" id="asset-software-product-picker">
+            <label data-i18n="assets.software.field.product">Product</label>
+            <input type="search" id="asset-software-product-q" data-i18n-placeholder="assets.software.field.productSearch" placeholder="Search">
+            <select id="asset-software-product-select"></select>
+          </div>
+          <div class="form-field" id="asset-software-product-label" hidden>
+            <label data-i18n="assets.software.field.product">Product</label>
+            <div class="mono" id="asset-software-product-text"></div>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="assets.software.field.version">Version</label>
+            <select id="asset-software-version-id">
+              <option value="0" data-i18n="assets.software.version.other">Other</option>
+            </select>
+          </div>
+          <div class="form-field required" id="asset-software-version-text-field">
+            <label data-i18n="assets.software.field.versionText">Version text</label>
+            <input id="asset-software-version-text">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.software.field.installedAt">Installed</label>
+            <input type="date" id="asset-software-installed-at">
+          </div>
+          <div class="form-field">
+            <label data-i18n="assets.software.field.source">Source</label>
+            <input id="asset-software-source">
+          </div>
+          <div class="form-field full">
+            <label data-i18n="assets.software.field.notes">Notes</label>
+            <textarea id="asset-software-notes" rows="3"></textarea>
+          </div>
+        </form>
+        <div class="modal-actions">
+          <button class="btn primary" id="asset-software-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost danger" id="asset-software-archive" data-i18n="assets.software.actions.archive">Archive</button>
+          <button class="btn ghost" data-close="#asset-software-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

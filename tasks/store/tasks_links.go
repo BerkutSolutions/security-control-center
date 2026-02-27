@@ -34,4 +34,3 @@ func (s *SQLStore) CreateTaskWithLinks(ctx context.Context, task *tasks.Task, as
 	}
 	return taskID, nil
 }
-

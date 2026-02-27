@@ -8,11 +8,12 @@ const ControlsPage = (() => {
     frameworks: [],
     frameworkItems: [],
     frameworkMap: [],
-    linkOptions: { docs: [], tasks: [], incidents: [] },
+    linkOptions: { docs: [], tasks: [], incidents: [], assets: [] },
     linkOptionsLoaded: false,
     selectedFramework: null,
     currentUser: null,
     permissions: [],
+    menuPermissions: [],
     customDomains: []
   };
   const DEFAULT_CONTROL_TYPES = ['organizational', 'technical', 'procedural'];
@@ -20,6 +21,8 @@ const ControlsPage = (() => {
   const CUSTOM_OPTIONS_KEY = 'controls.customOptions';
   let customLoaded = false;
   let activeTab = 'controls-tab-overview';
+  let lastViewKey = '';
+  let lastViewAt = 0;
   let overviewFilters = { lastCheck: '', noOwner: false, noChecks: false, status: '' };
   let pendingControlId = '';
   const TAB_MAP = {
@@ -27,7 +30,10 @@ const ControlsPage = (() => {
     controls: 'controls-tab-controls',
     checks: 'controls-tab-checks',
     violations: 'controls-tab-violations',
-    frameworks: 'controls-tab-frameworks'
+    frameworks: 'controls-tab-frameworks',
+    assets: 'controls-tab-assets',
+    software: 'controls-tab-software',
+    findings: 'controls-tab-findings'
   };
 
   function init() {
@@ -35,7 +41,7 @@ const ControlsPage = (() => {
     if (!page) return;
     loadCustomOptions();
     pendingControlId = new URLSearchParams(window.location.search).get('control') || '';
-    const initialTab = resolveTabFromUrl();
+    const initialTab = resolveTabFromLocation();
     if (initialTab) activeTab = initialTab;
     bindTabs();
     bindOverview();
@@ -45,7 +51,11 @@ const ControlsPage = (() => {
     bindFrameworksTab();
     bindModalCloseButtons();
     applyDateInputLocale();
-    switchTab(activeTab);
+    if (isRegistryTab(activeTab)) {
+      openRegistryTab(activeTab);
+    } else {
+      switchTab(activeTab);
+    }
     if (typeof UserDirectory !== 'undefined' && UserDirectory.load) {
       UserDirectory.load().then(() => {
         populateUserSelect('controls-check-filter-owner', true);
@@ -109,16 +119,67 @@ const ControlsPage = (() => {
     return TAB_MAP[key] || '';
   }
 
-  function updateTabInUrl(tabId) {
+  function resolveTabFromRoute() {
+    const parts = window.location.pathname.split('/').filter(Boolean);
+    if (parts[0] !== 'registry' && parts[0] !== 'controls') return '';
+    const slug = (parts[1] || '').toLowerCase();
+    if (!slug) return '';
+    return TAB_MAP[slug] || '';
+  }
+
+  function resolveTabFromLocation() {
+    return resolveTabFromRoute() || resolveTabFromUrl();
+  }
+
+  function tabKeyForId(tabId) {
     const reverse = Object.entries(TAB_MAP).find(([, val]) => val === tabId);
-    const key = reverse ? reverse[0] : '';
+    return reverse ? reverse[0] : '';
+  }
+
+  function logTabView(tabId) {
+    const key = tabKeyForId(tabId) || 'overview';
+    const now = Date.now();
+    if (key === lastViewKey && now-lastViewAt < 1500) return;
+    lastViewKey = key;
+    lastViewAt = now;
+    if (typeof Api === 'undefined' || !Api.post) return;
+    Api.post('/api/app/view', { page: 'registry', tab: key, path: window.location.pathname }).catch(() => {});
+  }
+
+  function updateTabInUrl(tabId, mode = 'replace') {
+    const key = tabKeyForId(tabId) || 'overview';
     const url = new URL(window.location.href);
-    if (key) {
-      url.searchParams.set('tab', key);
-    } else {
-      url.searchParams.delete('tab');
+    url.pathname = `/registry/${key}`;
+    url.searchParams.delete('tab');
+    if (mode === 'push') {
+      window.history.pushState({}, '', url.toString());
+      return;
     }
-    window.history.replaceState({}, '', url.toString());
+    if (window.location.pathname !== url.pathname || window.location.search !== url.search) {
+      window.history.replaceState({}, '', url.toString());
+    }
+  }
+
+  function syncRouteTab() {
+    const desired = resolveTabFromRoute();
+    if (!desired) {
+      // Canonicalize "/registry" or legacy "/controls" to "/registry/overview" without creating history noise.
+      const base = window.location.pathname.replace(/\/+$/, '');
+      if (base === '/registry' || base === '/controls') {
+        updateTabInUrl('controls-tab-overview', 'replace');
+      }
+      return;
+    }
+    if (window.location.pathname.split('/').filter(Boolean)[0] === 'controls') {
+      // Upgrade legacy "/controls/<tab>" to "/registry/<tab>".
+      updateTabInUrl(desired, 'replace');
+    }
+    if (desired === activeTab) return;
+    if (isRegistryTab(desired)) {
+      openRegistryTab(desired, { skipRoute: true });
+      return;
+    }
+    switchTab(desired, { skipRoute: true });
   }
 
   async function loadCurrentUser() {
@@ -126,10 +187,20 @@ const ControlsPage = (() => {
       const res = await Api.get('/api/auth/me');
       state.currentUser = res.user;
       state.permissions = Array.isArray(res.user?.permissions) ? res.user.permissions : [];
+      state.menuPermissions = Array.isArray(res.user?.menu_permissions) ? res.user.menu_permissions : [];
     } catch (_) {
       state.currentUser = null;
       state.permissions = [];
+      state.menuPermissions = [];
     }
+  }
+
+  function hasMenu(key) {
+    const perms = Array.isArray(state.menuPermissions) ? state.menuPermissions : [];
+    if (!perms.length) return true;
+    // "Registries" umbrella key:
+    if (perms.includes('controls')) return true;
+    return perms.includes(key);
   }
 
   function applyAccessControls() {
@@ -143,20 +214,39 @@ const ControlsPage = (() => {
     if (frameworkBtn) frameworkBtn.hidden = !hasPerm('controls.frameworks.manage');
     const frameworkItemBtn = document.getElementById('framework-item-create');
     if (frameworkItemBtn) frameworkItemBtn.hidden = !hasPerm('controls.frameworks.manage');
+
+    document.querySelectorAll('#controls-tabs .tab-btn[data-tab="controls-tab-assets"]').forEach(btn => {
+      btn.hidden = !hasPerm('assets.view') || !hasMenu('assets');
+    });
+    document.querySelectorAll('#controls-tabs .tab-btn[data-tab="controls-tab-software"]').forEach(btn => {
+      btn.hidden = !hasPerm('software.view') || !hasMenu('software');
+    });
+    document.querySelectorAll('#controls-tabs .tab-btn[data-tab="controls-tab-findings"]').forEach(btn => {
+      btn.hidden = !hasPerm('findings.view') || !hasMenu('findings');
+    });
   }
 
   function bindTabs() {
     const tabs = document.querySelectorAll('#controls-tabs .tab-btn');
     tabs.forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', (e) => {
+        if (btn.tagName === 'A') {
+          // Keep SPA navigation, but preserve real links for open-in-new-tab/copy.
+          e.preventDefault();
+        }
         if (btn.disabled || btn.hidden) return;
         const target = btn.dataset.tab;
-        if (target) switchTab(target);
+        if (!target) return;
+        if (isRegistryTab(target)) {
+          openRegistryTab(target, { routeMode: 'push' });
+          return;
+        }
+        switchTab(target, { routeMode: 'push' });
       });
     });
   }
 
-  function switchTab(tabId) {
+  function switchTab(tabId, opts = {}) {
     activeTab = tabId || activeTab;
     document.querySelectorAll('#controls-tabs .tab-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tab === activeTab);
@@ -164,11 +254,80 @@ const ControlsPage = (() => {
     document.querySelectorAll('.controls-panels .tab-panel').forEach(panel => {
       panel.hidden = panel.dataset.tab !== activeTab;
     });
-    updateTabInUrl(activeTab);
+    if (!opts.skipRoute) updateTabInUrl(activeTab, opts.routeMode || 'replace');
+    logTabView(activeTab);
     if (activeTab === 'controls-tab-controls') loadControls();
     if (activeTab === 'controls-tab-checks') loadChecks();
     if (activeTab === 'controls-tab-violations') loadViolations();
     if (activeTab === 'controls-tab-frameworks') loadFrameworks();
+  }
+
+  function isRegistryTab(tabId) {
+    return tabId === 'controls-tab-assets' || tabId === 'controls-tab-software' || tabId === 'controls-tab-findings';
+  }
+
+  function registryNameForTab(tabId) {
+    switch (tabId) {
+      case 'controls-tab-assets':
+        return 'assets';
+      case 'controls-tab-software':
+        return 'software';
+      case 'controls-tab-findings':
+        return 'findings';
+      default:
+        return '';
+    }
+  }
+
+  async function openRegistryTab(tabId, opts = {}) {
+    const name = registryNameForTab(tabId);
+    if (!name) return;
+    const panel = document.getElementById(tabId);
+    if (panel && panel.dataset.loaded === '1') {
+      switchTab(tabId, opts);
+      return;
+    }
+    // Load first, then switch to avoid "flash" placeholders.
+    try {
+      const res = await fetch(`/api/page/${name}`, { credentials: 'include' });
+      if (!res.ok) {
+        if (panel) {
+          panel.innerHTML = `<div class="card"><div class="card-body"><div class="alert">${escapeHtml(t('common.accessDenied'))}</div></div></div>`;
+          panel.dataset.loaded = '1';
+        }
+        switchTab(tabId, opts);
+        return;
+      }
+      const html = await res.text();
+      if (panel) {
+        panel.innerHTML = extractPageOuter(html);
+        panel.dataset.loaded = '1';
+      }
+      if (typeof BerkutI18n !== 'undefined' && BerkutI18n.apply) {
+        BerkutI18n.apply();
+      }
+      if (name === 'assets' && typeof AssetsPage !== 'undefined') AssetsPage.init();
+      if (name === 'software' && typeof SoftwarePage !== 'undefined') SoftwarePage.init();
+      if (name === 'findings' && typeof FindingsPage !== 'undefined') FindingsPage.init();
+      switchTab(tabId, opts);
+    } catch (err) {
+      if (panel) {
+        panel.innerHTML = `<div class="card"><div class="card-body"><div class="alert">${escapeHtml(localizeError(err))}</div></div></div>`;
+        panel.dataset.loaded = '1';
+      }
+      switchTab(tabId, opts);
+    }
+  }
+
+  function extractPageOuter(html) {
+    try {
+      const doc = new DOMParser().parseFromString(html || '', 'text/html');
+      const page = doc.querySelector('.page');
+      if (page) return page.outerHTML;
+      return html;
+    } catch (_) {
+      return html;
+    }
   }
 
   function bindOverview() {
@@ -834,15 +993,19 @@ const ControlsPage = (() => {
   async function ensureLinkOptions() {
     if (state.linkOptionsLoaded) return;
     try {
-      const [docsRes, incidentsRes, tasksRes] = await Promise.all([
+      const [docsRes, incidentsRes, tasksRes, assetsRes, softwareRes] = await Promise.all([
         Api.get('/api/docs/list?limit=200').catch(() => ({ items: [] })),
         Api.get('/api/incidents?limit=200').catch(() => ({ items: [] })),
-        Api.get('/api/tasks?limit=200&include_archived=1').catch(() => ({ items: [] }))
+        Api.get('/api/tasks?limit=200&include_archived=1').catch(() => ({ items: [] })),
+        Api.get('/api/assets/list?limit=200').catch(() => ({ items: [] })),
+        Api.get('/api/software/list?limit=200').catch(() => ({ items: [] }))
       ]);
       state.linkOptions = {
         docs: docsRes.items || [],
         incidents: incidentsRes.items || [],
-        tasks: tasksRes.items || []
+        tasks: tasksRes.items || [],
+        assets: assetsRes.items || [],
+        software: softwareRes.items || []
       };
     } finally {
       state.linkOptionsLoaded = true;
@@ -865,6 +1028,8 @@ const ControlsPage = (() => {
       if (type === 'doc') items = state.linkOptions.docs || [];
       if (type === 'incident') items = state.linkOptions.incidents || [];
       if (type === 'task') items = state.linkOptions.tasks || [];
+      if (type === 'asset') items = state.linkOptions.assets || [];
+      if (type === 'software') items = state.linkOptions.software || [];
       items
         .filter(item => linkOptionLabel(type, item).toLowerCase().includes(search))
         .forEach(item => {
@@ -954,6 +1119,16 @@ const ControlsPage = (() => {
     }
     if (type === 'task') {
       return `#${item.id} ${item.title || ''}`.trim();
+    }
+    if (type === 'asset') {
+      const name = item.name || '';
+      const typeLabel = item.type ? (t(`assets.type.${item.type}`) || item.type) : '';
+      const suffix = typeLabel ? ` (${typeLabel})` : '';
+      return `#${item.id} ${name}${suffix}`.trim();
+    }
+    if (type === 'software') {
+      const vendor = item.vendor ? ` (${item.vendor})` : '';
+      return `#${item.id} ${item.name || ''}${vendor}`.trim();
     }
     if (type === 'incident') {
       return incidentOptionLabel(item);
@@ -1759,7 +1934,9 @@ const ControlsPage = (() => {
     const map = {
       doc: t('controls.links.type.doc'),
       task: t('controls.links.type.task'),
-      incident: t('controls.links.type.incident')
+      incident: t('controls.links.type.incident'),
+      asset: t('controls.links.type.asset'),
+      software: t('controls.links.type.software')
     };
     return map[val] || val || '-';
   }
@@ -1783,6 +1960,10 @@ const ControlsPage = (() => {
       href = `/incidents?incident=${encodeURIComponent(targetId)}`;
     } else if (targetType === 'task') {
       href = `/tasks/task/${targetId}`;
+    } else if (targetType === 'asset') {
+      href = `/assets?asset=${encodeURIComponent(targetId)}`;
+    } else if (targetType === 'software') {
+      href = `/software?software=${encodeURIComponent(targetId)}`;
     }
     if (!href) return null;
     const btn = document.createElement('a');
@@ -1854,6 +2035,7 @@ const ControlsPage = (() => {
 
   return {
     init,
+    syncRouteTab,
     state,
     getDomains,
     loadCustomOptions,

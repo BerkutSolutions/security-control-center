@@ -21,6 +21,7 @@ import (
 
 type MonitoringHandler struct {
 	store        store.MonitoringStore
+	users        store.UsersStore
 	audits       store.AuditStore
 	engine       *monitoring.Engine
 	policy       *rbac.Policy
@@ -29,9 +30,10 @@ type MonitoringHandler struct {
 	lastCheckNow map[int64]time.Time
 }
 
-func NewMonitoringHandler(store store.MonitoringStore, audits store.AuditStore, engine *monitoring.Engine, policy *rbac.Policy, encryptor *utils.Encryptor) *MonitoringHandler {
+func NewMonitoringHandler(store store.MonitoringStore, users store.UsersStore, audits store.AuditStore, engine *monitoring.Engine, policy *rbac.Policy, encryptor *utils.Encryptor) *MonitoringHandler {
 	return &MonitoringHandler{
 		store:        store,
+		users:        users,
 		audits:       audits,
 		engine:       engine,
 		policy:       policy,

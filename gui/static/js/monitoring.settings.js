@@ -20,6 +20,7 @@
     els.notifySuppress = document.getElementById('monitoring-notify-suppress');
     els.notifyRepeat = document.getElementById('monitoring-notify-repeat');
     els.notifyMaintenance = document.getElementById('monitoring-notify-maintenance');
+    els.logDnsEvents = document.getElementById('monitoring-log-dns-events');
     els.autoTLSIncident = document.getElementById('monitoring-auto-tls-incident');
     els.autoTLSIncidentDays = document.getElementById('monitoring-auto-tls-incident-days');
     els.autoIncidentCloseOnUp = document.getElementById('monitoring-auto-incident-close-on-up');
@@ -65,6 +66,7 @@
     if (els.notifySuppress) els.notifySuppress.value = settings.notify_suppress_minutes || 5;
     if (els.notifyRepeat) els.notifyRepeat.value = settings.notify_repeat_down_minutes || 30;
     if (els.notifyMaintenance) els.notifyMaintenance.checked = !!settings.notify_maintenance;
+    if (els.logDnsEvents) els.logDnsEvents.checked = settings.log_dns_events !== false;
     if (els.autoTLSIncident) els.autoTLSIncident.checked = !!settings.auto_tls_incident;
     if (els.autoTLSIncidentDays) els.autoTLSIncidentDays.value = settings.auto_tls_incident_days || 14;
     if (els.autoIncidentCloseOnUp) els.autoIncidentCloseOnUp.checked = !!settings.auto_incident_close_on_up;
@@ -88,6 +90,7 @@
       notify_suppress_minutes: parseInt(els.notifySuppress.value, 10) || 0,
       notify_repeat_down_minutes: parseInt(els.notifyRepeat.value, 10) || 0,
       notify_maintenance: !!els.notifyMaintenance.checked,
+      log_dns_events: !!els.logDnsEvents?.checked,
       auto_tls_incident: !!els.autoTLSIncident?.checked,
       auto_tls_incident_days: parseInt(els.autoTLSIncidentDays?.value, 10) || 0,
       auto_incident_close_on_up: !!els.autoIncidentCloseOnUp?.checked,

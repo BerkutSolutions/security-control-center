@@ -24,6 +24,7 @@ func (s *Server) registerCoreAPIRoutes(apiRouter chi.Router, h routeHandlers) {
 	apiRouter.MethodFunc("POST", "/auth/change-password", s.withSession(h.auth.ChangePassword))
 	apiRouter.MethodFunc("GET", "/app/menu", s.withSession(h.auth.Menu))
 	apiRouter.MethodFunc("POST", "/app/ping", s.withSession(h.auth.Ping))
+	apiRouter.MethodFunc("POST", "/app/view", s.withSession(s.appView))
 	apiRouter.MethodFunc("GET", "/app/meta", s.withSession(s.requirePermission("app.view")(h.runtime.Meta)))
 	apiRouter.MethodFunc("GET", "/dashboard", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.Data)))
 	apiRouter.MethodFunc("POST", "/dashboard/layout", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.SaveLayout)))

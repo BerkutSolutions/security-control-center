@@ -168,10 +168,15 @@
           linksBox.textContent = BerkutI18n.t('docs.linksEmpty') || '-';
         } else {
           linksRes.links.forEach(l => {
-            const span = document.createElement('span');
-            span.className = 'tag';
-            span.textContent = `${l.target_type} #${l.target_id}`;
-            linksBox.appendChild(span);
+            const type = String(l.target_type || '').toLowerCase();
+            const id = String(l.target_id || '').trim();
+            const href = resolveLinkHref(type, id);
+            const label = resolveLinkLabel(type);
+            const el = document.createElement(href ? 'a' : 'span');
+            el.className = 'tag';
+            el.textContent = `${label} #${id}`;
+            if (href) el.href = href;
+            linksBox.appendChild(el);
           });
         }
       } catch (err) {
@@ -191,7 +196,7 @@
           items.forEach(item => {
             const link = document.createElement('a');
             link.className = 'tag';
-            link.href = `/controls?control=${item.control_id}`;
+            link.href = `/registry/controls?control=${item.control_id}`;
             link.textContent = `${item.code} - ${item.title}`;
             controlsBox.appendChild(link);
           });
@@ -309,6 +314,24 @@
       return `<div class="code-block"><div class="code-block-bar"><span class="code-lang">${esc(block.lang || 'code')}</span><button type="button" class="btn ghost icon-btn copy-code-btn" data-code-idx="${i}">Copy</button></div><pre><code>${code}</code></pre></div>`;
     });
     return { html: `<div class="md-view"><p>${html}</p></div>`, codeBlocks };
+  }
+
+  function resolveLinkHref(type, id) {
+    if (!type || !id) return '';
+    if (type === 'incident') return `/incidents?incident=${encodeURIComponent(id)}`;
+    if (type === 'task') return `/tasks/task/${encodeURIComponent(id)}`;
+    if (type === 'control') return `/registry/controls?control=${encodeURIComponent(id)}`;
+    if (type === 'asset') return `/assets?asset=${encodeURIComponent(id)}`;
+    return '';
+  }
+
+  function resolveLinkLabel(type) {
+    const key = `docs.link.${type}`;
+    if (typeof BerkutI18n !== 'undefined' && typeof BerkutI18n.t === 'function') {
+      const translated = BerkutI18n.t(key);
+      if (translated && translated !== key) return translated;
+    }
+    return type || '-';
   }
 
   function bindViewerControls() {

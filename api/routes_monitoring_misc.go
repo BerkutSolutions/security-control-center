@@ -17,7 +17,7 @@ func (s *Server) registerMonitoringRoutes(apiRouter chi.Router, h routeHandlers)
 }
 
 func (s *Server) registerTasksRoutes(apiRouter chi.Router) {
-	taskHandler := taskhttp.NewHandler(s.cfg, s.tasksSvc, s.users, s.docsStore, s.docsSvc, s.incidentsStore, s.incidentsSvc, s.controlsStore, s.entityLinksStore, s.policy, s.audits)
+	taskHandler := taskhttp.NewHandler(s.cfg, s.tasksSvc, s.users, s.docsStore, s.docsSvc, s.incidentsStore, s.incidentsSvc, s.controlsStore, s.assetsStore, s.softwareStore, s.entityLinksStore, s.policy, s.audits)
 	tasksRouter := taskhttp.RegisterRoutes(taskhttp.RouteDeps{
 		WithSession:       s.withSession,
 		RequirePermission: s.requirePermission,

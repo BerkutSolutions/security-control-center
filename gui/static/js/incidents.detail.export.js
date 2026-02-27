@@ -50,9 +50,28 @@
     navigateToDocs();
   }
 
+  function openAssetInAssets(assetId) {
+    const id = parseInt(assetId, 10);
+    if (!id) return;
+    if (window.AssetsPage && typeof window.AssetsPage.openAsset === 'function' && document.getElementById('assets-page')) {
+      window.AssetsPage.openAsset(id, 'view');
+    } else {
+      window.__pendingAssetOpen = id;
+    }
+    navigateToAssets(id);
+  }
+
   function navigateToDocs() {
     if (window.location.pathname === '/docs') return;
     window.history.pushState({}, '', '/docs');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+  }
+
+  function navigateToAssets(assetId) {
+    const current = window.location.pathname;
+    const next = assetId ? `/assets?asset=${encodeURIComponent(assetId)}` : '/assets';
+    if (current === next) return;
+    window.history.pushState({}, '', next);
     window.dispatchEvent(new PopStateEvent('popstate'));
   }
 
@@ -77,5 +96,6 @@
 
   IncidentsPage.bindExportControls = bindExportControls;
   IncidentsPage.openDocInDocs = openDocInDocs;
+  IncidentsPage.openAssetInAssets = openAssetInAssets;
   IncidentsPage.openReportInReports = openReportInReports;
 })();

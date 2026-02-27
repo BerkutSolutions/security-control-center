@@ -51,7 +51,7 @@ func setupTasksEnv(t *testing.T) *taskEnv {
 	audits := store.NewAuditStore(db)
 	tasksStore := taskstore.NewStore(db)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	handler := taskhttp.NewHandler(cfg, tasks.NewService(tasksStore), users, nil, nil, nil, nil, nil, nil, policy, audits)
+	handler := taskhttp.NewHandler(cfg, tasks.NewService(tasksStore), users, nil, nil, nil, nil, nil, nil, nil, nil, policy, audits)
 
 	admin := &store.User{
 		Username:       "admin1",

@@ -1,0 +1,184 @@
+<div class="page" id="findings-page">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 data-i18n="findings.title">Findings</h3>
+        <p data-i18n="findings.subtitle">Findings registry</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn primary" id="findings-create" data-i18n="findings.actions.create">Create</button>
+        <button class="btn ghost" id="findings-create-report" data-i18n="common.createReport">Create report</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid three-column">
+        <div class="form-field">
+          <label data-i18n="findings.filter.search">Search</label>
+          <input type="search" id="findings-filter-q" data-i18n-placeholder="findings.filter.search" placeholder="Search">
+        </div>
+        <div class="form-field">
+          <label data-i18n="findings.filter.status">Status</label>
+          <select id="findings-filter-status">
+            <option value="" data-i18n="findings.filter.all">All</option>
+            <option value="open" data-i18n="findings.status.open">Open</option>
+            <option value="in_progress" data-i18n="findings.status.in_progress">In progress</option>
+            <option value="resolved" data-i18n="findings.status.resolved">Resolved</option>
+            <option value="accepted_risk" data-i18n="findings.status.accepted_risk">Accepted risk</option>
+            <option value="false_positive" data-i18n="findings.status.false_positive">False positive</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="findings.filter.severity">Severity</label>
+          <select id="findings-filter-severity">
+            <option value="" data-i18n="findings.filter.all">All</option>
+            <option value="low" data-i18n="findings.severity.low">Low</option>
+            <option value="medium" data-i18n="findings.severity.medium">Medium</option>
+            <option value="high" data-i18n="findings.severity.high">High</option>
+            <option value="critical" data-i18n="findings.severity.critical">Critical</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="findings.filter.type">Type</label>
+          <select id="findings-filter-type">
+            <option value="" data-i18n="findings.filter.all">All</option>
+            <option value="technical" data-i18n="findings.type.technical">Technical</option>
+            <option value="config" data-i18n="findings.type.config">Config</option>
+            <option value="process" data-i18n="findings.type.process">Process</option>
+            <option value="compliance" data-i18n="findings.type.compliance">Compliance</option>
+            <option value="other" data-i18n="findings.type.other">Other</option>
+          </select>
+        </div>
+        <div class="form-field">
+          <label data-i18n="findings.filter.tag">Tag</label>
+          <input id="findings-filter-tag" data-i18n-placeholder="findings.filter.tag" placeholder="Tag">
+        </div>
+        <div class="form-field" id="findings-include-deleted-field" hidden>
+          <label data-i18n="findings.filter.archived">Archived</label>
+          <select id="findings-filter-include-deleted">
+            <option value="0" data-i18n="findings.filter.activeOnly">Active only</option>
+            <option value="1" data-i18n="findings.filter.includeArchived">Include archived</option>
+          </select>
+        </div>
+        <div class="form-actions-inline">
+          <button class="btn ghost" id="findings-apply" data-i18n="common.apply">Apply</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="findings-table">
+          <thead>
+            <tr>
+              <th data-i18n="findings.table.title">Title</th>
+              <th data-i18n="findings.table.status">Status</th>
+              <th data-i18n="findings.table.severity">Severity</th>
+              <th data-i18n="findings.table.type">Type</th>
+              <th data-i18n="findings.table.owner">Owner</th>
+              <th data-i18n="findings.table.due">Due</th>
+              <th data-i18n="findings.table.tags">Tags</th>
+              <th data-i18n="findings.table.updated">Updated</th>
+              <th data-i18n="findings.table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted" id="findings-empty" hidden data-i18n="findings.empty">No findings yet.</div>
+    </div>
+  </div>
+
+  <div class="modal" id="finding-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="finding-modal-title" data-i18n="findings.modal.createTitle">New finding</h3>
+        <button class="btn ghost" data-close="#finding-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="finding-modal-alert" hidden></div>
+        <form id="finding-form" class="form-grid two-column">
+          <input type="hidden" id="finding-id">
+          <div class="form-field required full">
+            <label data-i18n="findings.field.title">Title</label>
+            <input id="finding-title" required>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="findings.field.status">Status</label>
+            <select id="finding-status" required>
+              <option value="open" data-i18n="findings.status.open">Open</option>
+              <option value="in_progress" data-i18n="findings.status.in_progress">In progress</option>
+              <option value="resolved" data-i18n="findings.status.resolved">Resolved</option>
+              <option value="accepted_risk" data-i18n="findings.status.accepted_risk">Accepted risk</option>
+              <option value="false_positive" data-i18n="findings.status.false_positive">False positive</option>
+            </select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="findings.field.severity">Severity</label>
+            <select id="finding-severity" required>
+              <option value="low" data-i18n="findings.severity.low">Low</option>
+              <option value="medium" data-i18n="findings.severity.medium">Medium</option>
+              <option value="high" data-i18n="findings.severity.high">High</option>
+              <option value="critical" data-i18n="findings.severity.critical">Critical</option>
+            </select>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="findings.field.type">Type</label>
+            <select id="finding-type" required>
+              <option value="technical" data-i18n="findings.type.technical">Technical</option>
+              <option value="config" data-i18n="findings.type.config">Config</option>
+              <option value="process" data-i18n="findings.type.process">Process</option>
+              <option value="compliance" data-i18n="findings.type.compliance">Compliance</option>
+              <option value="other" data-i18n="findings.type.other">Other</option>
+            </select>
+          </div>
+          <div class="form-field">
+            <label data-i18n="findings.field.owner">Owner</label>
+            <input id="finding-owner" data-i18n-placeholder="findings.field.ownerHint" placeholder="Owner">
+          </div>
+          <div class="form-field">
+            <label data-i18n="findings.field.dueAt">Due</label>
+            <input type="date" id="finding-due-at">
+          </div>
+          <div class="form-field">
+            <label data-i18n="findings.field.tags">Tags</label>
+            <select id="finding-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="finding-tags"></div>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="findings.field.description">Description</label>
+            <textarea id="finding-description" rows="5"></textarea>
+          </div>
+        </form>
+
+        <div class="modal-section" id="finding-links-section">
+          <h4 data-i18n="findings.links.title">Links</h4>
+          <div class="links-list" id="finding-links-list"></div>
+          <div class="muted" id="finding-links-empty" hidden data-i18n="findings.links.empty">No links.</div>
+          <div class="links-form">
+            <select id="finding-link-target-type" class="select">
+              <option value="asset" data-i18n="findings.links.type.asset">Asset</option>
+              <option value="software" data-i18n="findings.links.type.software">Software</option>
+              <option value="control" data-i18n="findings.links.type.control">Control</option>
+              <option value="incident" data-i18n="findings.links.type.incident">Incident</option>
+              <option value="task" data-i18n="findings.links.type.task">Task</option>
+              <option value="doc" data-i18n="findings.links.type.doc">Document</option>
+            </select>
+            <select id="finding-link-relation" class="select">
+              <option value="related" data-i18n="findings.links.relation.related">Related</option>
+              <option value="affects" data-i18n="findings.links.relation.affects">Affects</option>
+              <option value="evidence" data-i18n="findings.links.relation.evidence">Evidence</option>
+            </select>
+            <input id="finding-link-search" class="input" data-i18n-placeholder="findings.links.searchPlaceholder" placeholder="Search">
+            <select id="finding-link-target-id" class="select"></select>
+            <button class="btn ghost" type="button" id="finding-link-add" data-i18n="findings.links.add">Add</button>
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn primary" id="finding-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost danger" type="button" id="finding-archive" data-i18n="findings.actions.archive">Archive</button>
+          <button class="btn ghost" data-close="#finding-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

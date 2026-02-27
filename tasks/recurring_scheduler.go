@@ -17,10 +17,10 @@ type RecurringScheduler struct {
 	audits cstore.AuditStore
 	logger *utils.Logger
 
-	mu     sync.Mutex
-	cancel context.CancelFunc
+	mu      sync.Mutex
+	cancel  context.CancelFunc
 	running bool
-	wg     sync.WaitGroup
+	wg      sync.WaitGroup
 }
 
 func NewRecurringScheduler(cfg config.SchedulerConfig, store Store, audits cstore.AuditStore, logger *utils.Logger) *RecurringScheduler {

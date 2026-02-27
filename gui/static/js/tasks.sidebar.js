@@ -35,8 +35,8 @@
   let linkSelection = null;
   let linkDropdownOpen = false;
   let linkDropdownLoading = false;
-  const linkOptions = { doc: [], incident: [], control: [] };
-  const linkOptionsLoaded = { doc: false, incident: false, control: false };
+  const linkOptions = { doc: [], incident: [], control: [], asset: [], software: [] };
+  const linkOptionsLoaded = { doc: false, incident: false, control: false, asset: false, software: false };
   let pendingCommentFiles = [];
   let suppressAutoSave = false;
   let assigneesSnapshot = [];
@@ -847,6 +847,14 @@
         const res = await Api.get('/api/controls?limit=200').catch(() => ({ items: [] }));
         linkOptions.control = res.items || [];
       }
+      if (type === 'asset') {
+        const res = await Api.get('/api/assets/list?limit=200').catch(() => ({ items: [] }));
+        linkOptions.asset = res.items || [];
+      }
+      if (type === 'software') {
+        const res = await Api.get('/api/software/list?limit=200').catch(() => ({ items: [] }));
+        linkOptions.software = res.items || [];
+      }
     } finally {
       linkOptionsLoaded[type] = true;
     }
@@ -860,6 +868,13 @@
     if (type === 'control') {
       const code = item.code ? `${item.code} - ` : '';
       return `${code}${item.title || ''}`.trim();
+    }
+    if (type === 'asset') {
+      return `#${item.id} ${item.name || ''}`.trim();
+    }
+    if (type === 'software') {
+      const vendor = item.vendor ? ` (${item.vendor})` : '';
+      return `#${item.id} ${item.name || ''}${vendor}`.trim();
     }
     const reg = item.reg_no ? `(${item.reg_no})` : '';
     return `${reg} ${item.title || ''}`.trim();
@@ -1688,7 +1703,7 @@
       const row = document.createElement('div');
       row.className = 'task-link';
       const title = `${link.code} - ${link.title}`;
-      row.innerHTML = `<a href="/controls?control=${encodeURIComponent(link.control_id)}">${escapeHtml(title)}</a>`;
+      row.innerHTML = `<a href="/registry/controls?control=${encodeURIComponent(link.control_id)}">${escapeHtml(title)}</a>`;
       list.appendChild(row);
     });
   }

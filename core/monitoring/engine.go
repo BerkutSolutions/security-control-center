@@ -338,6 +338,8 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	rawStatus := "down"
 	if result.OK {
 		rawStatus = "up"
+	} else if isDNSErrorText(result.Error) {
+		rawStatus = "dns"
 	}
 	now := result.CheckedAt
 	maintenanceActive := false
@@ -368,7 +370,7 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	}
 	if rawStatus == "up" {
 		next.LastUpAt = &now
-	} else {
+	} else if rawStatus == "down" {
 		next.LastDownAt = &now
 	}
 	if prev != nil {
@@ -379,10 +381,11 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 			next.LastDownAt = prev.LastDownAt
 		}
 		shouldLog := false
+		logDNSEvents := settings.LogDNSEvents
 		if prev.LastCheckedAt == nil || prev.LastResultStatus == "" {
-			shouldLog = rawStatus == "down"
+			shouldLog = rawStatus == "down" || (rawStatus == "dns" && logDNSEvents)
 		} else if prev.LastResultStatus != rawStatus {
-			shouldLog = true
+			shouldLog = rawStatus != "dns" || logDNSEvents
 		} else if rawStatus == "down" {
 			prevCode := prev.LastStatusCode
 			currCode := result.StatusCode

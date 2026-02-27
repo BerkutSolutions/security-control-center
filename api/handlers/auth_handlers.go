@@ -254,14 +254,16 @@ func buildMenu(eff store.EffectiveAccess) []map[string]string {
 		Path string
 	}{
 		{Perm: "dashboard.view", Name: "dashboard", Path: "dashboard"},
-		{Perm: "monitoring.view", Name: "monitoring", Path: "monitoring"},
-		{Perm: "controls.view", Name: "controls", Path: "controls"},
 		{Perm: "tasks.view", Name: "tasks", Path: "tasks"},
-		{Perm: "incidents.view", Name: "incidents", Path: "incidents"},
-		{Perm: "reports.view", Name: "reports", Path: "reports"},
-		{Perm: "backups.read", Name: "backups", Path: "backups"},
+		{Perm: "monitoring.view", Name: "monitoring", Path: "monitoring"},
 		{Perm: "docs.view", Name: "docs", Path: "docs"},
 		{Perm: "docs.approval.view", Name: "approvals", Path: "approvals"},
+		{Perm: "incidents.view", Name: "incidents", Path: "incidents"},
+		// "Registries" entry: controls tab with internal sub-tabs (overview/controls/checks/etc),
+		// plus navigation to Assets/Software/Findings.
+		{Perm: "controls.view", Name: "controls", Path: "registry"},
+		{Perm: "reports.view", Name: "reports", Path: "reports"},
+		{Perm: "backups.read", Name: "backups", Path: "backups"},
 		{Perm: "accounts.view", Name: "accounts", Path: "accounts"},
 		{Perm: "logs.view", Name: "logs", Path: "logs"},
 		{Perm: "app.view", Name: "settings", Path: "settings"},

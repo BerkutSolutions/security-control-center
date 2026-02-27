@@ -27,6 +27,8 @@ type DocsHandler struct {
 	store       store.DocsStore
 	links       store.EntityLinksStore
 	controls    store.ControlsStore
+	assets      store.AssetsStore
+	software    store.SoftwareStore
 	users       store.UsersStore
 	policy      *rbac.Policy
 	svc         *docs.Service
@@ -47,12 +49,14 @@ type uploadItem struct {
 	UploadedAt time.Time
 }
 
-func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.EntityLinksStore, controls store.ControlsStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, audits store.AuditStore, logger *utils.Logger) *DocsHandler {
+func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.EntityLinksStore, controls store.ControlsStore, assets store.AssetsStore, software store.SoftwareStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, audits store.AuditStore, logger *utils.Logger) *DocsHandler {
 	return &DocsHandler{
 		cfg:         cfg,
 		store:       ds,
 		links:       links,
 		controls:    controls,
+		assets:      assets,
+		software:    software,
 		users:       us,
 		policy:      policy,
 		svc:         svc,
@@ -1434,7 +1438,7 @@ func (h *DocsHandler) UpdateClassification(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *DocsHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
-	doc, _, ok := h.loadDocForAccess(w, r, "view")
+	doc, user, ok := h.loadDocForAccess(w, r, "view")
 	if !ok {
 		return
 	}
@@ -1442,6 +1446,25 @@ func (h *DocsHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
+	}
+	if h.policy != nil && user != nil && len(items) > 0 {
+		sess := sessionFromContext(r.Context())
+		if sess != nil && (!h.canViewAssets(r.Context(), user, sess.Roles) || !h.canViewSoftware(r.Context(), user, sess.Roles)) {
+			filtered := make([]map[string]string, 0, len(items))
+			canAssets := h.canViewAssets(r.Context(), user, sess.Roles)
+			canSoftware := h.canViewSoftware(r.Context(), user, sess.Roles)
+			for _, item := range items {
+				tt := strings.ToLower(strings.TrimSpace(item["target_type"]))
+				if tt == "asset" && !canAssets {
+					continue
+				}
+				if tt == "software" && !canSoftware {
+					continue
+				}
+				filtered = append(filtered, item)
+			}
+			items = filtered
+		}
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"links": items})
 }
@@ -1488,7 +1511,7 @@ func (h *DocsHandler) ListControlLinks(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *DocsHandler) AddLink(w http.ResponseWriter, r *http.Request) {
-	doc, _, ok := h.loadDocForAccess(w, r, "edit")
+	doc, user, ok := h.loadDocForAccess(w, r, "edit")
 	if !ok {
 		return
 	}
@@ -1500,15 +1523,95 @@ func (h *DocsHandler) AddLink(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if payload.TargetType == "" || payload.TargetID == "" {
+	targetType := strings.ToLower(strings.TrimSpace(payload.TargetType))
+	targetID := strings.TrimSpace(payload.TargetID)
+	if targetType == "" || targetID == "" {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	if err := h.store.AddLink(r.Context(), doc.ID, payload.TargetType, payload.TargetID); err != nil {
+	if targetType == "asset" {
+		sess := sessionFromContext(r.Context())
+		if sess == nil || user == nil || !h.canViewAssets(r.Context(), user, sess.Roles) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if h.assets == nil {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id <= 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		asset, err := h.assets.GetAsset(r.Context(), id)
+		if err != nil || asset == nil || asset.DeletedAt != nil {
+			http.Error(w, "docs.link.assetNotFound", http.StatusNotFound)
+			return
+		}
+	}
+	if targetType == "software" {
+		sess := sessionFromContext(r.Context())
+		if sess == nil || user == nil || !h.canViewSoftware(r.Context(), user, sess.Roles) {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		if h.software == nil {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		id, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || id <= 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		p, err := h.software.GetProduct(r.Context(), id)
+		if err != nil || p == nil || p.DeletedAt != nil {
+			http.Error(w, "software.error.notFound", http.StatusNotFound)
+			return
+		}
+	}
+	if err := h.store.AddLink(r.Context(), doc.ID, targetType, targetID); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func sessionFromContext(ctx context.Context) *store.SessionRecord {
+	val := ctx.Value(auth.SessionContextKey)
+	if val == nil {
+		return nil
+	}
+	sess, ok := val.(*store.SessionRecord)
+	if !ok {
+		return nil
+	}
+	return sess
+}
+
+func (h *DocsHandler) canViewAssets(ctx context.Context, user *store.User, roles []string) bool {
+	if h == nil || h.policy == nil || user == nil || h.users == nil {
+		return false
+	}
+	if !h.policy.Allowed(roles, "assets.view") {
+		return false
+	}
+	groups, _ := h.users.UserGroups(ctx, user.ID)
+	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
+	return allowedByMenuPermissions(eff.MenuPermissions, "assets")
+}
+
+func (h *DocsHandler) canViewSoftware(ctx context.Context, user *store.User, roles []string) bool {
+	if h == nil || h.policy == nil || user == nil || h.users == nil {
+		return false
+	}
+	if !h.policy.Allowed(roles, "software.view") {
+		return false
+	}
+	groups, _ := h.users.UserGroups(ctx, user.ID)
+	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
+	return allowedByMenuPermissions(eff.MenuPermissions, "software")
 }
 
 func (h *DocsHandler) DeleteLink(w http.ResponseWriter, r *http.Request) {

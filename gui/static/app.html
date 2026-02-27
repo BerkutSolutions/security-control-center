@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Berkut Solutions | App</title>
+  <title>Security Control Center</title>
   <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon16.png">
   <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon32.png">
   <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon48.png">
@@ -29,7 +29,7 @@
           <option value="en">EN</option>
         </select>
         <div id="app-version" class="muted app-version"></div>
-        <div id="app-update-badge" class="banner" hidden></div>
+        <a id="app-update-badge" class="btn btn-sm primary app-update-link" hidden></a>
         <div id="user-info" class="sidebar-user"></div>
         <button id="logout-btn" class="btn ghost" data-i18n="app.logout">Выйти</button>
       </div>
@@ -47,6 +47,7 @@
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/api.js"></script>
   <script src="/static/js/vendor/mammoth.browser.min.js"></script>
+  <script src="/static/js/registries.reports.js"></script>
   <script src="/static/js/tags.js"></script>
   <script src="/static/js/classifications.js"></script>
   <script src="/static/js/accounts.core.js"></script>
@@ -98,10 +99,16 @@
   <script src="/static/js/dashboard.details.js"></script>
   <script src="/static/js/controls.core.js"></script>
   <script src="/static/js/controls.comments.js"></script>
+  <script src="/static/js/assets.core.js"></script>
+  <script src="/static/js/assets.software.js"></script>
+  <script src="/static/js/software.core.js"></script>
+  <script src="/static/js/software.detail.js"></script>
+  <script src="/static/js/findings.core.js"></script>
   <script src="/static/js/monitoring.core.js"></script>
   <script src="/static/js/monitoring.tabs.js"></script>
   <script src="/static/js/monitoring.list.js"></script>
   <script src="/static/js/monitoring.detail.js"></script>
+  <script src="/static/js/monitoring.assets.js"></script>
   <script src="/static/js/monitoring.modal.js"></script>
   <script src="/static/js/monitoring.settings.js"></script>
   <script src="/static/js/monitoring.certs.js"></script>

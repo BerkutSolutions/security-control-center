@@ -55,12 +55,12 @@ func (h *Handler) CreateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		SpaceID       int64          `json:"space_id"`
-		Name           string         `json:"name"`
-		Description    string         `json:"description"`
-		OrganizationID string         `json:"organization_id"`
-		DefaultTemplateID *int64      `json:"default_template_id"`
-		ACL            []tasks.ACLRule `json:"acl"`
+		SpaceID           int64           `json:"space_id"`
+		Name              string          `json:"name"`
+		Description       string          `json:"description"`
+		OrganizationID    string          `json:"organization_id"`
+		DefaultTemplateID *int64          `json:"default_template_id"`
+		ACL               []tasks.ACLRule `json:"acl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")
@@ -141,13 +141,13 @@ func (h *Handler) UpdateBoard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name           *string         `json:"name"`
-		Description    *string         `json:"description"`
-		OrganizationID *string         `json:"organization_id"`
-		Position       *int            `json:"position"`
-		IsActive       *bool           `json:"is_active"`
-		DefaultTemplateID *int64       `json:"default_template_id"`
-		ACL            []tasks.ACLRule `json:"acl"`
+		Name              *string         `json:"name"`
+		Description       *string         `json:"description"`
+		OrganizationID    *string         `json:"organization_id"`
+		Position          *int            `json:"position"`
+		IsActive          *bool           `json:"is_active"`
+		DefaultTemplateID *int64          `json:"default_template_id"`
+		ACL               []tasks.ACLRule `json:"acl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")

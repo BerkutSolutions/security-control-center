@@ -121,10 +121,10 @@ func (h *Handler) CreateSpace(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name           string         `json:"name"`
-		Description    string         `json:"description"`
-		OrganizationID string         `json:"organization_id"`
-		Layout         string         `json:"layout"`
+		Name           string          `json:"name"`
+		Description    string          `json:"description"`
+		OrganizationID string          `json:"organization_id"`
+		Layout         string          `json:"layout"`
 		ACL            []tasks.ACLRule `json:"acl"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {

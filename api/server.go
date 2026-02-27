@@ -45,6 +45,9 @@ type Server struct {
 	dashboardStore   store.DashboardStore
 	backupsSvc       *backups.Service
 	controlsStore    store.ControlsStore
+	assetsStore      store.AssetsStore
+	findingsStore    store.FindingsStore
+	softwareStore    store.SoftwareStore
 	entityLinksStore store.EntityLinksStore
 	monitoringStore  store.MonitoringStore
 	appHTTPSStore    store.AppHTTPSStore
@@ -73,6 +76,9 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 		incidentsStore:   deps.IncidentsStore,
 		incidentsSvc:     deps.IncidentsSvc,
 		controlsStore:    deps.ControlsStore,
+		assetsStore:      deps.AssetsStore,
+		findingsStore:    deps.FindingsStore,
+		softwareStore:    deps.SoftwareStore,
 		entityLinksStore: deps.EntityLinksStore,
 		monitoringStore:  deps.MonitoringStore,
 		appHTTPSStore:    deps.AppHTTPSStore,

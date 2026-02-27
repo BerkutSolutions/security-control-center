@@ -42,4 +42,3 @@ func TestRecurringSchedulerStopWithContextWaitsForWorker(t *testing.T) {
 		t.Fatalf("expected running=false after stop")
 	}
 }
-

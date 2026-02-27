@@ -140,4 +140,3 @@ func scanTaskTemplateRow(rows *sql.Rows) (tasks.TaskTemplate, error) {
 	tpl.IsActive = active == 1
 	return tpl, nil
 }
-

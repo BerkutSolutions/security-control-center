@@ -20,7 +20,7 @@ func (h *Handler) ListTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := tasks.TaskFilter{
-		SpaceID: parseInt64Default(r.URL.Query().Get("space_id"), 0),
+		SpaceID:  parseInt64Default(r.URL.Query().Get("space_id"), 0),
 		BoardID:  parseInt64Default(r.URL.Query().Get("board_id"), 0),
 		ColumnID: parseInt64Default(r.URL.Query().Get("column_id"), 0),
 		Status:   strings.TrimSpace(r.URL.Query().Get("status")),
@@ -96,20 +96,20 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		BoardID     int64    `json:"board_id"`
-		ColumnID    int64    `json:"column_id"`
-		SubColumnID *int64   `json:"subcolumn_id"`
-		Title       string   `json:"title"`
-		Description string   `json:"description"`
-		Result      string   `json:"result"`
-		ExternalLink string  `json:"external_link"`
-		BusinessCustomer string `json:"business_customer"`
-		SizeEstimate *int    `json:"size_estimate"`
-		Priority    string   `json:"priority"`
-		AssignedTo  []string `json:"assigned_to"`
-		Tags        []string `json:"tags"`
-		DueDate     *string  `json:"due_date"`
-		Position    int      `json:"position"`
+		BoardID          int64    `json:"board_id"`
+		ColumnID         int64    `json:"column_id"`
+		SubColumnID      *int64   `json:"subcolumn_id"`
+		Title            string   `json:"title"`
+		Description      string   `json:"description"`
+		Result           string   `json:"result"`
+		ExternalLink     string   `json:"external_link"`
+		BusinessCustomer string   `json:"business_customer"`
+		SizeEstimate     *int     `json:"size_estimate"`
+		Priority         string   `json:"priority"`
+		AssignedTo       []string `json:"assigned_to"`
+		Tags             []string `json:"tags"`
+		DueDate          *string  `json:"due_date"`
+		Position         int      `json:"position"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")
@@ -178,20 +178,20 @@ func (h *Handler) CreateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	task := &tasks.Task{
-		BoardID:     boardID,
-		ColumnID:    payload.ColumnID,
-		SubColumnID: payload.SubColumnID,
-		Title:       title,
-		Description: strings.TrimSpace(payload.Description),
-		Result:      strings.TrimSpace(payload.Result),
-		ExternalLink: strings.TrimSpace(payload.ExternalLink),
+		BoardID:          boardID,
+		ColumnID:         payload.ColumnID,
+		SubColumnID:      payload.SubColumnID,
+		Title:            title,
+		Description:      strings.TrimSpace(payload.Description),
+		Result:           strings.TrimSpace(payload.Result),
+		ExternalLink:     strings.TrimSpace(payload.ExternalLink),
 		BusinessCustomer: strings.TrimSpace(payload.BusinessCustomer),
-		SizeEstimate: payload.SizeEstimate,
-		Priority:    priority,
-		CreatedBy:   &user.ID,
-		DueDate:     due,
-		Position:    payload.Position,
-		IsArchived:  false,
+		SizeEstimate:     payload.SizeEstimate,
+		Priority:         priority,
+		CreatedBy:        &user.ID,
+		DueDate:          due,
+		Position:         payload.Position,
+		IsArchived:       false,
 	}
 	if _, err := h.svc.Store().CreateTask(r.Context(), task, assignIDs); err != nil {
 		respondError(w, http.StatusInternalServerError, "server error")
@@ -285,17 +285,17 @@ func (h *Handler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Title       *string  `json:"title"`
-		Description *string  `json:"description"`
-		Result      *string  `json:"result"`
-		ExternalLink *string `json:"external_link"`
-		BusinessCustomer *string `json:"business_customer"`
-		SizeEstimate *int    `json:"size_estimate"`
-		Priority    *string  `json:"priority"`
-		DueDate     *string  `json:"due_date"`
-		AssignedTo  []string `json:"assigned_to"`
-		Tags        []string `json:"tags"`
-		Checklist   *[]tasks.TaskChecklistItem `json:"checklist"`
+		Title            *string                    `json:"title"`
+		Description      *string                    `json:"description"`
+		Result           *string                    `json:"result"`
+		ExternalLink     *string                    `json:"external_link"`
+		BusinessCustomer *string                    `json:"business_customer"`
+		SizeEstimate     *int                       `json:"size_estimate"`
+		Priority         *string                    `json:"priority"`
+		DueDate          *string                    `json:"due_date"`
+		AssignedTo       []string                   `json:"assigned_to"`
+		Tags             []string                   `json:"tags"`
+		Checklist        *[]tasks.TaskChecklistItem `json:"checklist"`
 	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -706,22 +706,22 @@ func (h *Handler) CloneTask(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 	newTask := &tasks.Task{
-		BoardID:      targetBoardID,
-		ColumnID:     targetColumnID,
-		SubColumnID:  targetSubColumnID,
-		Title:        task.Title,
-		Description:  task.Description,
-		Result:       task.Result,
-		ExternalLink: task.ExternalLink,
+		BoardID:          targetBoardID,
+		ColumnID:         targetColumnID,
+		SubColumnID:      targetSubColumnID,
+		Title:            task.Title,
+		Description:      task.Description,
+		Result:           task.Result,
+		ExternalLink:     task.ExternalLink,
 		BusinessCustomer: task.BusinessCustomer,
-		SizeEstimate: task.SizeEstimate,
-		Status:       "",
-		Priority:     task.Priority,
-		Checklist:    append([]tasks.TaskChecklistItem{}, task.Checklist...),
-		CreatedBy:    &user.ID,
-		DueDate:      task.DueDate,
-		Position:     payload.Position,
-		IsArchived:   false,
+		SizeEstimate:     task.SizeEstimate,
+		Status:           "",
+		Priority:         task.Priority,
+		Checklist:        append([]tasks.TaskChecklistItem{}, task.Checklist...),
+		CreatedBy:        &user.ID,
+		DueDate:          task.DueDate,
+		Position:         payload.Position,
+		IsArchived:       false,
 	}
 	if _, err := h.svc.Store().CreateTaskWithLinks(r.Context(), newTask, assignIDs, cloneLinks); err != nil {
 		respondError(w, http.StatusInternalServerError, "server error")
@@ -863,11 +863,11 @@ func (h *Handler) ListArchivedTasks(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := tasks.TaskFilter{
-		SpaceID: parseInt64Default(r.URL.Query().Get("space_id"), 0),
-		BoardID: parseInt64Default(r.URL.Query().Get("board_id"), 0),
+		SpaceID:  parseInt64Default(r.URL.Query().Get("space_id"), 0),
+		BoardID:  parseInt64Default(r.URL.Query().Get("board_id"), 0),
 		ColumnID: parseInt64Default(r.URL.Query().Get("column_id"), 0),
-		Limit: parseIntDefault(r.URL.Query().Get("limit"), 0),
-		Offset: parseIntDefault(r.URL.Query().Get("offset"), 0),
+		Limit:    parseIntDefault(r.URL.Query().Get("limit"), 0),
+		Offset:   parseIntDefault(r.URL.Query().Get("offset"), 0),
 	}
 	if v := strings.TrimSpace(r.URL.Query().Get("search")); v != "" {
 		filter.Search = v
@@ -947,8 +947,8 @@ func (h *Handler) RestoreTask(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		BoardID int64 `json:"board_id"`
-		ColumnID int64 `json:"column_id"`
+		BoardID     int64  `json:"board_id"`
+		ColumnID    int64  `json:"column_id"`
 		SubColumnID *int64 `json:"subcolumn_id"`
 	}
 	_ = json.NewDecoder(r.Body).Decode(&payload)

@@ -1,12 +1,18 @@
 # Documentation
 
-Version baseline: `1.0.9`
+Version baseline: `1.0.11`
 
 This directory contains detailed technical documentation for the current runtime model.
 
 Primary entry points:
 - Russian: `docs/ru/README.md`
 - English: `docs/eng/README.md`
+- Assets module RU: `docs/ru/assets.md`
+- Assets module EN: `docs/eng/assets.md`
+- Findings module RU: `docs/ru/findings.md`
+- Findings module EN: `docs/eng/findings.md`
+- Software module RU: `docs/ru/software.md`
+- Software module EN: `docs/eng/software.md`
 - Backups RU: `docs/ru/backups.md`
 - Backups EN: `docs/eng/backups.md`
 - HTTPS + OnlyOffice RU: `docs/ru/https_onlyoffice.md`

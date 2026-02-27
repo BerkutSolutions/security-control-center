@@ -31,6 +31,7 @@ const MonitoringPage = (() => {
     if (MonitoringPage.bindTabs) MonitoringPage.bindTabs();
     if (MonitoringPage.bindList) MonitoringPage.bindList();
     if (MonitoringPage.bindDetail) MonitoringPage.bindDetail();
+    if (MonitoringPage.bindAssets) MonitoringPage.bindAssets();
     if (MonitoringPage.bindModal) MonitoringPage.bindModal();
     if (MonitoringPage.bindSettings) MonitoringPage.bindSettings();
     if (MonitoringPage.bindCerts) MonitoringPage.bindCerts();
@@ -214,6 +215,22 @@ const MonitoringPage = (() => {
     return translated === msg ? msg : translated;
   }
 
+  function isDnsErrorMessage(msg) {
+    if (!msg) return false;
+    const val = String(msg).trim().toLowerCase();
+    if (!val) return false;
+    if (val.startsWith('monitoring.error.')) return false;
+    if (val.includes('no such host')) return true;
+    if (val.includes('temporary failure in name resolution')) return true;
+    if (val.includes('server misbehaving')) return true;
+    if (val.includes('nxdomain')) return true;
+    if (val.includes('servfail')) return true;
+    if (val.includes('getaddrinfo') && val.includes('enotfound')) return true;
+    if (val.includes('enotfound')) return true;
+    if (val.includes('name or service not known')) return true;
+    return false;
+  }
+
   function selectedMonitor() {
     return state.monitors.find(m => m.id === state.selectedId);
   }
@@ -237,6 +254,7 @@ const MonitoringPage = (() => {
     showAlert,
     hideAlert,
     sanitizeErrorMessage,
+    isDnsErrorMessage,
     selectedMonitor,
     resolveMonitorDeepLink,
   };

@@ -58,7 +58,7 @@ func setupControls(t *testing.T) controlsTestEnv {
 	ts := taskstore.NewStore(db)
 	audits := store.NewAuditStore(db)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	handler := handlers.NewControlsHandler(cs, links, us, ds, is, ts, audits, policy, logger)
+	handler := handlers.NewControlsHandler(cs, links, us, ds, is, ts, nil, nil, audits, policy, logger)
 	admin := &store.User{
 		Username:     "admin_controls",
 		FullName:     "Admin",
@@ -557,7 +557,7 @@ func TestControlsAutoViolationPermission(t *testing.T) {
 		Name:        "controls_editor",
 		Permissions: []rbac.Permission{"controls.manage"},
 	}})
-	customHandler := handlers.NewControlsHandler(env.cs, env.links, env.us, env.ds, env.is, env.ts, env.audits, customPolicy, utils.NewLogger())
+	customHandler := handlers.NewControlsHandler(env.cs, env.links, env.us, env.ds, env.is, env.ts, nil, nil, env.audits, customPolicy, utils.NewLogger())
 	linkPayload := map[string]any{
 		"target_type":   "incident",
 		"target_id":     strconv.FormatInt(incID, 10),

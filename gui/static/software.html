@@ -1,0 +1,174 @@
+<div class="page" id="software-page">
+  <div class="card">
+    <div class="card-header">
+      <div>
+        <h3 data-i18n="software.title">Software</h3>
+        <p data-i18n="software.subtitle">Software registry</p>
+      </div>
+      <div class="btn-group">
+        <button class="btn primary" id="software-create" data-i18n="software.actions.create">Create</button>
+        <button class="btn ghost" id="software-create-report" data-i18n="common.createReport">Create report</button>
+      </div>
+    </div>
+    <div class="card-body">
+      <div class="form-grid three-column">
+        <div class="form-field">
+          <label data-i18n="software.filter.search">Search</label>
+          <input type="search" id="software-filter-q" data-i18n-placeholder="software.filter.search" placeholder="Search">
+        </div>
+        <div class="form-field">
+          <label data-i18n="software.filter.vendor">Vendor</label>
+          <input id="software-filter-vendor" data-i18n-placeholder="software.filter.vendor" placeholder="Vendor">
+        </div>
+        <div class="form-field">
+          <label data-i18n="software.filter.tag">Tag</label>
+          <input id="software-filter-tag" data-i18n-placeholder="software.filter.tag" placeholder="Tag">
+        </div>
+        <div class="form-field" id="software-include-deleted-field" hidden>
+          <label data-i18n="software.filter.archived">Archived</label>
+          <select id="software-filter-include-deleted">
+            <option value="0" data-i18n="software.filter.activeOnly">Active only</option>
+            <option value="1" data-i18n="software.filter.includeArchived">Include archived</option>
+          </select>
+        </div>
+        <div class="form-actions-inline">
+          <button class="btn ghost" id="software-apply" data-i18n="common.apply">Apply</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="data-table" id="software-table">
+          <thead>
+            <tr>
+              <th data-i18n="software.table.name">Name</th>
+              <th data-i18n="software.table.vendor">Vendor</th>
+              <th data-i18n="software.table.tags">Tags</th>
+              <th data-i18n="software.table.updated">Updated</th>
+              <th data-i18n="software.table.actions">Actions</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+      <div class="muted" id="software-empty" hidden data-i18n="software.empty">No software yet.</div>
+    </div>
+  </div>
+
+  <div class="modal" id="software-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 id="software-modal-title" data-i18n="software.modal.createTitle">New product</h3>
+        <button class="btn ghost" data-close="#software-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="software-modal-alert" hidden></div>
+        <form id="software-form" class="form-grid two-column">
+          <input type="hidden" id="software-id">
+          <div class="form-field required">
+            <label data-i18n="software.field.name">Name</label>
+            <input id="software-name" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="software.field.vendor">Vendor</label>
+            <input id="software-vendor">
+          </div>
+          <div class="form-field">
+            <label data-i18n="software.field.tags">Tags</label>
+            <select id="software-tags" multiple class="select"></select>
+            <div class="selected-hint" data-tag-hint="software-tags"></div>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="software.field.description">Description</label>
+            <textarea id="software-description" rows="4"></textarea>
+          </div>
+        </form>
+
+        <div class="modal-section" id="software-versions-section" hidden>
+          <div class="modal-section-header">
+            <h4 data-i18n="software.versions.title">Versions</h4>
+            <div class="btn-group">
+              <button class="btn ghost" id="software-version-add" data-i18n="software.versions.add">Add version</button>
+            </div>
+          </div>
+          <div class="table-responsive">
+            <table class="data-table" id="software-versions-table">
+              <thead>
+                <tr>
+                  <th data-i18n="software.versions.table.version">Version</th>
+                  <th data-i18n="software.versions.table.release">Release</th>
+                  <th data-i18n="software.versions.table.eol">EOL</th>
+                  <th data-i18n="software.versions.table.notes">Notes</th>
+                  <th data-i18n="software.versions.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="software-versions-empty" hidden data-i18n="software.versions.empty">No versions yet.</div>
+        </div>
+
+        <div class="modal-section" id="software-assets-section" hidden>
+          <h4 data-i18n="software.assets.title">Assets</h4>
+          <div class="table-responsive">
+            <table class="data-table" id="software-assets-table">
+              <thead>
+                <tr>
+                  <th data-i18n="software.assets.table.asset">Asset</th>
+                  <th data-i18n="software.assets.table.version">Version</th>
+                  <th data-i18n="software.assets.table.installedAt">Installed</th>
+                  <th data-i18n="software.assets.table.source">Source</th>
+                  <th data-i18n="software.assets.table.actions">Actions</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
+          <div class="muted" id="software-assets-empty" hidden data-i18n="software.assets.empty">No assets linked.</div>
+        </div>
+
+        <div class="modal-actions">
+          <button class="btn primary" id="software-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost danger" id="software-archive" data-i18n="software.actions.archive">Archive</button>
+          <button class="btn ghost" data-close="#software-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="software-version-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="software-version-modal-title" data-i18n="software.versions.modal.createTitle">New version</h3>
+        <button class="btn ghost" data-close="#software-version-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="software-version-alert" hidden></div>
+        <form id="software-version-form" class="form-grid two-column">
+          <input type="hidden" id="software-version-id">
+          <div class="form-field required">
+            <label data-i18n="software.versions.field.version">Version</label>
+            <input id="software-version-value" required>
+          </div>
+          <div class="form-field">
+            <label data-i18n="software.versions.field.release">Release date</label>
+            <input type="date" id="software-version-release">
+          </div>
+          <div class="form-field">
+            <label data-i18n="software.versions.field.eol">EOL date</label>
+            <input type="date" id="software-version-eol">
+          </div>
+          <div class="form-field full">
+            <label data-i18n="software.versions.field.notes">Notes</label>
+            <textarea id="software-version-notes" rows="3"></textarea>
+          </div>
+        </form>
+        <div class="modal-actions">
+          <button class="btn primary" id="software-version-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost" data-close="#software-version-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

@@ -138,16 +138,16 @@ func (s *SQLStore) CreateRecurringInstanceTask(ctx context.Context, rule *tasks.
 		}
 		instanceID, _ := res.LastInsertId()
 		task := &tasks.Task{
-			BoardID:        template.BoardID,
-			ColumnID:       template.ColumnID,
-			Title:          strings.TrimSpace(template.TitleTemplate),
-			Description:    strings.TrimSpace(template.DescriptionTemplate),
-			Priority:       strings.ToLower(strings.TrimSpace(template.Priority)),
-			TemplateID:     &template.ID,
+			BoardID:         template.BoardID,
+			ColumnID:        template.ColumnID,
+			Title:           strings.TrimSpace(template.TitleTemplate),
+			Description:     strings.TrimSpace(template.DescriptionTemplate),
+			Priority:        strings.ToLower(strings.TrimSpace(template.Priority)),
+			TemplateID:      &template.ID,
 			RecurringRuleID: &rule.ID,
-			CreatedBy:      rule.CreatedBy,
-			Checklist:      append([]tasks.TaskChecklistItem{}, template.ChecklistTemplate...),
-			IsArchived:     false,
+			CreatedBy:       rule.CreatedBy,
+			Checklist:       append([]tasks.TaskChecklistItem{}, template.ChecklistTemplate...),
+			IsArchived:      false,
 		}
 		if task.CreatedBy == nil {
 			task.CreatedBy = template.CreatedBy
@@ -267,4 +267,3 @@ func isUniqueConstraint(err error) bool {
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "unique constraint failed") || strings.Contains(msg, "unique constraint")
 }
-

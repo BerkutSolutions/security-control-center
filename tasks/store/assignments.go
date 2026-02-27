@@ -81,4 +81,3 @@ func (s *SQLStore) ListTaskAssignmentsForTasks(ctx context.Context, taskIDs []in
 	}
 	return out, rows.Err()
 }
-

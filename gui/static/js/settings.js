@@ -488,18 +488,44 @@ const SettingsPage = (() => {
       }
     };
 
-    const formatUpdateStatus = (payload) => {
+    const renderUpdateStatus = (el, payload) => {
+      if (!el) return;
       const result = payload?.update || payload?.result || payload;
       const checkedAtRaw = result?.checked_at || result?.checkedAt;
+      const hasUpdate = !!(result?.has_update || result?.hasUpdate);
+      const latest = result?.latest_version || result?.latestVersion || '-';
+      const checkedAt = checkedAtRaw && AppTime?.formatDateTime ? AppTime.formatDateTime(checkedAtRaw) : checkedAtRaw;
+      const releaseURL = result?.release_url || result?.releaseURL || '';
+
+      el.classList.remove('banner', 'settings-updates-banner', 'muted');
+      el.innerHTML = '';
+
       if (!result || !checkedAtRaw) {
-        return BerkutI18n.t('settings.updates.notChecked');
+        el.classList.add('muted');
+        el.textContent = BerkutI18n.t('settings.updates.notChecked');
+        return;
       }
-      const latest = result.latest_version || result.latestVersion || '-';
-      const checkedAt = AppTime?.formatDateTime ? AppTime.formatDateTime(checkedAtRaw) : checkedAtRaw;
-      if (result.has_update || result.hasUpdate) {
-        return `${BerkutI18n.t('settings.updates.available')}: ${latest} (${checkedAt})`;
+
+      if (!hasUpdate) {
+        el.classList.add('muted');
+        el.textContent = `${BerkutI18n.t('settings.updates.upToDate')}: ${latest} (${checkedAt})`;
+        return;
       }
-      return `${BerkutI18n.t('settings.updates.upToDate')}: ${latest} (${checkedAt})`;
+
+      el.classList.add('banner', 'settings-updates-banner');
+      const text = document.createElement('span');
+      text.textContent = `${BerkutI18n.t('settings.updates.available')}: ${latest} (${checkedAt})`;
+      el.appendChild(text);
+
+      if (releaseURL) {
+        const link = document.createElement('a');
+        link.className = 'btn btn-sm primary';
+        link.href = releaseURL;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = BerkutI18n.t('settings.updates.openRelease');
+        el.appendChild(link);
+      }
     };
 
     const loadRuntime = async () => {
@@ -507,7 +533,7 @@ const SettingsPage = (() => {
         const data = await Api.get('/api/settings/runtime');
         modeEl.value = data?.deployment_mode || 'enterprise';
         updatesEl.checked = !!data?.update_checks_enabled;
-        if (statusEl) statusEl.textContent = formatUpdateStatus(data || {});
+        renderUpdateStatus(statusEl, data || {});
         if (aboutVersion) {
           aboutVersion.textContent = `${BerkutI18n.t('settings.version')}: ${data?.app_version || '-'}`;
         }
@@ -536,7 +562,7 @@ const SettingsPage = (() => {
         const data = await Api.put('/api/settings/runtime', payload);
         modeEl.value = data?.deployment_mode || payload.deployment_mode;
         updatesEl.checked = !!data?.update_checks_enabled;
-        if (statusEl) statusEl.textContent = formatUpdateStatus(data || {});
+        renderUpdateStatus(statusEl, data || {});
         applyMode();
         showSettingsAlert(alertBox, BerkutI18n.t('settings.saved'), true);
       } catch (err) {
@@ -554,7 +580,7 @@ const SettingsPage = (() => {
             });
           }
           const data = await Api.post('/api/settings/updates/check', {});
-          if (statusEl) statusEl.textContent = formatUpdateStatus(data || {});
+          renderUpdateStatus(statusEl, data || {});
           showSettingsAlert(alertBox, BerkutI18n.t('settings.updates.checked'), true);
         } catch (err) {
           showSettingsAlert(alertBox, err.message || BerkutI18n.t('common.error'));

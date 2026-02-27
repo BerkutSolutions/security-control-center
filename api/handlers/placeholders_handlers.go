@@ -15,9 +15,12 @@ var pageFiles = map[string]string{
 	"approvals":  "approvals.html",
 	"logs":       "logs.html",
 	"controls":   "controls.html",
+	"registry":   "controls.html",
+	"assets":     "assets.html",
+	"software":   "software.html",
 	"backups":    "backups.html",
 	"tasks":      "tasks.html",
-	"findings":   "placeholders/findings.html",
+	"findings":   "findings.html",
 	"incidents":  "incidents.html",
 	"reports":    "reports.html",
 	"monitoring": "monitoring.html",
@@ -52,6 +55,12 @@ func RequiredPermission(name string) rbac.Permission {
 		return "docs.approval.view"
 	case "controls":
 		return "controls.view"
+	case "registry":
+		return "controls.view"
+	case "assets":
+		return "assets.view"
+	case "software":
+		return "software.view"
 	case "backups":
 		return "backups.read"
 	case "tasks":

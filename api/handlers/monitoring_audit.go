@@ -15,6 +15,7 @@ const (
 	monitorAuditMonitorPush          = "monitoring.monitor.push"
 	monitorAuditMonitorEventsDelete  = "monitoring.monitor.events.delete"
 	monitorAuditMonitorMetricsDelete = "monitoring.monitor.metrics.delete"
+	monitorAuditMonitorAssetsSet     = "monitoring.monitor.assets.set"
 
 	monitorAuditSLAUpdate             = "monitoring.sla.update"
 	monitorAuditSLAPolicyUpdate       = "monitoring.sla.policy.update"

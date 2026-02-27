@@ -29,6 +29,7 @@ func pathParams(r *http.Request) map[string]string {
 	addParamAfter(segments, "users", "id", out)
 	addParamAfter(segments, "docs", "id", out)
 	addParamAfter(segments, "incidents", "id", out)
+	addParamAfter(segments, "assets", "id", out)
 	addParamAfter(segments, "stages", "stage_id", out)
 	addParamAfter(segments, "links", "link_id", out)
 	addParamAfter(segments, "attachments", "att_id", out)

@@ -138,7 +138,7 @@ func TestIncidentCannotDeleteOverviewStage(t *testing.T) {
 		t.Fatalf("stages missing: %v", err)
 	}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, nil, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, policy, svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("DELETE", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/stages/"+strconv.FormatInt(stages[0].ID, 10), nil)
 	req = withURLParams(req, map[string]string{
 		"id":       strconv.FormatInt(incident.ID, 10),
@@ -157,7 +157,7 @@ func TestIncidentCompleteStageSetsStatusAndMetadata(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 
 	// create a custom stage via handler to honor ACL/versioning defaults
 	body := bytes.NewBufferString(`{"title":"Stage A"}`)
@@ -208,7 +208,7 @@ func TestIncidentCompletedStageIsReadOnlyForContent(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 
 	body := bytes.NewBufferString(`{"title":"Stage B"}`)
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/stages", body)
@@ -341,7 +341,7 @@ func TestIncidentStageCompleteLocksContent(t *testing.T) {
 	if _, err := is.CreateStageEntry(ctx, entry); err != nil {
 		t.Fatalf("create entry: %v", err)
 	}
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/stages/%d/complete", incident.ID, stage.ID), nil)
 	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID), "stage_id": fmt.Sprintf("%d", stage.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
@@ -404,7 +404,7 @@ func TestIncidentCloseRequiresCompletionStage(t *testing.T) {
 	if _, err := is.CompleteIncidentStage(ctx, stage.ID, user.ID); err != nil {
 		t.Fatalf("complete closure stage: %v", err)
 	}
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, rbac.NewPolicy(rbac.DefaultRoles()), svc, nil, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", fmt.Sprintf("/api/incidents/%d/close", incident.ID), nil)
 	req = withURLParams(req, map[string]string{"id": fmt.Sprintf("%d", incident.ID)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
@@ -465,7 +465,7 @@ func TestIncidentLinksAddRemoveACL(t *testing.T) {
 		t.Fatalf("doc create: %v", err)
 	}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]string{"target_type": "doc", "target_id": strconv.FormatInt(doc.ID, 10)})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links", bytes.NewReader(body))
 	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
@@ -515,7 +515,7 @@ func TestIncidentAttachmentEncryptDecryptAndClearance(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 	part, _ := writer.CreateFormFile("file", "artifact.txt")
@@ -582,7 +582,7 @@ func TestIncidentTimelineOnStatusChange(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]any{"status": "open", "version": incident.Version})
 	req := httptest.NewRequest("PUT", "/api/incidents/"+strconv.FormatInt(incident.ID, 10), bytes.NewReader(body))
 	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
@@ -615,7 +615,7 @@ func TestIncidentExportIncludesStages(t *testing.T) {
 		t.Fatalf("stage update: %v", err)
 	}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, nil, policy, svc, docsSvc, nil, utils.NewLogger())
 	req := httptest.NewRequest("GET", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/export?format=md", nil)
 	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
@@ -634,7 +634,7 @@ func TestIncidentCreateReportDocRequiresDocsCreateAndLink(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/create-report-doc", bytes.NewReader([]byte(`{}`)))
 	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: user.ID, Username: user.Username}))
@@ -688,7 +688,7 @@ func TestIncidentLinkOtherRequiresComment(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	body, _ := json.Marshal(map[string]string{"target_type": "other", "comment": ""})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/links", bytes.NewReader(body))
 	req = withURLParams(req, map[string]string{"id": strconv.FormatInt(incident.ID, 10)})
@@ -705,7 +705,7 @@ func TestIncidentArtifactFilesACL(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	var buf bytes.Buffer
 	writer := multipart.NewWriter(&buf)
 	part, _ := writer.CreateFormFile("file", "artifact.txt")
@@ -801,7 +801,7 @@ func TestIncidentActivityEventAt(t *testing.T) {
 	defer cleanup()
 	incident := createIncident(t, ctx, is, cfg, user)
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
+	h := handlers.NewIncidentsHandler(cfg, is, nil, nil, nil, nil, us, ds, policy, svc, docsSvc, nil, utils.NewLogger())
 	eventAt := time.Now().Add(-2 * time.Hour).UTC()
 	body, _ := json.Marshal(map[string]any{"message": "note", "event_type": "custom", "event_at": eventAt.Format(time.RFC3339)})
 	req := httptest.NewRequest("POST", "/api/incidents/"+strconv.FormatInt(incident.ID, 10)+"/timeline", bytes.NewReader(body))

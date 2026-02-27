@@ -67,11 +67,11 @@ func (h *Handler) CreateColumn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name     string `json:"name"`
-		Position int    `json:"position"`
-		IsFinal  bool   `json:"is_final"`
-		WIPLimit *int   `json:"wip_limit"`
-		IsActive *bool  `json:"is_active"`
+		Name              string `json:"name"`
+		Position          int    `json:"position"`
+		IsFinal           bool   `json:"is_final"`
+		WIPLimit          *int   `json:"wip_limit"`
+		IsActive          *bool  `json:"is_active"`
 		DefaultTemplateID *int64 `json:"default_template_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
@@ -138,12 +138,12 @@ func (h *Handler) UpdateColumn(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Name     *string `json:"name"`
-		Position *int    `json:"position"`
-		IsFinal  *bool   `json:"is_final"`
-		WIPLimit *int    `json:"wip_limit"`
-		IsActive *bool   `json:"is_active"`
-		DefaultTemplateID *int64 `json:"default_template_id"`
+		Name              *string `json:"name"`
+		Position          *int    `json:"position"`
+		IsFinal           *bool   `json:"is_final"`
+		WIPLimit          *int    `json:"wip_limit"`
+		IsActive          *bool   `json:"is_active"`
+		DefaultTemplateID *int64  `json:"default_template_id"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")

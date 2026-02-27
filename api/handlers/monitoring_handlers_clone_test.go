@@ -84,7 +84,7 @@ func TestCloneMonitor_CopiesNotificationBindings(t *testing.T) {
 		t.Fatalf("replace notifications: %v", err)
 	}
 
-	h := NewMonitoringHandler(ms, nil, nil, nil, nil)
+	h := NewMonitoringHandler(ms, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/api/monitoring/monitors/"+strconv.FormatInt(monID, 10)+"/clone", nil)
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u"}))
 	req = withChiURLParam(req, "id", strconv.FormatInt(monID, 10))
@@ -140,7 +140,7 @@ func TestCloneMonitor_PassiveMonitorGetsNewToken(t *testing.T) {
 		t.Fatalf("create monitor: %v", err)
 	}
 
-	h := NewMonitoringHandler(ms, nil, nil, nil, nil)
+	h := NewMonitoringHandler(ms, nil, nil, nil, nil, nil)
 	req := httptest.NewRequest("POST", "/api/monitoring/monitors/"+strconv.FormatInt(monID, 10)+"/clone", nil)
 	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u"}))
 	req = withChiURLParam(req, "id", strconv.FormatInt(monID, 10))

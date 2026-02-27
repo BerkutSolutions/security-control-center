@@ -4,17 +4,21 @@
 
   async function ensureLinkOptions(incidentId) {
     const detail = state.incidentDetails.get(incidentId);
-    if (!detail) return { docs: [], incidents: [] };
+    if (!detail) return { docs: [], incidents: [], assets: [], software: [] };
     if (detail.linkOptions && detail.linkOptionsLoaded) return detail.linkOptions;
-    detail.linkOptions = { docs: [], incidents: [] };
+    detail.linkOptions = { docs: [], incidents: [], assets: [], software: [] };
     try {
-      const [docsRes, incRes] = await Promise.all([
+      const [docsRes, incRes, assetsRes, softwareRes] = await Promise.all([
         Api.get('/api/docs/list?limit=200').catch(() => ({ items: [] })),
-        Api.get('/api/incidents/list?limit=200').catch(() => ({ items: [] }))
+        Api.get('/api/incidents/list?limit=200').catch(() => ({ items: [] })),
+        Api.get('/api/assets/list?limit=200').catch(() => ({ items: [] })),
+        Api.get('/api/software/list?limit=200').catch(() => ({ items: [] }))
       ]);
       detail.linkOptions = {
         docs: docsRes.items || [],
-        incidents: incRes.items || []
+        incidents: incRes.items || [],
+        assets: assetsRes.items || [],
+        software: softwareRes.items || []
       };
     } catch (err) {
       showError(err, 'incidents.links.loadFailed');
@@ -50,6 +54,8 @@
       if (type === 'doc') items = opts.docs || [];
       if (type === 'incident') items = opts.incidents || [];
       if (type === 'report') items = (opts.docs || []).filter(d => (d.type || '').toLowerCase() === 'report');
+      if (type === 'asset') items = opts.assets || [];
+      if (type === 'software') items = opts.software || [];
       items.forEach(item => {
         const opt = document.createElement('option');
         opt.value = item.id;
@@ -100,6 +106,7 @@
     if (!detail) return;
     if (detail.linksLoaded && !force) {
       renderIncidentLinks(incidentId);
+      renderAssetsMetaLinks(incidentId);
       return;
     }
     detail.linksLoading = true;
@@ -113,7 +120,31 @@
     } finally {
       detail.linksLoading = false;
       renderIncidentLinks(incidentId);
+      renderAssetsMetaLinks(incidentId);
     }
+  }
+
+  function renderAssetsMetaLinks(incidentId) {
+    const tabId = `incident-${incidentId}`;
+    const panel = document.querySelector(`#incidents-panels [data-tab="${tabId}"]`);
+    const detail = state.incidentDetails.get(incidentId);
+    if (!panel || !detail) return;
+    const box = panel.querySelector(`#incident-assets-links-${incidentId}`);
+    if (!box) return;
+    box.innerHTML = '';
+    const assets = (detail.links || []).filter(l => (l.entity_type || '').toLowerCase() === 'asset');
+    if (!assets.length) {
+      box.hidden = true;
+      return;
+    }
+    assets.forEach((l) => {
+      const a = document.createElement('a');
+      a.className = 'tag';
+      a.href = `/assets?asset=${encodeURIComponent(l.entity_id || '')}`;
+      a.textContent = l.title ? `${l.title}` : `#${l.entity_id || ''}`;
+      box.appendChild(a);
+    });
+    box.hidden = false;
   }
 
   function renderIncidentLinks(incidentId) {
@@ -142,12 +173,27 @@
         <td>${escapeHtml(status)}</td>
         <td class="actions">
           ${link.entity_type === 'doc' || link.entity_type === 'report' ? `<button class="btn ghost link-open" data-id="${link.entity_id}">${t('incidents.links.openDoc')}</button>` : ''}
+          ${link.entity_type === 'asset' ? `<button class="btn ghost link-open-asset" data-id="${link.entity_id}">${t('incidents.links.openAsset')}</button>` : ''}
+          ${link.entity_type === 'software' ? `<button class="btn ghost link-open-software" data-id="${link.entity_id}">${t('incidents.links.openSoftware')}</button>` : ''}
           <button class="btn ghost link-remove" data-id="${link.id}">${t('incidents.links.remove')}</button>
         </td>`;
       tbody.appendChild(tr);
       const openBtn = tr.querySelector('.link-open');
       if (openBtn) {
         openBtn.onclick = () => IncidentsPage.openDocInDocs(link.entity_id);
+      }
+      const openAssetBtn = tr.querySelector('.link-open-asset');
+      if (openAssetBtn) {
+        openAssetBtn.onclick = () => IncidentsPage.openAssetInAssets(link.entity_id);
+      }
+      const openSoftwareBtn = tr.querySelector('.link-open-software');
+      if (openSoftwareBtn) {
+        openSoftwareBtn.onclick = () => {
+          const id = link.entity_id || '';
+          if (!id) return;
+          window.history.pushState({}, '', `/software?software=${encodeURIComponent(id)}`);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+        };
       }
       const removeBtn = tr.querySelector('.link-remove');
       if (removeBtn) {
@@ -171,6 +217,15 @@
   function linkOptionLabel(type, item) {
     if (type === 'incident') {
       return `#${item.id} ${item.reg_no || ''} ${item.title || ''}`.trim();
+    }
+    if (type === 'asset') {
+      const name = item.name || '';
+      const tt = item.type ? `(${item.type})` : '';
+      return `${name} ${tt}`.trim();
+    }
+    if (type === 'software') {
+      const vendor = item.vendor ? `(${item.vendor})` : '';
+      return `${item.name || ''} ${vendor}`.trim();
     }
     const reg = item.reg_no ? `(${item.reg_no})` : '';
     return `${reg} ${item.title || ''}`.trim();

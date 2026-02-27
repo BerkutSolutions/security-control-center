@@ -104,4 +104,3 @@ func (s *SQLStore) SetTaskTags(ctx context.Context, taskID int64, tags []string)
 		return nil
 	})
 }
-

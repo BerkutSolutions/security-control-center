@@ -18,7 +18,7 @@ Berkut Solutions - Security Control Center (SCC) is a self-hosted platform for s
 
 
 
-Current version: `1.0.9`
+Current version: `1.0.11`
 
 
 

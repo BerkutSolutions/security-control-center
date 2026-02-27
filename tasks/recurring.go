@@ -10,12 +10,12 @@ import (
 )
 
 const (
-	ScheduleDaily     = "daily"
-	ScheduleWeekly    = "weekly"
-	ScheduleMonthly   = "monthly"
-	ScheduleQuarterly = "quarterly"
+	ScheduleDaily      = "daily"
+	ScheduleWeekly     = "weekly"
+	ScheduleMonthly    = "monthly"
+	ScheduleQuarterly  = "quarterly"
 	ScheduleSemiAnnual = "semiannual"
-	ScheduleAnnual    = "annual"
+	ScheduleAnnual     = "annual"
 )
 
 type WeeklyScheduleConfig struct {

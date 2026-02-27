@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.0.9`
+Documentation version baseline: `1.0.11`
 
 
 
@@ -22,15 +22,21 @@ Documentation version baseline: `1.0.9`
 
 7. Features wiki: `docs/eng/wiki/features.md`
 
-8. Current evolution plan: `docs/eng/roadmap.md`
+8. Assets module (MVP): `docs/eng/assets.md`
 
-9. Backups (.bscc): `docs/eng/backups.md`
+9. Findings module (MVP): `docs/eng/findings.md`
 
-10. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
+10. Software module (MVP): `docs/eng/software.md`
 
-11. Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
+11. Current evolution plan: `docs/eng/roadmap.md`
 
-12. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
+12. Backups (.bscc): `docs/eng/backups.md`
+
+13. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
+
+14. Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
+
+15. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
 
 
 
@@ -52,7 +58,9 @@ Documentation is aligned with current runtime reality:
 
 
 
-## Included for 1.0.9
+## Included for 1.0.11
+
+- UI navigation: Registries tab (`/registry/...`) now contains Assets/Software/Findings as internal tabs with path routes (e.g. `/registry/assets`, `/registry/software`, `/registry/findings`).
 
 - Settings: dedicated Cleanup tab with selective per-module data cleanup.
 

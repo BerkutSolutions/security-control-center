@@ -162,6 +162,7 @@ type MonitorSettings struct {
 	NotifySuppressMinutes   int       `json:"notify_suppress_minutes"`
 	NotifyRepeatDownMinutes int       `json:"notify_repeat_down_minutes"`
 	NotifyMaintenance       bool      `json:"notify_maintenance"`
+	LogDNSEvents            bool      `json:"log_dns_events"`
 	AutoTaskOnDown          bool      `json:"auto_task_on_down"`
 	AutoTLSIncident         bool      `json:"auto_tls_incident"`
 	AutoTLSIncidentDays     int       `json:"auto_tls_incident_days"`

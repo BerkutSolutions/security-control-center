@@ -69,6 +69,9 @@ type MonitoringStore interface {
 	ListSLAPeriodResults(ctx context.Context, filter MonitorSLAPeriodResultListFilter) ([]MonitorSLAPeriodResult, error)
 	MarkSLAPeriodIncidentCreated(ctx context.Context, id int64) error
 	SyncSLAPeriodTarget(ctx context.Context, monitorID int64, targetPct float64, minCoveragePct float64) error
+
+	ListMonitorAssets(ctx context.Context, monitorID int64) ([]AssetLite, error)
+	ReplaceMonitorAssets(ctx context.Context, monitorID int64, assetIDs []int64, userID int64) error
 }
 
 type monitoringStore struct {

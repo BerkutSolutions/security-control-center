@@ -148,9 +148,7 @@
     els.empty.hidden = true;
     els.detail.hidden = false;
     if (els.title) els.title.textContent = mon.name || `#${mon.id}`;
-    if (els.target) els.target.textContent = HOST_TARGET_TYPES.has((mon.type || '').toLowerCase())
-      ? (mon.port ? `${mon.host}:${mon.port}` : (mon.host || '-'))
-      : (mon.url || mon.host || '-');
+    renderMonitorTarget(mon);
     renderMonitorTags(mon?.tags || []);
     if (els.dot) els.dot.className = `status-dot ${statusClass(state?.status || mon.status)}`;
     const current = MonitoringPage.state.monitors.find(m => m.id === mon.id);
@@ -169,15 +167,53 @@
     detailState.chartMeta = metricsMeta || null;
     renderLatencyChart(metrics, metricsMeta || null);
     renderEvents(events);
+    MonitoringPage.loadMonitorAssets?.(mon.id);
     updateActionLabels(mon);
     toggleActionAccess();
     scheduleDetailRefresh(mon);
+  }
+
+  function renderMonitorTarget(mon) {
+    if (!els.target) return;
+    const isHostTarget = HOST_TARGET_TYPES.has((mon.type || '').toLowerCase());
+    const text = isHostTarget
+      ? (mon.port ? `${mon.host}:${mon.port}` : (mon.host || '-'))
+      : (mon.url || mon.host || '-');
+
+    els.target.innerHTML = '';
+
+    if (!isHostTarget && mon.url) {
+      const href = safeExternalHTTPURL(mon.url);
+      if (href) {
+        const link = document.createElement('a');
+        link.href = href;
+        link.target = '_blank';
+        link.rel = 'noopener noreferrer';
+        link.textContent = text;
+        link.className = 'monitor-detail-link';
+        els.target.appendChild(link);
+        return;
+      }
+    }
+
+    els.target.textContent = text;
+  }
+
+  function safeExternalHTTPURL(value) {
+    try {
+      const u = new URL(String(value || '').trim());
+      if (u.protocol !== 'http:' && u.protocol !== 'https:') return '';
+      return u.toString();
+    } catch (_) {
+      return '';
+    }
   }
 
   function clearDetail() {
     stopDetailRefresh();
     if (els.detail) els.detail.hidden = true;
     if (els.empty) els.empty.hidden = (MonitoringPage.state.monitors || []).length === 0;
+    MonitoringPage.loadMonitorAssets?.(null);
     if (els.tags) {
       els.tags.hidden = true;
       els.tags.innerHTML = '';
@@ -208,7 +244,7 @@
     const slice = metrics.slice(-50);
     slice.forEach(m => {
       const bar = document.createElement('span');
-      bar.className = m.ok ? 'up' : 'down';
+      bar.className = m.ok ? 'up' : ((MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(m.error)) ? 'dns' : 'down');
       els.strip.appendChild(bar);
     });
     if (!slice.length) {
@@ -551,6 +587,7 @@
     const bottom = height - pad.bottom;
     points.forEach((pt, idx) => {
       if (pt.ok) return;
+      const dns = MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
       const prevX = idx > 0 ? points[idx - 1].x : pt.x;
       const nextX = idx < points.length - 1 ? points[idx + 1].x : pt.x;
       const startX = idx > 0 ? (prevX + pt.x) / 2 : Math.max(pad.left, pt.x - Math.max(6, (nextX - pt.x) / 2));
@@ -561,17 +598,18 @@
       rect.setAttribute('y', `${top}`);
       rect.setAttribute('width', `${width}`);
       rect.setAttribute('height', `${bottom - top}`);
-      rect.setAttribute('fill', 'rgba(255, 77, 79, 0.20)');
+      rect.setAttribute('fill', dns ? 'rgba(242, 153, 74, 0.22)' : 'rgba(255, 77, 79, 0.20)');
       svg.appendChild(rect);
     });
   }
 
   function renderPoint(svg, pt, idx, total) {
+    const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', pt.x.toFixed(2));
     circle.setAttribute('cy', pt.y.toFixed(2));
     circle.setAttribute('r', (idx === 0 || idx === total - 1) ? '4' : '2.5');
-    circle.setAttribute('fill', pt.ok ? '#2dd27b' : '#ff6b6b');
+    circle.setAttribute('fill', pt.ok ? '#2dd27b' : (dns ? '#f2994a' : '#ff6b6b'));
     svg.appendChild(circle);
   }
 
@@ -610,7 +648,8 @@
   }
 
   function pointTooltipText(pt) {
-    const statusText = pt.ok ? MonitoringPage.t('monitoring.status.up') : MonitoringPage.t('monitoring.status.down');
+    const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
+    const statusText = pt.ok ? MonitoringPage.t('monitoring.status.up') : (dns ? MonitoringPage.t('monitoring.status.dns') : MonitoringPage.t('monitoring.status.down'));
     const codeText = pt.statusCode ? `HTTP ${pt.statusCode}` : '-';
     const errText = pt.error ? MonitoringPage.sanitizeErrorMessage(pt.error) : '-';
     return [
@@ -814,6 +853,7 @@
   function statusClass(status) {
     const val = (status || '').toLowerCase();
     if (val === 'up') return 'up';
+    if (val === 'dns') return 'dns';
     if (val === 'paused') return 'paused';
     if (val === 'maintenance' || val === 'maintenance_start' || val === 'maintenance_end') return 'maintenance';
     return 'down';

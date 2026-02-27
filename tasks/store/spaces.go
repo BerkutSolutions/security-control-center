@@ -135,4 +135,3 @@ func (s *SQLStore) GetSpaceACL(ctx context.Context, spaceID int64) ([]tasks.ACLR
 	}
 	return res, rows.Err()
 }
-

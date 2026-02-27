@@ -35,4 +35,3 @@ func (s *SQLStore) SaveBoardLayout(ctx context.Context, userID, spaceID int64, l
 	`, userID, spaceID, layoutJSON, now, now)
 	return err
 }
-

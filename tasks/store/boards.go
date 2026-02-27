@@ -254,4 +254,3 @@ func (s *SQLStore) getBoardTx(ctx context.Context, tx *sql.Tx, boardID int64) (*
 	b.IsActive = active == 1
 	return &b, nil
 }
-

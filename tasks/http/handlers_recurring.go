@@ -30,7 +30,7 @@ func (h *Handler) ListRecurringRules(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := tasks.TaskRecurringRuleFilter{
-		TemplateID:     parseInt64Default(r.URL.Query().Get("template_id"), 0),
+		TemplateID:      parseInt64Default(r.URL.Query().Get("template_id"), 0),
 		IncludeInactive: r.URL.Query().Get("include_inactive") == "1",
 	}
 	rules, err := h.svc.Store().ListTaskRecurringRules(r.Context(), filter)
@@ -153,13 +153,13 @@ func (h *Handler) CreateRecurringRule(w http.ResponseWriter, r *http.Request) {
 		nextRun = &next
 	}
 	rule := &tasks.TaskRecurringRule{
-		TemplateID:    tpl.ID,
-		ScheduleType:  strings.ToLower(strings.TrimSpace(payload.ScheduleType)),
+		TemplateID:     tpl.ID,
+		ScheduleType:   strings.ToLower(strings.TrimSpace(payload.ScheduleType)),
 		ScheduleConfig: normalized,
-		TimeOfDay:     strings.TrimSpace(payload.TimeOfDay),
-		NextRunAt:     nextRun,
-		IsActive:      active,
-		CreatedBy:     &user.ID,
+		TimeOfDay:      strings.TrimSpace(payload.TimeOfDay),
+		NextRunAt:      nextRun,
+		IsActive:       active,
+		CreatedBy:      &user.ID,
 	}
 	if _, err := h.svc.Store().CreateTaskRecurringRule(r.Context(), rule); err != nil {
 		respondError(w, http.StatusInternalServerError, "server error")

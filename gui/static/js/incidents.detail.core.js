@@ -115,6 +115,7 @@
       updateIncidentTabTitle(incidentId, incident);
       renderIncidentPanel(incidentId);
       loadControlLinks(incidentId);
+      IncidentsPage.ensureIncidentLinks?.(incidentId);
     } catch (err) {
       const raw = (err && err.message ? err.message : '').trim();
       if (raw === 'incidents.forbidden' || raw === 'incidents.notFound' || raw === 'incidents.deleted') {
@@ -229,7 +230,10 @@
               </div>
               <div class="meta-field">
                 <label>${t('incidents.form.assets')}</label>
-                <div class="meta-value">${formatMetaValue(meta.assets)}</div>
+                <div class="meta-value">
+                  <div>${formatMetaValue(meta.assets)}</div>
+                  <div id="incident-assets-links-${incidentId}" hidden></div>
+                </div>
               </div>
               <div class="meta-field wide">
                 <label>${t('incidents.form.tags')}</label>
@@ -506,6 +510,8 @@
                 <option value="doc">${t('incidents.links.type.doc')}</option>
                 <option value="incident">${t('incidents.links.type.incident')}</option>
                 <option value="report">${t('incidents.links.type.report')}</option>
+                <option value="asset">${t('incidents.links.type.asset')}</option>
+                <option value="software">${t('incidents.links.type.software')}</option>
                 <option value="other">${t('incidents.links.type.other')}</option>
               </select>
             </div>
@@ -824,7 +830,7 @@
     return items.map(item => {
       const label = `${escapeHtml(item.code)} - ${escapeHtml(item.title)}`;
       const rel = item.relation_type ? ` <span class="muted">(${escapeHtml(t(`controls.links.relation.${item.relation_type}`))})</span>` : '';
-      return `<a class="tag" href="/controls?control=${encodeURIComponent(item.control_id)}">${label}</a>${rel}`;
+      return `<a class="tag" href="/registry/controls?control=${encodeURIComponent(item.control_id)}">${label}</a>${rel}`;
     }).join(' ');
   }
 

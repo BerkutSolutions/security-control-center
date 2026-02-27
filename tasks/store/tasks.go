@@ -824,4 +824,3 @@ func scanArchivedTaskRow(rows *sql.Rows) (tasks.TaskArchiveEntry, error) {
 	}
 	return entry, nil
 }
-

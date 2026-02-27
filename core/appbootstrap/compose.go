@@ -33,6 +33,9 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 	reportsStore := store.NewReportsStore(db)
 	incidentsStore := store.NewIncidentsStore(db)
 	controlsStore := store.NewControlsStore(db)
+	assetsStore := store.NewAssetsStore(db)
+	findingsStore := store.NewFindingsStore(db)
+	softwareStore := store.NewSoftwareStore(db)
 	entityLinks := store.NewEntityLinksStore(db)
 	monitoringStore := store.NewMonitoringStore(db)
 	appHTTPSStore := store.NewAppHTTPSStore(db)
@@ -76,6 +79,9 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			ReportsStore:     reportsStore,
 			IncidentsStore:   incidentsStore,
 			ControlsStore:    controlsStore,
+			AssetsStore:      assetsStore,
+			FindingsStore:    findingsStore,
+			SoftwareStore:    softwareStore,
 			EntityLinksStore: entityLinks,
 			MonitoringStore:  monitoringStore,
 			AppHTTPSStore:    appHTTPSStore,

@@ -7,6 +7,10 @@ const DocEditor = (() => {
   let dirty = false;
   let callbacks = {};
   const els = {};
+  const linkState = {
+    options: { incident: [], task: [], control: [], asset: [], software: [] },
+    loaded: { incident: false, task: false, control: false, asset: false, software: false }
+  };
   const EDITABLE_FORMATS = new Set(['md', 'txt']);
   let onlyOfficeActive = false;
   let onlyOfficeOpenAttempts = 0;
@@ -75,6 +79,8 @@ const DocEditor = (() => {
     els.closeBtn = document.getElementById('editor-close');
     els.linkType = document.getElementById('link-type');
     els.linkId = document.getElementById('link-id');
+    els.linkSearch = document.getElementById('link-search');
+    els.linkTarget = document.getElementById('link-target-id');
     els.addLink = document.getElementById('add-link');
     els.links = document.getElementById('editor-links');
     els.aclRoles = document.getElementById('editor-acl-roles');
@@ -128,6 +134,19 @@ const DocEditor = (() => {
     if (els.onlyOfficeOpenBtn) els.onlyOfficeOpenBtn.onclick = () => openOnlyOffice();
     if (els.addLink) els.addLink.onclick = () => addLink();
     if (els.addLinkInline) els.addLinkInline.onclick = () => addLink();
+    if (els.linkType) {
+      els.linkType.addEventListener('change', () => refreshLinkTargets());
+    }
+    if (els.linkSearch) {
+      els.linkSearch.addEventListener('input', () => refreshLinkTargets());
+    }
+    if (els.linkTarget) {
+      els.linkTarget.addEventListener('change', () => {
+        if (!els.linkId) return;
+        const val = els.linkTarget.value || '';
+        if (val) els.linkId.value = val;
+      });
+    }
     if (els.aclSave) els.aclSave.onclick = () => saveAcl();
     if (els.aclRefresh) els.aclRefresh.onclick = () => loadAcl();
   }
@@ -160,6 +179,7 @@ const DocEditor = (() => {
       renderMeta(meta);
       await renderContent(cont);
       await loadLinks();
+      refreshLinkTargets();
       await loadAclOptions();
       await loadAcl();
       els.panel.hidden = false;
@@ -454,8 +474,17 @@ const DocEditor = (() => {
       (res.links || []).forEach(l => {
         const row = document.createElement('div');
         row.className = 'link-item';
-        row.innerHTML = `<span>${escapeHtml(l.target_type)} #${escapeHtml(l.target_id)}</span><button class="btn ghost" data-id="${l.id}">×</button>`;
-        row.querySelector('button').onclick = () => removeLink(l.id);
+        const type = (l.target_type || '').toLowerCase();
+        const id = String(l.target_id || '').trim();
+        const openHref = linkHref(type, id);
+        row.innerHTML = `
+          <span>${escapeHtml(linkLabel(type))} #${escapeHtml(id)}</span>
+          <div class="table-actions">
+            ${openHref ? `<a class="btn ghost btn-xs" href="${openHref}">${escapeHtml(linkOpenLabel(type))}</a>` : ''}
+            <button class="btn ghost" data-id="${l.id}">×</button>
+          </div>
+        `;
+        row.querySelector('button')?.addEventListener('click', () => removeLink(l.id));
         els.links.appendChild(row);
       });
     } catch (err) {
@@ -476,6 +505,117 @@ const DocEditor = (() => {
   async function removeLink(id) {
     await Api.del(`/api/docs/${currentDocId}/links/${id}`);
     await loadLinks();
+  }
+
+  function linkLabel(type) {
+    const key = `docs.link.${type}`;
+    if (typeof BerkutI18n !== 'undefined' && typeof BerkutI18n.t === 'function') {
+      const translated = BerkutI18n.t(key);
+      if (translated && translated !== key) return translated;
+    }
+    return type || 'link';
+  }
+
+  function linkOpenLabel(type) {
+    if (type === 'asset') return (BerkutI18n?.t?.('incidents.links.openAsset') || 'Open');
+    return (BerkutI18n?.t?.('controls.links.open') || 'Open');
+  }
+
+  function linkHref(type, id) {
+    if (!type || !id) return '';
+    if (type === 'incident') return `/incidents?incident=${encodeURIComponent(id)}`;
+    if (type === 'task') return `/tasks/task/${encodeURIComponent(id)}`;
+    if (type === 'control') return `/registry/controls?control=${encodeURIComponent(id)}`;
+    if (type === 'asset') return `/assets?asset=${encodeURIComponent(id)}`;
+    if (type === 'software') return `/software?software=${encodeURIComponent(id)}`;
+    return '';
+  }
+
+  async function refreshLinkTargets() {
+    if (!els.linkType || !els.linkId || !els.linkSearch || !els.linkTarget) return;
+    const type = (els.linkType.value || '').toLowerCase();
+    const supported = ['incident', 'task', 'control', 'asset', 'software'].includes(type);
+    if (!supported) {
+      els.linkSearch.hidden = true;
+      els.linkTarget.hidden = true;
+      return;
+    }
+    await ensureLinkOptions(type);
+    const items = linkState.options[type] || [];
+    if (!items.length) {
+      els.linkSearch.hidden = true;
+      els.linkTarget.hidden = true;
+      return;
+    }
+    els.linkSearch.hidden = false;
+    els.linkTarget.hidden = false;
+    const search = (els.linkSearch.value || '').toLowerCase().trim();
+    els.linkTarget.innerHTML = '';
+    const ph = document.createElement('option');
+    ph.value = '';
+    ph.textContent = (BerkutI18n?.t?.('common.select') || 'Select');
+    els.linkTarget.appendChild(ph);
+    items
+      .filter((item) => optionLabel(type, item).toLowerCase().includes(search))
+      .forEach((item) => {
+        const opt = document.createElement('option');
+        opt.value = optionValue(type, item);
+        opt.textContent = optionLabel(type, item);
+        els.linkTarget.appendChild(opt);
+      });
+  }
+
+  async function ensureLinkOptions(type) {
+    if (linkState.loaded[type]) return;
+    try {
+      if (type === 'incident') {
+        const res = await Api.get('/api/incidents?limit=200').catch(() => ({ items: [] }));
+        linkState.options.incident = res.items || [];
+      } else if (type === 'task') {
+        const res = await Api.get('/api/tasks?limit=200&include_archived=1').catch(() => ({ items: [] }));
+        linkState.options.task = res.items || [];
+      } else if (type === 'control') {
+        const res = await Api.get('/api/controls?limit=200').catch(() => ({ items: [] }));
+        linkState.options.control = res.items || [];
+      } else if (type === 'asset') {
+        const res = await Api.get('/api/assets/list?limit=200').catch(() => ({ items: [] }));
+        linkState.options.asset = res.items || [];
+      } else if (type === 'software') {
+        const res = await Api.get('/api/software/list?limit=200').catch(() => ({ items: [] }));
+        linkState.options.software = res.items || [];
+      }
+    } finally {
+      linkState.loaded[type] = true;
+    }
+  }
+
+  function optionValue(type, item) {
+    if (!item) return '';
+    if (type === 'incident') return item.reg_no || item.regNo || item.id || '';
+    return item.id || '';
+  }
+
+  function optionLabel(type, item) {
+    if (!item) return '';
+    if (type === 'incident') {
+      const reg = item.reg_no || item.regNo || `#${item.id}`;
+      return `${reg} - ${item.title || ''}`.trim();
+    }
+    if (type === 'task') return `#${item.id} ${item.title || ''}`.trim();
+    if (type === 'control') {
+      const code = item.code ? `${item.code} - ` : '';
+      return `${code}${item.title || ''}`.trim();
+    }
+    if (type === 'asset') {
+      const typeLabel = item.type ? (BerkutI18n?.t?.(`assets.type.${item.type}`) || item.type) : '';
+      const suffix = typeLabel ? ` (${typeLabel})` : '';
+      return `#${item.id} ${item.name || ''}${suffix}`.trim();
+    }
+    if (type === 'software') {
+      const vendor = item.vendor ? ` (${item.vendor})` : '';
+      return `#${item.id} ${item.name || ''}${vendor}`.trim();
+    }
+    return `${item.id || ''}`.trim();
   }
 
   function enhanceSelectWithTicks(sel) {

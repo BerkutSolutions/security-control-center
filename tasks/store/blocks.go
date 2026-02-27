@@ -238,4 +238,3 @@ func scanTaskBlockRow(rows *sql.Rows) (tasks.TaskBlock, error) {
 	block.IsActive = active == 1
 	return block, nil
 }
-

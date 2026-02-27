@@ -20,6 +20,9 @@ type ServerDeps struct {
 	ReportsStore     store.ReportsStore
 	IncidentsStore   store.IncidentsStore
 	ControlsStore    store.ControlsStore
+	AssetsStore      store.AssetsStore
+	FindingsStore    store.FindingsStore
+	SoftwareStore    store.SoftwareStore
 	EntityLinksStore store.EntityLinksStore
 	MonitoringStore  store.MonitoringStore
 	AppHTTPSStore    store.AppHTTPSStore

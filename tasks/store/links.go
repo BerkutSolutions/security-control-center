@@ -51,4 +51,3 @@ func (s *SQLStore) DeleteEntityLink(ctx context.Context, linkID int64) error {
 	_, err := s.db.ExecContext(ctx, `DELETE FROM entity_links WHERE id=?`, linkID)
 	return err
 }
-

@@ -12,6 +12,8 @@ func RegisterMonitoring(apiRouter chi.Router, g Guards, monitoring *handlers.Mon
 		monitoringRouter.MethodFunc("GET", "/monitors/{id:[0-9]+}", g.SessionPerm("monitoring.view", monitoring.GetMonitor))
 		monitoringRouter.MethodFunc("PUT", "/monitors/{id:[0-9]+}", g.SessionPerm("monitoring.manage", monitoring.UpdateMonitor))
 		monitoringRouter.MethodFunc("DELETE", "/monitors/{id:[0-9]+}", g.SessionPerm("monitoring.manage", monitoring.DeleteMonitor))
+		monitoringRouter.MethodFunc("GET", "/monitors/{id:[0-9]+}/assets", g.SessionPerm("monitoring.view", monitoring.ListMonitorAssets))
+		monitoringRouter.MethodFunc("PUT", "/monitors/{id:[0-9]+}/assets", g.SessionPerm("monitoring.manage", monitoring.ReplaceMonitorAssets))
 		monitoringRouter.MethodFunc("POST", "/monitors/{id:[0-9]+}/pause", g.SessionPerm("monitoring.manage", monitoring.PauseMonitor))
 		monitoringRouter.MethodFunc("POST", "/monitors/{id:[0-9]+}/resume", g.SessionPerm("monitoring.manage", monitoring.ResumeMonitor))
 		monitoringRouter.MethodFunc("POST", "/monitors/{id:[0-9]+}/check-now", g.SessionPerm("monitoring.manage", monitoring.CheckNow))

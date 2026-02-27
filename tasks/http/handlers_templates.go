@@ -26,7 +26,7 @@ func (h *Handler) ListTemplates(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	filter := tasks.TaskTemplateFilter{
-		BoardID:        parseInt64Default(r.URL.Query().Get("board_id"), 0),
+		BoardID:         parseInt64Default(r.URL.Query().Get("board_id"), 0),
 		IncludeInactive: r.URL.Query().Get("include_inactive") == "1",
 	}
 	items, err := h.svc.Store().ListTaskTemplates(r.Context(), filter)
@@ -201,16 +201,16 @@ func (h *Handler) UpdateTemplate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		BoardID             *int64                    `json:"board_id"`
-		ColumnID            *int64                    `json:"column_id"`
-		TitleTemplate       *string                   `json:"title_template"`
-		DescriptionTemplate *string                   `json:"description_template"`
-		Priority            *string                   `json:"priority"`
-		DefaultAssignees    []string                  `json:"default_assignees"`
-		DefaultDueDays      *int                      `json:"default_due_days"`
+		BoardID             *int64                     `json:"board_id"`
+		ColumnID            *int64                     `json:"column_id"`
+		TitleTemplate       *string                    `json:"title_template"`
+		DescriptionTemplate *string                    `json:"description_template"`
+		Priority            *string                    `json:"priority"`
+		DefaultAssignees    []string                   `json:"default_assignees"`
+		DefaultDueDays      *int                       `json:"default_due_days"`
 		ChecklistTemplate   *[]tasks.TaskChecklistItem `json:"checklist_template"`
-		LinksTemplate       *[]tasks.TaskTemplateLink `json:"links_template"`
-		IsActive            *bool                     `json:"is_active"`
+		LinksTemplate       *[]tasks.TaskTemplateLink  `json:"links_template"`
+		IsActive            *bool                      `json:"is_active"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		respondError(w, http.StatusBadRequest, "bad request")
@@ -366,8 +366,8 @@ func (h *Handler) CreateTaskFromTemplate(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	var payload struct {
-		ColumnID    *int64 `json:"column_id"`
-		SubColumnID *int64 `json:"subcolumn_id"`
+		ColumnID    *int64  `json:"column_id"`
+		SubColumnID *int64  `json:"subcolumn_id"`
 		Title       *string `json:"title"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil && err != io.EOF {
@@ -418,16 +418,16 @@ func (h *Handler) CreateTaskFromTemplate(w http.ResponseWriter, r *http.Request)
 		}
 	}
 	task := &tasks.Task{
-		BoardID:        tpl.BoardID,
-		ColumnID:       columnID,
-		SubColumnID:    subcolumnID,
-		Title:          title,
-		Description:    strings.TrimSpace(tpl.DescriptionTemplate),
-		Priority:       strings.ToLower(strings.TrimSpace(tpl.Priority)),
-		TemplateID:     &tpl.ID,
-		CreatedBy:      &user.ID,
-		Checklist:      append([]tasks.TaskChecklistItem{}, tpl.ChecklistTemplate...),
-		IsArchived:     false,
+		BoardID:     tpl.BoardID,
+		ColumnID:    columnID,
+		SubColumnID: subcolumnID,
+		Title:       title,
+		Description: strings.TrimSpace(tpl.DescriptionTemplate),
+		Priority:    strings.ToLower(strings.TrimSpace(tpl.Priority)),
+		TemplateID:  &tpl.ID,
+		CreatedBy:   &user.ID,
+		Checklist:   append([]tasks.TaskChecklistItem{}, tpl.ChecklistTemplate...),
+		IsArchived:  false,
 	}
 	if tpl.DefaultDueDays > 0 {
 		due := now.AddDate(0, 0, tpl.DefaultDueDays)

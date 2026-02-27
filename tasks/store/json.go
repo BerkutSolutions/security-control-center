@@ -35,4 +35,3 @@ func unmarshalJSON(raw string, target any) {
 	}
 	_ = json.Unmarshal([]byte(clean), target)
 }
-

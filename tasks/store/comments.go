@@ -90,4 +90,3 @@ func (s *SQLStore) DeleteTaskComment(ctx context.Context, commentID int64) error
 	_, err := s.db.ExecContext(ctx, `DELETE FROM task_comments WHERE id=?`, commentID)
 	return err
 }
-

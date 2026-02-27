@@ -93,4 +93,3 @@ func addEntityLinkTx(ctx context.Context, tx *sql.Tx, link *tasks.Link, createdA
 	link.CreatedAt = createdAt
 	return id, nil
 }
-

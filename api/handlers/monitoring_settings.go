@@ -24,6 +24,7 @@ type monitoringSettingsPayload struct {
 	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
 	NotifyRepeatDownMinutes int     `json:"notify_repeat_down_minutes"`
 	NotifyMaintenance       *bool   `json:"notify_maintenance"`
+	LogDNSEvents            *bool   `json:"log_dns_events"`
 	AutoTaskOnDown          *bool   `json:"auto_task_on_down"`
 	AutoTLSIncident         *bool   `json:"auto_tls_incident"`
 	AutoTLSIncidentDays     int     `json:"auto_tls_incident_days"`
@@ -94,6 +95,9 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.NotifyMaintenance != nil {
 		current.NotifyMaintenance = *payload.NotifyMaintenance
 	}
+	if payload.LogDNSEvents != nil {
+		current.LogDNSEvents = *payload.LogDNSEvents
+	}
 	if payload.AutoTaskOnDown != nil {
 		current.AutoTaskOnDown = *payload.AutoTaskOnDown
 	}
@@ -163,6 +167,7 @@ func settingsDetails(s *store.MonitorSettings) string {
 		"notify_suppress=" + strconv.Itoa(s.NotifySuppressMinutes),
 		"notify_repeat=" + strconv.Itoa(s.NotifyRepeatDownMinutes),
 		"notify_maintenance=" + strconv.FormatBool(s.NotifyMaintenance),
+		"log_dns_events=" + strconv.FormatBool(s.LogDNSEvents),
 		"auto_task_on_down=" + strconv.FormatBool(s.AutoTaskOnDown),
 		"auto_tls_incident=" + strconv.FormatBool(s.AutoTLSIncident),
 		"auto_tls_incident_days=" + strconv.Itoa(s.AutoTLSIncidentDays),

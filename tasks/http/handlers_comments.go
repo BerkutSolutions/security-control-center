@@ -85,9 +85,9 @@ func (h *Handler) AddComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	comment := &tasks.Comment{
-		TaskID:   task.ID,
-		AuthorID: user.ID,
-		Content:  content,
+		TaskID:      task.ID,
+		AuthorID:    user.ID,
+		Content:     content,
 		Attachments: attachments,
 	}
 	if _, err := h.svc.Store().AddTaskComment(r.Context(), comment); err != nil {

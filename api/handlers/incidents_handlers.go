@@ -28,6 +28,8 @@ type IncidentsHandler struct {
 	store     store.IncidentsStore
 	links     store.EntityLinksStore
 	controls  store.ControlsStore
+	assets    store.AssetsStore
+	software  store.SoftwareStore
 	users     store.UsersStore
 	docsStore store.DocsStore
 	policy    *rbac.Policy
@@ -37,8 +39,8 @@ type IncidentsHandler struct {
 	logger    *utils.Logger
 }
 
-func NewIncidentsHandler(cfg *config.AppConfig, is store.IncidentsStore, links store.EntityLinksStore, controls store.ControlsStore, us store.UsersStore, ds store.DocsStore, policy *rbac.Policy, svc *incidents.Service, docsSvc *docs.Service, audits store.AuditStore, logger *utils.Logger) *IncidentsHandler {
-	return &IncidentsHandler{cfg: cfg, store: is, links: links, controls: controls, users: us, docsStore: ds, policy: policy, svc: svc, docsSvc: docsSvc, audits: audits, logger: logger}
+func NewIncidentsHandler(cfg *config.AppConfig, is store.IncidentsStore, links store.EntityLinksStore, controls store.ControlsStore, assets store.AssetsStore, software store.SoftwareStore, us store.UsersStore, ds store.DocsStore, policy *rbac.Policy, svc *incidents.Service, docsSvc *docs.Service, audits store.AuditStore, logger *utils.Logger) *IncidentsHandler {
+	return &IncidentsHandler{cfg: cfg, store: is, links: links, controls: controls, assets: assets, software: software, users: us, docsStore: ds, policy: policy, svc: svc, docsSvc: docsSvc, audits: audits, logger: logger}
 }
 
 var validIncidentSeverity = map[string]struct{}{
@@ -1394,6 +1396,26 @@ func (h *IncidentsHandler) ListLinks(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
+	if len(links) > 0 && (h.policy == nil || !h.policy.Allowed(roles, "assets.view") || !allowedByMenuPermissions(eff.MenuPermissions, "assets")) {
+		filtered := make([]store.IncidentLink, 0, len(links))
+		for _, l := range links {
+			if strings.ToLower(strings.TrimSpace(l.EntityType)) == "asset" {
+				continue
+			}
+			filtered = append(filtered, l)
+		}
+		links = filtered
+	}
+	if len(links) > 0 && (h.policy == nil || !h.policy.Allowed(roles, "software.view") || !allowedByMenuPermissions(eff.MenuPermissions, "software")) {
+		filtered := make([]store.IncidentLink, 0, len(links))
+		for _, l := range links {
+			if strings.ToLower(strings.TrimSpace(l.EntityType)) == "software" {
+				continue
+			}
+			filtered = append(filtered, l)
+		}
+		links = filtered
+	}
 	writeJSON(w, http.StatusOK, map[string]any{"items": links})
 }
 
@@ -1469,7 +1491,7 @@ func (h *IncidentsHandler) AddLink(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	allowedTypes := map[string]bool{"doc": true, "incident": true, "report": true, "other": true}
+	allowedTypes := map[string]bool{"doc": true, "incident": true, "report": true, "asset": true, "software": true, "other": true}
 	if !allowedTypes[targetType] {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
@@ -1529,6 +1551,54 @@ func (h *IncidentsHandler) AddLink(w http.ResponseWriter, r *http.Request) {
 		}
 		link.Title = fmt.Sprintf("%s ? %s", ref.RegNo, ref.Title)
 		link.EntityID = fmt.Sprintf("%d", ref.ID)
+		link.Unverified = false
+	case "asset":
+		if h.assets == nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+		if h.policy == nil || !h.policy.Allowed(roles, "assets.view") || !allowedByMenuPermissions(eff.MenuPermissions, "assets") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		assetID, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || assetID == 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		a, err := h.assets.GetAsset(r.Context(), assetID)
+		if err != nil || a == nil || a.DeletedAt != nil {
+			http.Error(w, "not found", http.StatusNotFound)
+			return
+		}
+		link.Title = a.Name
+		link.EntityID = fmt.Sprintf("%d", a.ID)
+		link.Unverified = false
+	case "software":
+		if h.software == nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+		if h.policy == nil || !h.policy.Allowed(roles, "software.view") || !allowedByMenuPermissions(eff.MenuPermissions, "software") {
+			http.Error(w, "forbidden", http.StatusForbidden)
+			return
+		}
+		prodID, err := strconv.ParseInt(targetID, 10, 64)
+		if err != nil || prodID == 0 {
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		p, err := h.software.GetProduct(r.Context(), prodID)
+		if err != nil || p == nil || p.DeletedAt != nil {
+			http.Error(w, "software.error.notFound", http.StatusNotFound)
+			return
+		}
+		if strings.TrimSpace(p.Vendor) != "" {
+			link.Title = fmt.Sprintf("%s (%s)", p.Name, p.Vendor)
+		} else {
+			link.Title = p.Name
+		}
+		link.EntityID = fmt.Sprintf("%d", p.ID)
 		link.Unverified = false
 	case "other":
 		if comment == "" {
@@ -2528,6 +2598,22 @@ func documentTypeFromTags(tags []string) string {
 	return "document"
 }
 
+func allowedByMenuPermissions(menu []string, key string) bool {
+	if len(menu) == 0 {
+		return true
+	}
+	needle := strings.ToLower(strings.TrimSpace(key))
+	if needle == "" {
+		return true
+	}
+	for _, m := range menu {
+		if strings.ToLower(strings.TrimSpace(m)) == needle {
+			return true
+		}
+	}
+	return false
+}
+
 func parseIncidentClassificationLevel(val string) (int, error) {
 	raw := strings.TrimSpace(val)
 	if raw == "" {
@@ -2869,4 +2955,3 @@ func isValidIncidentPerm(val string) bool {
 		return false
 	}
 }
-

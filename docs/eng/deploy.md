@@ -18,6 +18,28 @@ DB/runtime:
 - `BERKUT_DB_URL=postgres://...`
 - other `BERKUT_*` overrides as needed
 
+HA / Scaling:
+- Run mode: `BERKUT_RUN_MODE=all|api|worker` (`all` by default).
+- Recommended HA layout: multiple `api` replicas (HTTP/UI/API only) + a single `worker` replica (background workers).
+
+Observability:
+- Liveness: `GET /healthz`
+- Readiness (DB ping): `GET /readyz`
+- Prometheus metrics (disabled by default): `BERKUT_METRICS_ENABLED=true` and `GET /metrics` (use `Authorization: Bearer $BERKUT_METRICS_TOKEN` if token is set)
+- (home/dev only) allow `/metrics` without token: `BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME=true`
+
+Passkeys (WebAuthn):
+- Enable/disable: `BERKUT_WEBAUTHN_ENABLED=true|false`
+- RP ID / origins (recommended for prod):
+  - `BERKUT_WEBAUTHN_RP_ID=scc.example.com`
+  - `BERKUT_WEBAUTHN_ORIGINS=https://scc.example.com`
+  - `BERKUT_WEBAUTHN_RP_NAME=SCC`
+- Requirements: HTTPS (or `localhost`).
+
+Upgrade:
+- Preflight: `GET /api/app/preflight` (permission `app.preflight.view`)
+- Backup-before-migrate (optional): `BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE=true`
+
 ## Typical deploy
 ```bash
 cp .env.example .env

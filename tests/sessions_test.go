@@ -41,12 +41,14 @@ func setupSessionEnv(t *testing.T) (store.SessionStore, store.UsersStore, *handl
 	sessions := store.NewSessionsStore(db)
 	roles := store.NewRolesStore(db)
 	groups := store.NewGroupsStore(db)
+	twoFA := store.NewAuth2FAStore(db)
+	passkeys := store.NewPasskeysStore(db)
 	audits := store.NewAuditStore(db)
 	incidents := store.NewIncidentsStore(db)
 	policy := rbac.NewPolicy([]rbac.Role{{Name: "admin", Permissions: []rbac.Permission{"accounts.manage"}}})
 	sm := auth.NewSessionManager(sessions, cfg, logger)
-	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, policy, sm, cfg, audits, logger, nil)
-	authHandler := handlers.NewAuthHandler(cfg, users, sessions, incidents, sm, policy, audits, logger)
+	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, twoFA, policy, sm, cfg, audits, logger, nil)
+	authHandler := handlers.NewAuthHandler(cfg, users, sessions, incidents, twoFA, passkeys, sm, policy, audits, logger)
 	cleanup := func() { db.Close() }
 	return sessions, users, acc, authHandler, cfg, db, roles, groups, logger, cleanup
 }

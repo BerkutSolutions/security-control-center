@@ -115,7 +115,7 @@ func TestValidateOnlyOfficeRequiresPublicURLAndSecret(t *testing.T) {
 	}
 	cfg.Docs.OnlyOffice.PublicURL = "https://scc.local/office/"
 	cfg.Docs.OnlyOffice.AppInternalURL = "http://berkut:8080"
-	cfg.Docs.OnlyOffice.JWTSecret = "test-secret"
+	cfg.Docs.OnlyOffice.JWTSecret = "test-secret-0123456789abcdef012345"
 	if err := Validate(cfg); err != nil {
 		t.Fatalf("unexpected error for valid onlyoffice config: %v", err)
 	}

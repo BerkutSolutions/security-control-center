@@ -2,6 +2,10 @@
 
 This guide explains how to run Berkut SCC with `OnlyOffice` behind `nginx` over HTTPS.
 
+Note: passkeys (WebAuthn) also require HTTPS (or `localhost`), so this mode is recommended if you want passkey-based sign-in.
+
+Important: if you open SCC directly on `http://localhost:8080`, the `/office/*` path on that origin is not proxied to OnlyOffice, and the editor will fail to load (404).
+
 ## Why this error appears
 
 If the browser does not trust your certificate, `OnlyOffice` cannot register `ServiceWorker` in the iframe:
@@ -25,6 +29,10 @@ Required values:
 - `PROXY_HTTP_PORT=80`
 - `PROXY_HTTPS_PORT=443`
 - `TLS_CERTS_PATH=./docker/certs`
+
+Security notes:
+- `BERKUT_DOCS_ONLYOFFICE_INTERNAL_URL` must point to your OnlyOffice service reachable from SCC, and must not be a link-local/metadata address.
+- OnlyOffice callback download URLs are accepted only when their host matches the configured OnlyOffice `Public URL` or `Internal URL` (to reduce SSRF risk).
 
 ### 2. Generate certs
 

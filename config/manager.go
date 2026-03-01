@@ -101,10 +101,12 @@ func normalizeConfig(cfg *AppConfig) {
 	cfg.ListenAddr = strings.TrimSpace(cfg.ListenAddr)
 	cfg.AppEnv = strings.ToLower(strings.TrimSpace(cfg.AppEnv))
 	cfg.DeploymentMode = strings.ToLower(strings.TrimSpace(cfg.DeploymentMode))
+	cfg.RunMode = strings.ToLower(strings.TrimSpace(cfg.RunMode))
 	cfg.CSRFKey = strings.TrimSpace(cfg.CSRFKey)
 	cfg.Pepper = strings.TrimSpace(cfg.Pepper)
 	cfg.Docs.EncryptionKey = strings.TrimSpace(cfg.Docs.EncryptionKey)
 	cfg.Docs.EncryptionKeyID = strings.TrimSpace(cfg.Docs.EncryptionKeyID)
+	cfg.Upgrade.BackupLabel = strings.TrimSpace(cfg.Upgrade.BackupLabel)
 	cfg.Docs.StoragePath = strings.TrimSpace(cfg.Docs.StoragePath)
 	cfg.Docs.StorageDir = strings.TrimSpace(cfg.Docs.StorageDir)
 	cfg.Incidents.StorageDir = strings.TrimSpace(cfg.Incidents.StorageDir)
@@ -118,6 +120,11 @@ func normalizeConfig(cfg *AppConfig) {
 	cfg.Docs.OnlyOffice.JWTHeader = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTHeader)
 	cfg.Docs.OnlyOffice.JWTIssuer = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTIssuer)
 	cfg.Docs.OnlyOffice.JWTAudience = strings.TrimSpace(cfg.Docs.OnlyOffice.JWTAudience)
+	cfg.Security.WebAuthn.RPID = strings.TrimSpace(cfg.Security.WebAuthn.RPID)
+	cfg.Security.WebAuthn.RPName = strings.TrimSpace(cfg.Security.WebAuthn.RPName)
+	for i := range cfg.Security.WebAuthn.Origins {
+		cfg.Security.WebAuthn.Origins[i] = strings.TrimSpace(cfg.Security.WebAuthn.Origins[i])
+	}
 	if cfg.Backups.PGDumpBin == "" {
 		cfg.Backups.PGDumpBin = "pg_dump"
 	}
@@ -162,6 +169,12 @@ func normalizeConfig(cfg *AppConfig) {
 	}
 	if cfg.DeploymentMode != "home" && cfg.DeploymentMode != "enterprise" {
 		cfg.DeploymentMode = "enterprise"
+	}
+	if cfg.RunMode == "" {
+		cfg.RunMode = "all"
+	}
+	if cfg.RunMode != "all" && cfg.RunMode != "api" && cfg.RunMode != "worker" {
+		cfg.RunMode = "all"
 	}
 	if cfg.DeploymentMode == "enterprise" && cfg.AppEnv == "dev" {
 		cfg.DeploymentMode = "home"

@@ -4,6 +4,7 @@ listen_addr: "0.0.0.0:8080"
 session_ttl: 24h
 app_env: ""
 deployment_mode: "enterprise"
+run_mode: "all"
 csrf_key: ""
 pepper: ""
 tls_enabled: false
@@ -13,6 +14,14 @@ scheduler:
   enabled: true
   interval_seconds: 60
   max_jobs_per_tick: 20
+observability:
+  metrics_enabled: false
+  metrics_token: ""
+  metrics_allow_unauth_in_home: false
+upgrade:
+  backup_before_migrate: false
+  backup_include_files: true
+  backup_label: ""
 docs:
   storage_path: "data/docs"      # deprecated alias
   storage_dir: "data/docs"
@@ -52,6 +61,11 @@ security:
   online_window_sec: 300
   legacy_import_enabled: false
   trusted_proxies: []
+  webauthn:
+    enabled: true
+    rp_id: ""
+    rp_name: "Berkut SCC"
+    origins: []
 backups:
   path: "data/backups"
   encryption_key: ""

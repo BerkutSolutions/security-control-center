@@ -7,6 +7,8 @@
 Если нужен простой запуск через reverse-proxy (в том числе для Portainer), используйте готовый стек:
 - `docs/ru/docker-compose.https.yml`
 
+Примечание: passkeys (WebAuthn) также требуют HTTPS (или `localhost`), поэтому этот режим рекомендуется, если вы хотите использовать вход по ключу доступа.
+
 Особенности примера:
 - `nginx` и `onlyoffice` в отдельных контейнерах;
 - маршрут `GET /office/*` проксируется в `onlyoffice`;
@@ -20,6 +22,8 @@ docker compose -f docs/ru/docker-compose.https.yml up -d
 ```
 
 После запуска открывайте приложение через адрес `nginx` (обычно `http://<host>:80`), а не напрямую через `berkut:8080`.
+
+Важно: если вы откроете SCC напрямую на `http://localhost:8080`, путь `/office/*` на этом origin не будет проксироваться в OnlyOffice, и редактор не загрузится (404).
 
 ## Почему у вас была ошибка
 
@@ -44,6 +48,10 @@ docker compose -f docs/ru/docker-compose.https.yml up -d
 - `PROXY_HTTP_PORT=80`
 - `PROXY_HTTPS_PORT=443`
 - `TLS_CERTS_PATH=./docker/certs`
+
+Security notes:
+- `BERKUT_DOCS_ONLYOFFICE_INTERNAL_URL` должен указывать на OnlyOffice, доступный SCC (из контейнера/сервера), и не должен быть link-local/metadata адресом.
+- Callback download URL от OnlyOffice принимается только если host совпадает с настроенным `Public URL` или `Internal URL` (уменьшение SSRF-рисков).
 
 ### 2. Создайте сертификаты
 

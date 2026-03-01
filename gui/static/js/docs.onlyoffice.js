@@ -18,8 +18,8 @@
     let base = raw;
     try {
       const parsed = new URL(raw, window.location.origin);
-      // Prefer same-origin path when host matches, even if scheme/port differ.
-      if (parsed.hostname === window.location.hostname) {
+      // Prefer same-origin path only when origin matches.
+      if (parsed.origin === window.location.origin) {
         base = parsed.pathname || '/';
       } else {
         base = parsed.href;
@@ -54,7 +54,10 @@
       script.defer = true;
       script.dataset.onlyofficeApi = '1';
       script.onload = () => resolve();
-      script.onerror = () => reject(new Error('docs.onlyoffice.unavailable'));
+      script.onerror = () => {
+        const key = scriptUrl.startsWith('/') ? 'docs.onlyoffice.unavailableHint' : 'docs.onlyoffice.unavailable';
+        reject(new Error(key));
+      };
       document.head.appendChild(script);
     });
     return state.loading;

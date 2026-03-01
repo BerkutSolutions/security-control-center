@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"io/fs"
 	"mime"
 	"net/http"
@@ -9,6 +10,7 @@ import (
 	"time"
 
 	"berkut-scc/config"
+	"berkut-scc/core/appjobs"
 	"berkut-scc/core/appmeta"
 	"berkut-scc/core/auth"
 	"berkut-scc/core/backups"
@@ -25,6 +27,7 @@ import (
 
 type Server struct {
 	cfg              *config.AppConfig
+	db               *sql.DB
 	router           *chi.Mux
 	httpServer       *http.Server
 	logger           *utils.Logger
@@ -56,6 +59,9 @@ type Server struct {
 	appRuntimeStore  store.AppRuntimeStore
 	updateChecker    *appmeta.UpdateChecker
 	monitoringEngine *monitoring.Engine
+	appJobsWorker    *appjobs.Worker
+	backupsScheduler *backups.Scheduler
+	tasksScheduler   *tasks.RecurringScheduler
 	activityTracker  *sessionActivity
 }
 
@@ -63,6 +69,7 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 	ensureMimeTypes()
 	s := &Server{
 		cfg:              cfg,
+		db:               deps.DB,
 		router:           chi.NewRouter(),
 		logger:           logger,
 		sessionManager:   auth.NewSessionManager(deps.Sessions, cfg, logger),
@@ -89,6 +96,9 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 		appRuntimeStore:  deps.AppRuntimeStore,
 		updateChecker:    deps.UpdateChecker,
 		monitoringEngine: deps.MonitoringEngine,
+		appJobsWorker:    deps.AppJobsWorker,
+		backupsScheduler: deps.BackupsScheduler,
+		tasksScheduler:   deps.TasksScheduler,
 		tasksStore:       deps.TasksStore,
 		tasksSvc:         deps.TasksSvc,
 		dashboardStore:   deps.DashboardStore,
@@ -100,6 +110,13 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 	}
 	s.registerRoutes()
 	return s
+}
+
+func (s *Server) Config() *config.AppConfig {
+	if s == nil {
+		return nil
+	}
+	return s.cfg
 }
 
 func (s *Server) Start() error {

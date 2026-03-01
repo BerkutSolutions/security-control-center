@@ -47,6 +47,52 @@
             </div>
           </div>
 
+          <div class="card nested-card" id="twofa-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="auth.2fa.title">2FA (TOTP)</h3>
+                <p class="muted" data-i18n="auth.2fa.subtitle">Приложение-аутентификатор + recovery codes</p>
+              </div>
+              <div class="icon-actions">
+                <button class="btn primary" id="twofa-enable-btn" data-i18n="auth.2fa.enable">Включить</button>
+                <button class="btn ghost danger" id="twofa-disable-btn" data-i18n="auth.2fa.disable" hidden>Выключить</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="muted" id="twofa-status-text" data-i18n="auth.2fa.status.unknown">Статус: неизвестно</div>
+              <div class="muted small" id="twofa-recovery-remaining" hidden></div>
+            </div>
+          </div>
+
+          <div class="card nested-card" id="passkeys-card">
+            <div class="card-header">
+              <div>
+                <h3 data-i18n="auth.passkeys.title">Ключи доступа (passkeys)</h3>
+                <p class="muted" data-i18n="auth.passkeys.subtitle">WebAuthn: вход и второй фактор без паролей/кодов</p>
+              </div>
+              <div class="icon-actions">
+                <button class="btn primary" id="passkeys-add-btn" data-i18n="auth.passkeys.add">Добавить</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="muted" id="passkeys-status-text" data-i18n="auth.passkeys.status.loading">Загрузка…</div>
+              <div class="muted small" id="passkeys-unsupported" data-i18n="auth.passkeys.unsupported" hidden>Ваш браузер не поддерживает passkeys.</div>
+              <div class="table-wrap" id="passkeys-table-wrap" hidden>
+                <table class="table">
+                  <thead>
+                    <tr>
+                      <th data-i18n="auth.passkeys.table.name">Название</th>
+                      <th data-i18n="auth.passkeys.table.created">Создан</th>
+                      <th data-i18n="auth.passkeys.table.lastUsed">Последнее использование</th>
+                      <th></th>
+                    </tr>
+                  </thead>
+                  <tbody id="passkeys-table-body"></tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+
           <form id="settings-form" class="settings-form card nested-card">
             <div class="card-header">
               <div>
@@ -458,6 +504,142 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="twofa-setup-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="auth.2fa.setup.title">Включение 2FA</h3>
+        <button class="btn ghost" data-close="#twofa-setup-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="twofa-setup-alert" hidden></div>
+
+        <div id="twofa-setup-step" class="form-grid two-column">
+          <div class="form-field wide">
+            <div class="muted" data-i18n="auth.2fa.setup.scanHint">Отсканируйте QR-код в приложении-аутентификаторе и введите код.</div>
+          </div>
+          <div class="form-field">
+            <img id="twofa-setup-qr" class="qr-image" alt="2FA QR">
+          </div>
+          <div class="form-field">
+            <label data-i18n="auth.2fa.setup.manualSecret">Секрет (manual)</label>
+            <input id="twofa-setup-secret" readonly>
+          </div>
+          <div class="form-field wide required">
+            <label for="twofa-setup-code" data-i18n="auth.2fa.code">Код 2FA</label>
+            <input id="twofa-setup-code" autocomplete="one-time-code" inputmode="numeric" required>
+          </div>
+        </div>
+
+        <div id="twofa-recovery-step" hidden>
+          <div class="modal-section-header">
+            <h4 data-i18n="auth.2fa.recovery.title">Recovery codes</h4>
+          </div>
+          <div class="muted" data-i18n="auth.2fa.recovery.hint">Сохраните эти коды. Они показываются один раз.</div>
+          <ul id="twofa-recovery-codes"></ul>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn primary" type="button" id="twofa-setup-confirm" data-i18n="auth.2fa.enable">Включить</button>
+          <button class="btn ghost" id="twofa-setup-close" data-close="#twofa-setup-modal" data-i18n="common.close" hidden>Закрыть</button>
+          <button class="btn ghost" type="button" id="twofa-setup-cancel" data-close="#twofa-setup-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="twofa-disable-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="auth.2fa.disable.title">Выключить 2FA</h3>
+        <button class="btn ghost" data-close="#twofa-disable-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="twofa-disable-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field wide required">
+            <label for="twofa-disable-password" data-i18n="accounts.currentPassword">Current password</label>
+            <input id="twofa-disable-password" type="password" autocomplete="current-password" required>
+          </div>
+          <div class="form-field wide required">
+            <label for="twofa-disable-recovery" data-i18n="auth.2fa.recovery.code">Recovery code</label>
+            <input id="twofa-disable-recovery" autocomplete="one-time-code" required>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn danger" type="button" id="twofa-disable-confirm" data-i18n="auth.2fa.disable">Выключить</button>
+          <button class="btn ghost" type="button" data-close="#twofa-disable-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="passkeys-register-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="auth.passkeys.register.title">Добавить ключ доступа</h3>
+        <button class="btn ghost" data-close="#passkeys-register-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="passkeys-register-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field wide required">
+            <label for="passkeys-register-name" data-i18n="auth.passkeys.name">Название</label>
+            <input id="passkeys-register-name" autocomplete="off" required>
+            <div class="muted small" data-i18n="auth.passkeys.register.hint">Откроется системное окно создания passkey (KeePassXC, Windows Hello и т.д.).</div>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" type="button" id="passkeys-register-confirm" data-i18n="auth.passkeys.register.confirm">Создать</button>
+          <button class="btn ghost" type="button" data-close="#passkeys-register-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="passkeys-rename-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="auth.passkeys.rename.title">Переименовать ключ доступа</h3>
+        <button class="btn ghost" data-close="#passkeys-rename-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="passkeys-rename-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field wide required">
+            <label for="passkeys-rename-name" data-i18n="auth.passkeys.name">Название</label>
+            <input id="passkeys-rename-name" autocomplete="off" required>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" type="button" id="passkeys-rename-confirm" data-i18n="common.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#passkeys-rename-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal confirm-modal" id="passkeys-delete-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="auth.passkeys.delete.title">Удалить ключ доступа</h3>
+        <button class="btn ghost" data-close="#passkeys-delete-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="passkeys-delete-alert" hidden></div>
+        <div id="passkeys-delete-message" class="confirm-message"></div>
+        <div class="form-actions">
+          <button type="button" class="btn danger" id="passkeys-delete-confirm" data-i18n="common.delete">Delete</button>
+          <button type="button" class="btn ghost" data-close="#passkeys-delete-modal" data-i18n="common.cancel">Cancel</button>
         </div>
       </div>
     </div>

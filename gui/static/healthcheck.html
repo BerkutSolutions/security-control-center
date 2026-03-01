@@ -40,6 +40,20 @@
             <div id="hc-compat-summary" class="muted hc-summary"></div>
             <ul id="healthcheck-compat" class="hc-list"></ul>
           </div>
+
+          <button type="button" class="hc-toggle" data-hc-toggle="hc-preflight" id="hc-preflight-toggle">
+            <span class="healthcheck-step-icon hc-toggle-icon" aria-hidden="true" data-status="pending"></span>
+            <span id="hc-preflight-count" class="muted hc-toggle-count"></span>
+            <span class="hc-toggle-title" data-i18n="healthcheck.section.preflight">Preflight</span>
+            <span class="hc-chevron" aria-hidden="true"></span>
+          </button>
+          <div id="hc-preflight" class="hc-panel" hidden>
+            <div class="healthcheck-actions">
+              <a class="btn ghost" href="/api/app/preflight" target="_blank" rel="noopener" data-i18n="healthcheck.preflight.openJson">Открыть JSON</a>
+            </div>
+            <div id="hc-preflight-summary" class="muted hc-summary"></div>
+            <ul id="healthcheck-preflight" class="hc-list"></ul>
+          </div>
         </div>
 
         <div id="healthcheck-error" class="alert" hidden></div>

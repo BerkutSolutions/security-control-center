@@ -18,9 +18,11 @@ Base path: `/api`
 - State-changing requests require CSRF.
 - All endpoints are enforced server-side with permission checks.
 
-## App: Tab Compatibility and Jobs (v1.0.12)
+## App: Tab Compatibility and Jobs (v1.0.13)
 - Compat:
   - `GET /api/app/compat`
+- Preflight (admin checks):
+  - `GET /api/app/preflight`
 - Jobs (manual Partial adapt / Full reset actions, no auto migrations):
   - `POST /api/app/jobs`
   - `GET /api/app/jobs`
@@ -31,6 +33,36 @@ Permissions:
 - `app.compat.view`
 - `app.compat.manage.partial`
 - `app.compat.manage.full`
+- `app.preflight.view`
+
+## Auth (v1.0.13)
+
+Public endpoints:
+- `POST /api/auth/login`
+- `POST /api/auth/login/2fa` (second factor confirmation after password)
+- Passkeys (WebAuthn) login:
+  - `POST /api/auth/passkeys/login/begin`
+  - `POST /api/auth/passkeys/login/finish`
+- Passkeys (WebAuthn) as second factor:
+  - `POST /api/auth/login/2fa/passkey/begin`
+  - `POST /api/auth/login/2fa/passkey/finish`
+
+Session endpoints (requires a session + tab access permissions):
+- 2FA (TOTP):
+  - `GET /api/auth/2fa/status`
+  - `POST /api/auth/2fa/setup`
+  - `POST /api/auth/2fa/enable`
+  - `POST /api/auth/2fa/disable`
+- Passkeys management:
+  - `GET /api/auth/passkeys`
+  - `POST /api/auth/passkeys/register/begin`
+  - `POST /api/auth/passkeys/register/finish`
+  - `PUT /api/auth/passkeys/{id}/rename`
+  - `DELETE /api/auth/passkeys/{id}`
+
+Notes:
+- The UI for entering TOTP/recovery code is at `/login/2fa` (so password managers can detect the `one-time-code` field).
+- Passkeys require HTTPS (or `localhost`) and a correct `security.webauthn.*` configuration.
 
 ## Backups (v1.0.3)
 Primary endpoints:
@@ -51,7 +83,7 @@ Primary endpoints:
 Permissions:
 - `backups.read`, `backups.create`, `backups.import`, `backups.download`, `backups.delete`, `backups.restore`, `backups.plan.update`.
 
-## Monitoring (v1.0.12)
+## Monitoring (v1.0.13)
 - Monitor types currently supported by backend:
   - `http`, `tcp`, `ping`, `http_keyword`, `http_json`, `grpc_keyword`, `dns`, `docker`, `push`, `steam`, `gamedig`, `mqtt`, `kafka_producer`, `mssql`, `postgres`, `mysql`, `mongodb`, `radius`, `redis`, `tailscale_ping`.
 - Passive push monitor ingestion:

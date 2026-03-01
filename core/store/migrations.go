@@ -941,6 +941,8 @@ func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Lo
 	}
 	post := []func(context.Context, *sql.DB) error{
 		ensureUserColumns,
+		ensureAuth2FASchema,
+		ensureAuthPasskeysSchema,
 		ensureRoleColumns,
 		ensureGroupColumns,
 		ensureSessionColumns,
@@ -971,6 +973,105 @@ func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Lo
 	}
 	if logger != nil {
 		logger.Printf("sqlite test migrations applied")
+	}
+	return nil
+}
+
+func ensureAuth2FASchema(ctx context.Context, db *sql.DB) error {
+	exists, err := columnExists(ctx, db, "users", "totp_secret_enc")
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if _, err := db.ExecContext(ctx, "ALTER TABLE users ADD COLUMN totp_secret_enc TEXT NOT NULL DEFAULT ''"); err != nil {
+			return fmt.Errorf("add column totp_secret_enc: %w", err)
+		}
+	}
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS user_totp_setup (
+			user_id INTEGER PRIMARY KEY,
+			secret_enc TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at TIMESTAMP NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE TABLE IF NOT EXISTS auth_2fa_challenges (
+			id TEXT PRIMARY KEY,
+			user_id INTEGER NOT NULL,
+			ip TEXT NOT NULL DEFAULT '',
+			user_agent TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			expires_at TIMESTAMP NOT NULL,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_auth_2fa_challenges_user_id ON auth_2fa_challenges(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_auth_2fa_challenges_expires ON auth_2fa_challenges(expires_at);`,
+		`CREATE TABLE IF NOT EXISTS user_recovery_codes (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			code_hash TEXT NOT NULL,
+			salt TEXT NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			used_at TIMESTAMP,
+			used_ip TEXT NOT NULL DEFAULT '',
+			used_user_agent TEXT NOT NULL DEFAULT '',
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_recovery_codes_user_id ON user_recovery_codes(user_id);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_recovery_codes_used_at ON user_recovery_codes(used_at);`,
+	}
+	for i, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("auth2fa schema stmt #%d failed: %w", i+1, err)
+		}
+	}
+	return nil
+}
+
+func ensureAuthPasskeysSchema(ctx context.Context, db *sql.DB) error {
+	exists, err := columnExists(ctx, db, "users", "webauthn_enabled")
+	if err != nil {
+		return err
+	}
+	if !exists {
+		if _, err := db.ExecContext(ctx, "ALTER TABLE users ADD COLUMN webauthn_enabled INTEGER NOT NULL DEFAULT 1"); err != nil {
+			return fmt.Errorf("add column webauthn_enabled: %w", err)
+		}
+	}
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS user_passkeys (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			user_id INTEGER NOT NULL,
+			name TEXT NOT NULL DEFAULT '',
+			credential_id TEXT NOT NULL UNIQUE,
+			public_key BLOB NOT NULL,
+			attestation_type TEXT NOT NULL DEFAULT '',
+			transports_json TEXT NOT NULL DEFAULT '[]',
+			aaguid BLOB,
+			sign_count INTEGER NOT NULL DEFAULT 0,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			last_used_at TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_user_passkeys_user_id ON user_passkeys(user_id);`,
+		`CREATE TABLE IF NOT EXISTS webauthn_challenges (
+			id TEXT PRIMARY KEY,
+			kind TEXT NOT NULL,
+			user_id INTEGER,
+			session_data_json TEXT NOT NULL,
+			ip TEXT NOT NULL DEFAULT '',
+			user_agent TEXT NOT NULL DEFAULT '',
+			expires_at TIMESTAMP NOT NULL,
+			created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			FOREIGN KEY(user_id) REFERENCES users(id) ON DELETE CASCADE
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_expires ON webauthn_challenges(expires_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_webauthn_challenges_user_id ON webauthn_challenges(user_id);`,
+	}
+	for _, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("ensure auth passkeys schema: %w", err)
+		}
 	}
 	return nil
 }

@@ -1,6 +1,9 @@
 package api
 
 import (
+	"database/sql"
+
+	"berkut-scc/core/appjobs"
 	"berkut-scc/core/appmeta"
 	"berkut-scc/core/backups"
 	"berkut-scc/core/docs"
@@ -11,6 +14,7 @@ import (
 )
 
 type ServerDeps struct {
+	DB               *sql.DB
 	Users            store.UsersStore
 	Sessions         store.SessionStore
 	Roles            store.RolesStore
@@ -37,4 +41,7 @@ type ServerDeps struct {
 	TasksStore       tasks.Store
 	TasksSvc         *tasks.Service
 	MonitoringEngine *monitoring.Engine
+	AppJobsWorker    *appjobs.Worker
+	BackupsScheduler *backups.Scheduler
+	TasksScheduler   *tasks.RecurringScheduler
 }

@@ -16,6 +16,8 @@ type Scheduler struct {
 	cancel  context.CancelFunc
 	running bool
 	wg      sync.WaitGroup
+
+	obs schedulerObs
 }
 
 func NewScheduler(cfg config.SchedulerConfig, svc *Service) *Scheduler {
@@ -48,7 +50,9 @@ func (s *Scheduler) StartWithContext(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				_ = s.RunOnce(runCtx, time.Now().UTC())
+				now := time.Now().UTC()
+				err := s.RunOnce(runCtx, now)
+				s.obs.recordTick(now, err)
 			case <-runCtx.Done():
 				return
 			}

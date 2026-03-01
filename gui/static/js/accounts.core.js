@@ -22,6 +22,7 @@
     bulkPasswords: [],
     passwordVisible: false,
     referenceLoaded: false,
+    currentUser: null,
   });
 
   const MENU_OPTIONS = [
@@ -445,6 +446,12 @@
   async function init() {
     const root = document.getElementById('accounts-page');
     if (!root) return;
+    try {
+      const me = await Api.get('/api/auth/me');
+      state.currentUser = me && me.user ? me.user : null;
+    } catch (_) {
+      state.currentUser = null;
+    }
     syncClearanceSelects();
     document.addEventListener('classifications:changed', syncClearanceSelects);
     if (AccountsPage.bindTabs) AccountsPage.bindTabs();

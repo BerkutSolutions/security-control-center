@@ -150,10 +150,15 @@ func (l *requestLimiter) cleanup(now time.Time) {
 
 func (s *Server) securityHeadersMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Security-Policy", "default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; object-src 'none'; frame-ancestors 'self'")
+		w.Header().Set("Content-Security-Policy", "default-src 'self'; base-uri 'none'; form-action 'self'; style-src 'self'; script-src 'self'; connect-src 'self'; img-src 'self' data:; font-src 'self'; object-src 'none'; frame-src 'self'; frame-ancestors 'self'")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "SAMEORIGIN")
 		w.Header().Set("Referrer-Policy", "no-referrer")
+		w.Header().Set("X-DNS-Prefetch-Control", "off")
+		w.Header().Set("X-Permitted-Cross-Domain-Policies", "none")
+		w.Header().Set("Permissions-Policy", "accelerometer=(), autoplay=(), camera=(), display-capture=(), encrypted-media=(), fullscreen=(), geolocation=(), gyroscope=(), magnetometer=(), microphone=(), midi=(), payment=(), picture-in-picture=(), usb=()")
+		w.Header().Set("Cross-Origin-Opener-Policy", "same-origin")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		if isHTTPSRequest(r, s.cfg) {
 			w.Header().Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		}
@@ -627,6 +632,7 @@ func (s *Server) allowedByMenu(w http.ResponseWriter, r *http.Request, sess *sto
 }
 
 var loginLimiter = newLimiter(5, time.Minute)
+var twoFactorLimiter = newLimiter(6, 2*time.Minute)
 
 func allowedForPasswordChange(path string) bool {
 	if path == "/password-change" {
@@ -667,6 +673,41 @@ func (s *Server) rateLimitMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 		if username != "" && !loginLimiter.allow("user|"+username) {
 			http.Error(w, "too many attempts", http.StatusTooManyRequests)
+			return
+		}
+		next.ServeHTTP(w, r)
+	}
+}
+
+func (s *Server) rateLimit2FAMiddleware(next http.HandlerFunc) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		ip := s.clientIP(r)
+		r.Body = http.MaxBytesReader(w, r.Body, loginPayloadMaxBytes+1)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			var tooLarge *http.MaxBytesError
+			if errors.As(err, &tooLarge) {
+				http.Error(w, "payload too large", http.StatusRequestEntityTooLarge)
+				return
+			}
+			http.Error(w, "bad request", http.StatusBadRequest)
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(body))
+
+		var p struct {
+			ChallengeID string `json:"challenge_id"`
+		}
+		_ = json.Unmarshal(body, &p)
+
+		keyIP := "2fa|ip|" + strings.ToLower(strings.TrimSpace(ip))
+		if !twoFactorLimiter.allow(keyIP) {
+			http.Error(w, "auth.tooManyAttempts", http.StatusTooManyRequests)
+			return
+		}
+		ch := strings.ToLower(strings.TrimSpace(p.ChallengeID))
+		if ch != "" && !twoFactorLimiter.allow("2fa|ch|"+ch) {
+			http.Error(w, "auth.tooManyAttempts", http.StatusTooManyRequests)
 			return
 		}
 		next.ServeHTTP(w, r)
@@ -747,8 +788,17 @@ func isTrustedProxy(ip string, trusted []string) bool {
 			continue
 		}
 		if strings.Contains(val, "/") {
-			if _, block, err := net.ParseCIDR(val); err == nil && block.Contains(parsed) {
-				return true
+			if _, block, err := net.ParseCIDR(val); err == nil && block != nil {
+				if ones, bits := block.Mask.Size(); bits > 0 {
+					is4 := block.IP != nil && block.IP.To4() != nil
+					if (is4 && ones <= 16) || (!is4 && ones <= 48) {
+						// Ignore overly broad CIDRs to avoid trusting spoofable proxy headers.
+						continue
+					}
+				}
+				if block.Contains(parsed) {
+					return true
+				}
 			}
 			continue
 		}

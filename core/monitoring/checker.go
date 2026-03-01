@@ -18,6 +18,7 @@ import (
 	"strings"
 	"time"
 
+	"berkut-scc/core/netguard"
 	"berkut-scc/core/store"
 	"github.com/jackc/pgx/v5"
 )
@@ -25,7 +26,28 @@ import (
 var (
 	ErrInvalidURL     = errors.New("invalid url")
 	ErrPrivateBlocked = errors.New("private network blocked")
+	ErrTargetBlocked  = errors.New("monitoring.error.targetBlocked")
 )
+
+type TargetBlockedError struct {
+	Host       string
+	ReasonCode string
+	Err        error
+}
+
+func (e *TargetBlockedError) Error() string {
+	if e == nil || e.Err == nil {
+		return "target blocked"
+	}
+	return e.Err.Error()
+}
+
+func (e *TargetBlockedError) Unwrap() error {
+	if e == nil {
+		return nil
+	}
+	return e.Err
+}
 
 type CheckResult struct {
 	OK         bool
@@ -345,65 +367,24 @@ func parseMonitorURL(raw string) (*url.URL, error) {
 }
 
 func guardTarget(ctx context.Context, host string, allowPrivate bool) error {
-	if allowPrivate {
-		return nil
-	}
 	host = strings.TrimSpace(host)
 	if host == "" {
 		return ErrPrivateBlocked
 	}
-	lower := strings.ToLower(host)
-	if lower == "localhost" || strings.HasSuffix(lower, ".localhost") {
-		return ErrPrivateBlocked
-	}
-	if ip := net.ParseIP(host); ip != nil {
-		if isPrivateIP(ip) {
-			return ErrPrivateBlocked
+	policy := netguard.Policy{AllowPrivate: allowPrivate, AllowLoopback: allowPrivate}
+	if err := netguard.ValidateHost(ctx, host, policy); err != nil {
+		if errors.Is(err, netguard.ErrPrivateNetworkBlocked) {
+			return &TargetBlockedError{Host: host, ReasonCode: "private_blocked", Err: ErrPrivateBlocked}
 		}
-		return nil
-	}
-	addrs, err := net.DefaultResolver.LookupIPAddr(ctx, host)
-	if err != nil {
+		if errors.Is(err, netguard.ErrRestrictedTarget) {
+			if allowPrivate {
+				return &TargetBlockedError{Host: host, ReasonCode: "restricted_target", Err: ErrTargetBlocked}
+			}
+			return &TargetBlockedError{Host: host, ReasonCode: "restricted_target", Err: ErrPrivateBlocked}
+		}
 		return err
 	}
-	for _, addr := range addrs {
-		if isPrivateIP(addr.IP) {
-			return ErrPrivateBlocked
-		}
-	}
 	return nil
-}
-
-func isPrivateIP(ip net.IP) bool {
-	if ip == nil {
-		return false
-	}
-	if ip.IsLoopback() || ip.IsLinkLocalMulticast() || ip.IsLinkLocalUnicast() || ip.IsMulticast() {
-		return true
-	}
-	ip4 := ip.To4()
-	if ip4 != nil {
-		switch {
-		case ip4[0] == 10:
-			return true
-		case ip4[0] == 172 && ip4[1]&0xf0 == 16:
-			return true
-		case ip4[0] == 192 && ip4[1] == 168:
-			return true
-		case ip4[0] == 127:
-			return true
-		case ip4[0] == 169 && ip4[1] == 254:
-			return true
-		}
-		return false
-	}
-	if ip.IsPrivate() {
-		return true
-	}
-	if ip.IsUnspecified() {
-		return true
-	}
-	return false
 }
 
 func statusAllowed(code int, allowed []string) bool {
@@ -487,6 +468,9 @@ func checkErrorKey(err error) string {
 	}
 	if errors.Is(err, ErrPrivateBlocked) {
 		return "monitoring.error.privateBlocked"
+	}
+	if errors.Is(err, ErrTargetBlocked) {
+		return "monitoring.error.targetBlocked"
 	}
 	var unknownAuthority x509.UnknownAuthorityError
 	if errors.As(err, &unknownAuthority) {

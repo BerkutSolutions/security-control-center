@@ -40,12 +40,16 @@ func InitRuntime(ctx context.Context, cfg *config.AppConfig, logger *utils.Logge
 	return &Runtime{
 		DB:         db,
 		Server:     srv,
-		background: api.BuildBackgroundController(composition.sessions, logger, composition.workers...),
+		background: api.BuildBackgroundController(composition.sessions, cfg != nil && cfg.RunMode == "all", logger, composition.workers...),
 	}, nil
 }
 
 func (r *Runtime) StartBackground(ctx context.Context) {
-	if r == nil || r.background == nil {
+	if r == nil || r.background == nil || r.Server == nil || r.Server.Config() == nil {
+		return
+	}
+	// In HA deployments, "api" nodes must not run background workers.
+	if r.Server.Config().RunMode == "api" {
 		return
 	}
 	r.mu.Lock()

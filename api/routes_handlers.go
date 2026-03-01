@@ -1,6 +1,9 @@
 package api
 
-import "berkut-scc/api/handlers"
+import (
+	"berkut-scc/api/handlers"
+	"berkut-scc/core/store"
+)
 
 type routeHandlers struct {
 	auth        *handlers.AuthHandler
@@ -10,6 +13,7 @@ type routeHandlers struct {
 	settings    *handlers.SettingsHandler
 	https       *handlers.HTTPSSettingsHandler
 	runtime     *handlers.RuntimeSettingsHandler
+	preflight   *handlers.PreflightHandler
 	compat      *handlers.AppCompatHandler
 	jobs        *handlers.AppJobsHandler
 	hardening   *handlers.HardeningHandler
@@ -25,14 +29,17 @@ type routeHandlers struct {
 }
 
 func (s *Server) newRouteHandlers() routeHandlers {
+	twoFA := store.NewAuth2FAStore(s.db)
+	passkeys := store.NewPasskeysStore(s.db)
 	return routeHandlers{
-		auth:        handlers.NewAuthHandler(s.cfg, s.users, s.sessions, s.incidentsStore, s.sessionManager, s.policy, s.audits, s.logger),
-		accounts:    handlers.NewAccountsHandler(s.users, s.groups, s.roles, s.sessions, s.policy, s.sessionManager, s.cfg, s.audits, s.logger, s.refreshPolicy),
+		auth:        handlers.NewAuthHandler(s.cfg, s.users, s.sessions, s.incidentsStore, twoFA, passkeys, s.sessionManager, s.policy, s.audits, s.logger),
+		accounts:    handlers.NewAccountsHandler(s.users, s.groups, s.roles, s.sessions, twoFA, s.policy, s.sessionManager, s.cfg, s.audits, s.logger, s.refreshPolicy),
 		dashboard:   handlers.NewDashboardHandler(s.cfg, s.dashboardStore, s.users, s.docsStore, s.incidentsStore, s.docsSvc, s.incidentsSvc, s.tasksStore, s.audits, s.policy, s.logger),
 		placeholder: handlers.NewPlaceholderHandler(),
 		settings:    handlers.NewSettingsHandler(),
 		https:       handlers.NewHTTPSSettingsHandler(s.cfg, s.appHTTPSStore, s.audits),
 		runtime:     handlers.NewRuntimeSettingsHandler(s.cfg, s.appRuntimeStore, s.updateChecker, s.audits),
+		preflight:   handlers.NewPreflightHandler(s.cfg, s.db),
 		compat:      handlers.NewAppCompatHandler(s.appModules, s.policy),
 		jobs:        handlers.NewAppJobsHandler(s.appJobs, s.policy),
 		hardening:   handlers.NewHardeningHandler(s.cfg, s.appHTTPSStore, s.appRuntimeStore, s.audits),

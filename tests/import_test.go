@@ -245,7 +245,7 @@ func setupImportHandler(t *testing.T) (*handlers.AccountsHandler, store.UsersSto
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	sessions := &mockSessions{}
 	audits := store.NewAuditStore(db)
-	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, policy, auth.NewSessionManager(sessions, cfg, logger), cfg, audits, logger, nil)
+	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, store.NewAuth2FAStore(db), policy, auth.NewSessionManager(sessions, cfg, logger), cfg, audits, logger, nil)
 	return acc, users, groups, roles, cfg, func() { db.Close() }
 }
 

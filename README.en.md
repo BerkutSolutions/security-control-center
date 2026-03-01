@@ -18,7 +18,7 @@ Berkut Solutions - Security Control Center (SCC) is a self-hosted platform for s
 
 
 
-Current version: `1.0.12`
+Current version: `1.0.13`
 
 ## Healthcheck and Tab Compatibility (1.0.12)
 
@@ -139,6 +139,18 @@ It replaces fragmented spreadsheets, chat approvals, and disconnected trackers w
 - Deployment: Docker / Docker Compose.
 
 
+
+## Observability (1.0.13)
+
+- Liveness: `GET /healthz`
+- Readiness (DB ping): `GET /readyz`
+- Prometheus metrics: `GET /metrics` (disabled by default; enable via `BERKUT_METRICS_ENABLED=true`, optionally protect with `BERKUT_METRICS_TOKEN`)
+
+## Auth (1.0.13)
+
+- 2FA (TOTP) + recovery codes (user-controlled in Settings).
+- Passkeys (WebAuthn): passwordless sign-in and passkey-based 2FA confirmation (KeePassXC, Windows Hello, etc.).
+- 2FA confirmation is on a dedicated page: `/login/2fa` (password manager compatibility).
 
 ## Documentation
 

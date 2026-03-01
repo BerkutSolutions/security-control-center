@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.0.12`
+Documentation version baseline: `1.0.13`
 
 
 
@@ -22,6 +22,8 @@ Documentation version baseline: `1.0.12`
 
 7. Runbook (start and recovery): `docs/eng/runbook.md`
 
+7.1 Upgrade / rollback: `docs/eng/upgrade.md`
+
 8. Tabs wiki: `docs/eng/wiki/tabs.md`
 
 9. Features wiki: `docs/eng/wiki/features.md`
@@ -39,6 +41,8 @@ Documentation version baseline: `1.0.12`
 15. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
 
 16. Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
+
+16.1 HA compose example (api + worker): `docs/ru/docker-compose.ha.yml`
 
 17. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
 
@@ -62,7 +66,7 @@ Documentation is aligned with current runtime reality:
 
 
 
-## Included for 1.0.12
+## Included for 1.0.13
 
 - UI navigation: Registries tab (`/registry/...`) now contains Assets/Software/Findings as internal tabs with path routes (e.g. `/registry/assets`, `/registry/software`, `/registry/findings`).
 
@@ -84,3 +88,8 @@ Documentation is aligned with current runtime reality:
 
 - Monitoring notifications: hardened deliveries history handling for legacy/new records to avoid intermittent `500` in `/api/monitoring/notifications/deliveries`.
 
+- Observability: `GET /healthz` (liveness), `GET /readyz` (readiness, DB ping), optional Prometheus `GET /metrics` (disabled by default, enable via `BERKUT_METRICS_ENABLED=true`).
+
+- Upgrade: added admin preflight `GET /api/app/preflight` and optional backup-before-migrate.
+
+- Auth: added 2FA (TOTP + recovery codes), passkeys (WebAuthn), and a dedicated 2FA confirmation page `/login/2fa` for password manager compatibility.

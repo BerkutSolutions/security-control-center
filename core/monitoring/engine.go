@@ -3,6 +3,7 @@ package monitoring
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"strings"
 	"sync"
@@ -405,6 +406,17 @@ func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.M
 		attemptFn = AttemptMonitor
 	}
 	result, attemptErr := attemptFn(ctx, m, settings)
+	if attemptErr != nil && e != nil && e.audits != nil {
+		var blocked *TargetBlockedError
+		if errors.As(attemptErr, &blocked) && blocked != nil {
+			host := strings.TrimSpace(blocked.Host)
+			reason := strings.TrimSpace(blocked.ReasonCode)
+			if reason == "" {
+				reason = "restricted_target"
+			}
+			_ = e.audits.Log(ctx, "system", "security.ssrf.blocked", fmt.Sprintf("source=monitoring|monitor_id=%d|host=%s|reason_code=%s", m.ID, host, reason))
+		}
+	}
 	if attemptErr != nil {
 		result = failedResult(result, attemptErr)
 	}

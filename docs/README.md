@@ -1,6 +1,6 @@
 # Documentation
 
-Version baseline: `1.0.12`
+Version baseline: `1.0.13`
 
 This directory contains detailed technical documentation for the current runtime model.
 
@@ -17,6 +17,8 @@ Primary entry points:
 - Software module EN: `docs/eng/software.md`
 - Backups RU: `docs/ru/backups.md`
 - Backups EN: `docs/eng/backups.md`
+- Upgrade / rollback RU: `docs/ru/upgrade.md`
+- Upgrade / rollback EN: `docs/eng/upgrade.md`
 - HTTPS + OnlyOffice RU: `docs/ru/https_onlyoffice.md`
 - HTTPS + OnlyOffice EN: `docs/eng/https_onlyoffice.md`
 - Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`

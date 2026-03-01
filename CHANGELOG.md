@@ -1,41 +1,44 @@
-﻿# Журнал изменений
+# Журнал изменений
 
-## 1.0.12 — 01.03.2026
-
-### UI
-- Мониторинг: в настройках добавлен блок «Engine stats» (inflight/due/skip, p95 ожидания и длительности, распределение ошибок).
-- Мониторинг: в карточке монитора отображаются `retry_until`, номер попытки и класс ошибки (timeout/dns/tls/...).
-- Мониторинг: в «Engine stats» добавлены показатели по retry (due/started/budget на тик, доля retry, всего запланировано).
-- Приложение: при входе добавлена проверка совместимости вкладок через `/api/app/compat` и уведомление (без авто-миграций/сбросов).
-- Приложение: добавлен мастер совместимости после логина: “что изменилось” по модулям + запуск jobs (Partial adapt / Full reset) с прогрессом и двойным подтверждением для Full reset.
-- Приложение: добавлена одноразовая страница `/healthcheck` со статусом/проверками совместимости (доступна только сразу после входа/смены пароля и затем скрывается до следующего логина).
+## 1.0.13 — 01.03.2026
 
 ### Ядро
-- Мониторинг: добавлен детерминированный jitter планирования due-проверок для снижения синхронных волн после сетевых флапов.
-- Мониторинг: пересмотрены дефолты (timeout/retries/retry interval) для уменьшения удержания слотов при массовых таймаутах.
-- Мониторинг: retry перенесён из внутреннего цикла проверки в планирование (одна попытка = один слот; без `sleep` внутри слота).
-- Мониторинг: retry теперь хранится в `monitor_state` (`retry_at`, `retry_attempt`, `last_error_kind`) и учитывается в due-выборке.
-- Мониторинг: добавлена простая fairness-квота на запуск retry-попыток в тик, чтобы не выдавливать обычные проверки.
-
-- Приложение: добавлен API `/api/app/compat` и таблица `app_module_state` для проверки совместимости вкладок/модулей при логине (без авто-миграций/сбросов).
-- Приложение: добавлена инфраструктура jobs (`app_jobs`) и endpoints `/api/app/jobs*` для ручного запуска переинициализации/адаптации вкладок с прогрессом и отменой (cancel).
-- Приложение: добавлен background worker для выполнения jobs в фоне.
-- Приложение: реализованы действия модулей (Full reset / Partial adapt) по единому шаблону: транзакционные DB-очистки, очистка файловых хранилищ (docs/incidents/backups/tasks), восстановление дефолтов (например `control_types`) и подсчёты затронутых объектов.
-
-### Вкладки
-- Реализованы операции Partial adapt / Full reset для модулей: `dashboard`, `tasks`, `monitoring`, `docs`, `approvals`, `incidents`, `registry.controls`, `registry.assets`, `registry.software`, `registry.findings`, `reports`, `settings`, `backups`, `logs` (операции запускаются только вручную через мастер/Jobs).
+- Observability: добавлены технические endpoints `GET /healthz` (liveness) и `GET /readyz` (readiness, ping БД).
+- Observability: добавлен `GET /metrics` для Prometheus (по умолчанию выключен; включение через `BERKUT_METRICS_ENABLED=true`).
+- Observability: добавлены доменные метрики для `app_jobs`, `backups` и движка мониторинга, а также базовые tick-метрики фоновых воркеров.
+- Observability: добавлен флаг `BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME=true` (только для режима `deployment_mode=home`) для удобства dev-скрейпа без токена.
+- Auth: добавлен 2FA (TOTP) с challenge-логином и server-side хранением recovery codes; секрет TOTP хранится зашифрованным в `users.totp_secret_enc`.
+- Auth: добавлены passkeys (WebAuthn): вход по ключу доступа и возможность подтверждать 2FA через passkey.
+- Upgrade: добавлен preflight endpoint `GET /api/app/preflight` (проверки администратора).
+- Upgrade: добавлен опциональный pre-upgrade backup перед миграциями (`BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE=true`).
+- Миграции: применяются через session-lock в Postgres для защиты от параллельных запусков в HA.
+- Monitoring: усилена защита SSRF при проверках (link-local/metadata адреса блокируются даже при включённых приватных сетях).
+- OnlyOffice: callback download URL принимается только для настроенных host (Public/Internal), чтобы исключить SSRF через callback.
 
 ### Безопасность
-- Мониторинг: усилен zero-trust — проверки прав добавлены в обработчики endpoints (defense-in-depth поверх route-guards).
-- Приложение: добавлены права `app.compat.view`/`app.compat.manage.partial`/`app.compat.manage.full` + проверки на каждом endpoint compat/jobs (zero-trust).
-- Приложение: запуск jobs дополнительно проверяет права на модульные операции (defense-in-depth, требуются `settings.advanced` + соответствующий `*.manage`/`backups.restore`).
-- Приложение: full reset критичных модулей разрешён только роли `superadmin`.
+- Observability: `GET /metrics` может быть защищён Bearer-токеном `BERKUT_METRICS_TOKEN` (заголовок `Authorization: Bearer ...`).
+- Upgrade: добавлено право `app.preflight.view` для preflight checks.
+- HTTP hardening: усилены security headers (CSP + дополнительные заголовки политики браузера).
+- Trusted proxies: слишком широкие CIDR-диапазоны игнорируются при доверии `X-Forwarded-*`/`X-Real-IP` (защита от спуфинга).
+- Auth: добавлен отдельный rate limit на второй фактор (`POST /api/auth/login/2fa`) и аудит событий `auth.2fa.*`.
+- Auth: добавлен аудит событий passkeys `auth.passkey.*` (регистрация/переименование/удаление/вход/использование как 2FA).
+- Security: добавлен аудит блокировок SSRF с `reason_code` (`security.ssrf.blocked`).
+- Config: добавлены проверки strength для `BERKUT_METRICS_TOKEN` и `BERKUT_DOCS_ONLYOFFICE_JWT_SECRET` (минимальная длина).
 
-### Observability / Audit
-- Мониторинг: добавлена наблюдаемость движка (inflight, due/started/skipped на тик, p50/p95/p99 по ожиданию запуска и длительности попытки, распределение ошибок) + периодический агрегированный лог.
-- Приложение: audit события `app.job.start`/`app.job.finish` и `app.module.reset.full`/`app.module.reset.partial` с деталями (module/mode/counts).
+### UI
+- Preflight: добавлены сообщения для проверок `Trusted proxies`, `/metrics` (токен) и ограничений internal URL для OnlyOffice.
+- Monitoring: добавлен локализованный статус ошибки для заблокированных целей (network policy).
+- Auth: добавлены экраны/модалки 2FA (TOTP): шаг 2FA при входе, включение/выключение в настройках, сброс 2FA супер-админом в Accounts.
+- Auth: шаг подтверждения 2FA вынесен на отдельную страницу `/login/2fa`, чтобы менеджеры паролей (KeePassXC) корректно подхватывали поле `one-time-code`.
+- Auth: добавлены UI-кнопки “войти с ключом доступа” (login) и управление passkeys в Settings.
+- Healthcheck: добавлена секция “Preflight (админ)” с загрузкой отчёта `GET /api/app/preflight` (если есть право).
 
-### Тестирование
-- Мониторинг: добавлены unit-тесты на jitter и тест на проверку прав для `/api/monitoring/engine/stats`.
-- Мониторинг: добавлены тесты на планирование retry (классификация ошибок, расчёт `retry_at`, due-логика, интеграционная проверка “без sleep в слоте”).
-- Совместимость/Jobs: добавлены unit-тесты на статусы совместимости, права на endpoints и корректность partial/full для модуля `monitoring`, а также handler-level сценарий (compat → start job → poll progress).
+### Инфраструктура / Deploy
+- Docker Compose: healthcheck контейнера приложения переведён с `/login` на `/readyz`.
+- Конфигурация: в `config/app.yaml` добавлен блок `observability` (metrics выключены по умолчанию).
+- HA: добавлен режим запуска `BERKUT_RUN_MODE=all|api|worker` и пример `api + worker` compose.
+
+### Документация
+- Обновлены runbook/deploy-инструкции: добавлены `healthz/readyz` и описание Prometheus `/metrics`.
+- Auth: описан 2FA (TOTP + recovery codes) и сценарии восстановления доступа.
+- Auth: описаны passkeys (WebAuthn) и базовая конфигурация `security.webauthn`.

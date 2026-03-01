@@ -105,7 +105,7 @@ func setupRolesHandler(t *testing.T) (*handlers.AccountsHandler, store.RolesStor
 	_ = store.ApplyMigrations(context.Background(), db, logger)
 	roles := store.NewRolesStore(db)
 	audits := store.NewAuditStore(db)
-	h := handlers.NewAccountsHandler(nil, nil, roles, nil, nil, nil, cfg, audits, logger, nil)
+	h := handlers.NewAccountsHandler(nil, nil, roles, nil, nil, nil, nil, cfg, audits, logger, nil)
 	return h, roles, func() { _ = db.Close() }
 }
 

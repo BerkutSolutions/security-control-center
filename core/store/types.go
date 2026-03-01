@@ -23,6 +23,7 @@ type User struct {
 	FailedAttempts       int        `json:"failed_attempts"`
 	TOTPEnabled          bool       `json:"totp_enabled"`
 	TOTPSecret           string     `json:"-"`
+	TOTPSecretEnc        string     `json:"-"`
 	LastLoginAt          *time.Time `json:"last_login_at,omitempty"`
 	LastFailedAt         *time.Time `json:"last_failed_at,omitempty"`
 	PasswordChangedAt    *time.Time `json:"password_changed_at,omitempty"`

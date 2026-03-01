@@ -3,24 +3,27 @@ package config
 import "time"
 
 type AppConfig struct {
-	DBDriver       string          `yaml:"db_driver" env:"BERKUT_DB_DRIVER" env-default:"postgres"`
-	DBURL          string          `yaml:"db_url" env:"BERKUT_DB_URL" env-default:"postgres://berkut:berkut@localhost:5432/berkut?sslmode=disable"`
-	DBPath         string          `yaml:"db_path"` // deprecated
-	ListenAddr     string          `yaml:"listen_addr" env:"BERKUT_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
-	SessionTTL     time.Duration   `yaml:"session_ttl" env:"BERKUT_SESSION_TTL" env-default:"3h"`
-	AppEnv         string          `yaml:"app_env" env:"BERKUT_APP_ENV"`
-	DeploymentMode string          `yaml:"deployment_mode" env:"BERKUT_DEPLOYMENT_MODE" env-default:"enterprise"`
-	CSRFKey        string          `yaml:"csrf_key" env:"BERKUT_CSRF_KEY"`
-	Pepper         string          `yaml:"pepper" env:"BERKUT_PEPPER"`
-	TLSEnabled     bool            `yaml:"tls_enabled" env:"BERKUT_TLS_ENABLED" env-default:"false"`
-	TLSCert        string          `yaml:"tls_cert" env:"BERKUT_TLS_CERT"`
-	TLSKey         string          `yaml:"tls_key" env:"BERKUT_TLS_KEY"`
-	Scheduler      SchedulerConfig `yaml:"scheduler"`
-	Monitoring     MonitoringConfig `yaml:"monitoring"`
-	Docs           DocsConfig      `yaml:"docs"`
-	Security       SecurityConfig  `yaml:"security"`
-	Incidents      IncidentsConfig `yaml:"incidents"`
-	Backups        BackupsConfig   `yaml:"backups"`
+	DBDriver       string              `yaml:"db_driver" env:"BERKUT_DB_DRIVER" env-default:"postgres"`
+	DBURL          string              `yaml:"db_url" env:"BERKUT_DB_URL" env-default:"postgres://berkut:berkut@localhost:5432/berkut?sslmode=disable"`
+	DBPath         string              `yaml:"db_path"` // deprecated
+	ListenAddr     string              `yaml:"listen_addr" env:"BERKUT_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
+	SessionTTL     time.Duration       `yaml:"session_ttl" env:"BERKUT_SESSION_TTL" env-default:"3h"`
+	AppEnv         string              `yaml:"app_env" env:"BERKUT_APP_ENV"`
+	DeploymentMode string              `yaml:"deployment_mode" env:"BERKUT_DEPLOYMENT_MODE" env-default:"enterprise"`
+	RunMode        string              `yaml:"run_mode" env:"BERKUT_RUN_MODE" env-default:"all"`
+	CSRFKey        string              `yaml:"csrf_key" env:"BERKUT_CSRF_KEY"`
+	Pepper         string              `yaml:"pepper" env:"BERKUT_PEPPER"`
+	TLSEnabled     bool                `yaml:"tls_enabled" env:"BERKUT_TLS_ENABLED" env-default:"false"`
+	TLSCert        string              `yaml:"tls_cert" env:"BERKUT_TLS_CERT"`
+	TLSKey         string              `yaml:"tls_key" env:"BERKUT_TLS_KEY"`
+	Scheduler      SchedulerConfig     `yaml:"scheduler"`
+	Monitoring     MonitoringConfig    `yaml:"monitoring"`
+	Observability  ObservabilityConfig `yaml:"observability"`
+	Upgrade        UpgradeConfig       `yaml:"upgrade"`
+	Docs           DocsConfig          `yaml:"docs"`
+	Security       SecurityConfig      `yaml:"security"`
+	Incidents      IncidentsConfig     `yaml:"incidents"`
+	Backups        BackupsConfig       `yaml:"backups"`
 }
 
 func (c *AppConfig) IsHomeMode() bool {
@@ -82,11 +85,19 @@ type OnlyOfficeConfig struct {
 }
 
 type SecurityConfig struct {
-	TagsSubsetEnforced  bool     `yaml:"tags_subset_enforced" env:"BERKUT_SECURITY_TAGS_SUBSET" env-default:"true"`
-	OnlineWindowSec     int      `yaml:"online_window_sec" env:"BERKUT_SECURITY_ONLINE_WINDOW_SEC" env-default:"300"`
-	LegacyImportEnabled bool     `yaml:"legacy_import_enabled" env:"BERKUT_SECURITY_LEGACY_IMPORT_ENABLED" env-default:"false"`
-	TrustedProxies      []string `yaml:"trusted_proxies" env:"BERKUT_SECURITY_TRUSTED_PROXIES" env-separator:","`
-	AuthLockoutIncident bool     `yaml:"auth_lockout_incident" env:"BERKUT_SECURITY_AUTH_LOCKOUT_INCIDENT" env-default:"true"`
+	TagsSubsetEnforced  bool           `yaml:"tags_subset_enforced" env:"BERKUT_SECURITY_TAGS_SUBSET" env-default:"true"`
+	OnlineWindowSec     int            `yaml:"online_window_sec" env:"BERKUT_SECURITY_ONLINE_WINDOW_SEC" env-default:"300"`
+	LegacyImportEnabled bool           `yaml:"legacy_import_enabled" env:"BERKUT_SECURITY_LEGACY_IMPORT_ENABLED" env-default:"false"`
+	TrustedProxies      []string       `yaml:"trusted_proxies" env:"BERKUT_SECURITY_TRUSTED_PROXIES" env-separator:","`
+	AuthLockoutIncident bool           `yaml:"auth_lockout_incident" env:"BERKUT_SECURITY_AUTH_LOCKOUT_INCIDENT" env-default:"true"`
+	WebAuthn            WebAuthnConfig `yaml:"webauthn"`
+}
+
+type WebAuthnConfig struct {
+	Enabled bool     `yaml:"enabled" env:"BERKUT_WEBAUTHN_ENABLED" env-default:"true"`
+	RPID    string   `yaml:"rp_id" env:"BERKUT_WEBAUTHN_RP_ID"`
+	RPName  string   `yaml:"rp_name" env:"BERKUT_WEBAUTHN_RP_NAME" env-default:"Berkut SCC"`
+	Origins []string `yaml:"origins" env:"BERKUT_WEBAUTHN_ORIGINS" env-separator:","`
 }
 
 type IncidentsConfig struct {
@@ -110,6 +121,20 @@ type MonitoringConfig struct {
 	// StatsLogIntervalSeconds controls how often engine emits aggregate observability logs.
 	// 0 disables periodic logging.
 	StatsLogIntervalSeconds int `yaml:"stats_log_interval_seconds" env:"BERKUT_MONITORING_STATS_LOG_INTERVAL_SECONDS" env-default:"60"`
+}
+
+type ObservabilityConfig struct {
+	MetricsEnabled bool   `yaml:"metrics_enabled" env:"BERKUT_METRICS_ENABLED" env-default:"false"`
+	MetricsToken   string `yaml:"metrics_token" env:"BERKUT_METRICS_TOKEN"`
+	// MetricsAllowUnauthInHome allows unauthenticated scraping of /metrics in deployment_mode=home
+	// when metrics_token is empty. Keep this disabled for corp/enterprise deployments.
+	MetricsAllowUnauthInHome bool `yaml:"metrics_allow_unauth_in_home" env:"BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME" env-default:"false"`
+}
+
+type UpgradeConfig struct {
+	BackupBeforeMigrate bool   `yaml:"backup_before_migrate" env:"BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE" env-default:"false"`
+	BackupIncludeFiles  bool   `yaml:"backup_include_files" env:"BERKUT_UPGRADE_BACKUP_INCLUDE_FILES" env-default:"true"`
+	BackupLabel         string `yaml:"backup_label" env:"BERKUT_UPGRADE_BACKUP_LABEL"`
 }
 
 type BackupsConfig struct {

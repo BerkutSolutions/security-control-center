@@ -1,0 +1,59 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-berkut}
+      POSTGRES_USER: ${POSTGRES_USER:-berkut}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-berkut}
+    volumes:
+      - berkut_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-berkut} -d ${POSTGRES_DB:-berkut}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  berkut-api:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ${IMAGE_NAME:-berkut-scc}:${IMAGE_TAG:-latest}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BERKUT_RUN_MODE: api
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+    volumes:
+      - berkut_data:${DATA_PATH:-/app/data}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/readyz >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  berkut-worker:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    image: ${IMAGE_NAME:-berkut-scc}:${IMAGE_TAG:-latest}
+    env_file:
+      - ../.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      BERKUT_RUN_MODE: worker
+    volumes:
+      - berkut_data:${DATA_PATH:-/app/data}
+    restart: unless-stopped
+
+volumes:
+  berkut_data:
+  berkut_pgdata:

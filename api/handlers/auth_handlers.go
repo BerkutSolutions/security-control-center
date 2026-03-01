@@ -23,6 +23,8 @@ type AuthHandler struct {
 	users          store.UsersStore
 	sessions       store.SessionStore
 	incidents      store.IncidentsStore
+	twoFA          store.Auth2FAStore
+	passkeys       store.PasskeysStore
 	sessionManager *auth.SessionManager
 	policy         *rbac.Policy
 	audits         store.AuditStore
@@ -35,8 +37,8 @@ const healthcheckCookiePath = "/healthcheck"
 const healthcheckCookieMaxAgeSeconds = 30
 const healthcheckCookieMaxSkew = 15 * time.Second
 
-func NewAuthHandler(cfg *config.AppConfig, users store.UsersStore, sessions store.SessionStore, incidents store.IncidentsStore, sm *auth.SessionManager, policy *rbac.Policy, audits store.AuditStore, logger *utils.Logger) *AuthHandler {
-	return &AuthHandler{cfg: cfg, users: users, sessions: sessions, incidents: incidents, sessionManager: sm, policy: policy, audits: audits, logger: logger}
+func NewAuthHandler(cfg *config.AppConfig, users store.UsersStore, sessions store.SessionStore, incidents store.IncidentsStore, twoFA store.Auth2FAStore, passkeys store.PasskeysStore, sm *auth.SessionManager, policy *rbac.Policy, audits store.AuditStore, logger *utils.Logger) *AuthHandler {
+	return &AuthHandler{cfg: cfg, users: users, sessions: sessions, incidents: incidents, twoFA: twoFA, passkeys: passkeys, sessionManager: sm, policy: policy, audits: audits, logger: logger}
 }
 
 func setHealthcheckCookie(w http.ResponseWriter, r *http.Request, cfg *config.AppConfig, enabled bool) {
@@ -149,10 +151,35 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
 	}
+	if user.TOTPEnabled {
+		if h.twoFA == nil {
+			http.Error(w, localized(lang, "auth.2fa.misconfigured"), http.StatusInternalServerError)
+			return
+		}
+		_ = h.twoFA.DeleteExpiredChallenges(r.Context(), now)
+		chID, err := h.twoFA.CreateChallenge(r.Context(), user.ID, clientIP(r, h.cfg), r.UserAgent(), now.Add(5*time.Minute))
+		if err != nil {
+			if h.logger != nil {
+				h.logger.Errorf("auth login 2fa challenge create failed for %s: %v", cred.Username, err)
+			}
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+		writeJSON(w, http.StatusOK, map[string]any{
+			"two_factor_required": true,
+			"challenge_id":        chID,
+			"expires_at":          now.Add(5 * time.Minute).UTC(),
+		})
+		return
+	}
+	h.finishLogin(w, r, user, roles, now)
+}
+
+func (h *AuthHandler) finishLogin(w http.ResponseWriter, r *http.Request, user *store.User, roles []string, now time.Time) {
 	sess, err := h.sessionManager.Create(r.Context(), user, roles, clientIP(r, h.cfg), r.UserAgent())
 	if err != nil {
 		if h.logger != nil {
-			h.logger.Errorf("auth login session create failed for %s: %v", cred.Username, err)
+			h.logger.Errorf("auth login session create failed for %s: %v", user.Username, err)
 		}
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -641,8 +668,16 @@ func isTrustedProxy(ip string, trusted []string) bool {
 			continue
 		}
 		if strings.Contains(val, "/") {
-			if _, block, err := net.ParseCIDR(val); err == nil && block.Contains(parsed) {
-				return true
+			if _, block, err := net.ParseCIDR(val); err == nil && block != nil {
+				if ones, bits := block.Mask.Size(); bits > 0 {
+					is4 := block.IP != nil && block.IP.To4() != nil
+					if (is4 && ones <= 16) || (!is4 && ones <= 48) {
+						continue
+					}
+				}
+				if block.Contains(parsed) {
+					return true
+				}
 			}
 			continue
 		}

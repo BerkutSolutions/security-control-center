@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"strings"
 	"time"
 )
@@ -19,6 +20,8 @@ type UsersStore interface {
 	Update(ctx context.Context, user *User, roles []string) error
 	SetActive(ctx context.Context, userID int64, active bool) error
 	UpdatePassword(ctx context.Context, userID int64, hash, salt string, requireChange bool) error
+	SetTOTP(ctx context.Context, userID int64, enabled bool, secretEnc string) error
+	ClearTOTP(ctx context.Context, userID int64) error
 	PasswordHistory(ctx context.Context, userID int64, limit int) ([]PasswordHistoryEntry, error)
 	Delete(ctx context.Context, userID int64) error
 }
@@ -51,14 +54,14 @@ type PasswordHistoryEntry struct {
 
 func (s *usersStore) FindByUsername(ctx context.Context, username string) (*User, []string, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
+		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_secret_enc, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
 		FROM users WHERE username=?`, username)
 	return s.scanUser(ctx, row)
 }
 
 func (s *usersStore) Get(ctx context.Context, userID int64) (*User, []string, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
+		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_secret_enc, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
 		FROM users WHERE id=?`, userID)
 	return s.scanUser(ctx, row)
 }
@@ -74,7 +77,7 @@ func (s *usersStore) scanUser(ctx context.Context, row *sql.Row) (*User, []strin
 	if err := row.Scan(
 		&u.ID, &u.Username, &u.Email, &u.FullName, &u.Department, &u.Position, &u.ClearanceLevel, &tagsRaw,
 		&u.PasswordHash, &u.Salt, &u.PasswordSet, &u.RequirePasswordChange, &u.Active, &disabled,
-		&locked, &u.LockReason, &u.LockStage, &u.FailedAttempts, &u.TOTPSecret, &u.TOTPEnabled, &lastLogin, &lastFailed, &lastChanged, &u.CreatedAt, &u.UpdatedAt); err != nil {
+		&locked, &u.LockReason, &u.LockStage, &u.FailedAttempts, &u.TOTPSecret, &u.TOTPSecretEnc, &u.TOTPEnabled, &lastLogin, &lastFailed, &lastChanged, &u.CreatedAt, &u.UpdatedAt); err != nil {
 		if err == sql.ErrNoRows {
 			return nil, nil, nil
 		}
@@ -109,9 +112,9 @@ func (s *usersStore) Create(ctx context.Context, user *User, roles []string) (in
 		return 0, err
 	}
 	res, err := tx.ExecContext(ctx, `
-		INSERT INTO users(username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
-		user.Username, user.Email, user.FullName, user.Department, user.Position, user.ClearanceLevel, tagsToJSON(user.ClearanceTags), user.PasswordHash, user.Salt, boolToInt(user.PasswordSet), boolToInt(user.RequirePasswordChange), boolToInt(user.Active), nullTime(user.DisabledAt), nullTime(user.LockedUntil), user.LockReason, user.LockStage, user.FailedAttempts, user.TOTPSecret, boolToInt(user.TOTPEnabled), nullTime(user.LastLoginAt), nullTime(user.LastFailedAt), nullTime(user.PasswordChangedAt), now, now)
+		INSERT INTO users(username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_secret_enc, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		user.Username, user.Email, user.FullName, user.Department, user.Position, user.ClearanceLevel, tagsToJSON(user.ClearanceTags), user.PasswordHash, user.Salt, boolToInt(user.PasswordSet), boolToInt(user.RequirePasswordChange), boolToInt(user.Active), nullTime(user.DisabledAt), nullTime(user.LockedUntil), user.LockReason, user.LockStage, user.FailedAttempts, user.TOTPSecret, user.TOTPSecretEnc, boolToInt(user.TOTPEnabled), nullTime(user.LastLoginAt), nullTime(user.LastFailedAt), nullTime(user.PasswordChangedAt), now, now)
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -198,7 +201,7 @@ func (s *usersStore) ListFiltered(ctx context.Context, f UserFilter) ([]UserWith
 	}
 
 	query := `
-		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
+		SELECT id, username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_secret_enc, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at
 		FROM users`
 	if len(where) > 0 {
 		query += " WHERE " + strings.Join(where, " AND ")
@@ -218,7 +221,7 @@ func (s *usersStore) ListFiltered(ctx context.Context, f UserFilter) ([]UserWith
 		if err := rows.Scan(
 			&u.ID, &u.Username, &u.Email, &u.FullName, &u.Department, &u.Position, &u.ClearanceLevel, &tagsRaw,
 			&u.PasswordHash, &u.Salt, &u.PasswordSet, &u.RequirePasswordChange, &u.Active, &disabled,
-			&locked, &u.LockReason, &u.LockStage, &u.FailedAttempts, &u.TOTPSecret, &u.TOTPEnabled, &lastLogin, &lastFailed, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
+			&locked, &u.LockReason, &u.LockStage, &u.FailedAttempts, &u.TOTPSecret, &u.TOTPSecretEnc, &u.TOTPEnabled, &lastLogin, &lastFailed, &u.PasswordChangedAt, &u.CreatedAt, &u.UpdatedAt); err != nil {
 			return nil, err
 		}
 		if tagsRaw != "" {
@@ -267,9 +270,9 @@ func (s *usersStore) Update(ctx context.Context, user *User, roles []string) err
 	}
 	_, err = tx.ExecContext(ctx, `
 		UPDATE users
-		SET email=?, full_name=?, department=?, position=?, clearance_level=?, clearance_tags=?, require_password_change=?, active=?, disabled_at=?, locked_until=?, lock_reason=?, lock_stage=?, failed_attempts=?, totp_secret=?, totp_enabled=?, last_login_at=?, last_failed_at=?, password_changed_at=?, updated_at=?
+		SET email=?, full_name=?, department=?, position=?, clearance_level=?, clearance_tags=?, require_password_change=?, active=?, disabled_at=?, locked_until=?, lock_reason=?, lock_stage=?, failed_attempts=?, totp_secret=?, totp_secret_enc=?, totp_enabled=?, last_login_at=?, last_failed_at=?, password_changed_at=?, updated_at=?
 		WHERE id=?`,
-		user.Email, user.FullName, user.Department, user.Position, user.ClearanceLevel, tagsToJSON(user.ClearanceTags), boolToInt(user.RequirePasswordChange), boolToInt(user.Active), nullTime(user.DisabledAt), nullTime(user.LockedUntil), user.LockReason, user.LockStage, user.FailedAttempts, user.TOTPSecret, boolToInt(user.TOTPEnabled), nullTime(user.LastLoginAt), nullTime(user.LastFailedAt), nullTime(user.PasswordChangedAt), time.Now().UTC(), user.ID)
+		user.Email, user.FullName, user.Department, user.Position, user.ClearanceLevel, tagsToJSON(user.ClearanceTags), boolToInt(user.RequirePasswordChange), boolToInt(user.Active), nullTime(user.DisabledAt), nullTime(user.LockedUntil), user.LockReason, user.LockStage, user.FailedAttempts, user.TOTPSecret, user.TOTPSecretEnc, boolToInt(user.TOTPEnabled), nullTime(user.LastLoginAt), nullTime(user.LastFailedAt), nullTime(user.PasswordChangedAt), time.Now().UTC(), user.ID)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -317,6 +320,26 @@ func (s *usersStore) UpdatePassword(ctx context.Context, userID int64, hash, sal
 		return err
 	}
 	return tx.Commit()
+}
+
+func (s *usersStore) SetTOTP(ctx context.Context, userID int64, enabled bool, secretEnc string) error {
+	if s == nil || s.db == nil {
+		return errors.New("nil db")
+	}
+	if userID <= 0 {
+		return errors.New("invalid user id")
+	}
+	secretEnc = strings.TrimSpace(secretEnc)
+	_, err := s.db.ExecContext(ctx, `
+		UPDATE users
+		SET totp_secret='', totp_secret_enc=?, totp_enabled=?, updated_at=?
+		WHERE id=?
+	`, secretEnc, boolToInt(enabled), time.Now().UTC(), userID)
+	return err
+}
+
+func (s *usersStore) ClearTOTP(ctx context.Context, userID int64) error {
+	return s.SetTOTP(ctx, userID, false, "")
 }
 
 func (s *usersStore) Delete(ctx context.Context, userID int64) error {

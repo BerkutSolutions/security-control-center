@@ -9,6 +9,7 @@ It is meant for quick diagnostics to confirm that after an upgrade and login:
 - session and user are valid;
 - key endpoints required for main tabs are reachable (with your current permissions);
 - tab compatibility (Compat) report is fetched via `GET /api/app/compat`.
+- (if permitted) the admin preflight report can be loaded via `GET /api/app/preflight`.
 
 The page **does not perform automatic migrations** and **does not change data**.
 
@@ -23,6 +24,7 @@ The page **does not perform automatic migrations** and **does not change data**.
 
 - Visibility of checks and Compat report depends on your role permissions.
 - Compat report requires `app.compat.view`.
+- Preflight section requires `app.preflight.view`.
 
 If you see “403” or some items are marked as “skipped”, it usually means your role does not have access to that tab/endpoint.
 
@@ -34,4 +36,3 @@ If Compat contains `needs_attention` or `incompatible` statuses, the app shows a
 - Full reset — full tab reinitialization (module data wipe).
 
 Actions are executed via background jobs and require additional permissions. See `docs/eng/compatibility.md`.
-

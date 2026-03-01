@@ -36,6 +36,7 @@ services:
       PORT: ${PORT:-8080}
       DATA_PATH: ${DATA_PATH:-/app/data}
       BERKUT_LISTEN_ADDR: ${BERKUT_LISTEN_ADDR:-0.0.0.0:${PORT:-8080}}
+      BERKUT_RUN_MODE: ${BERKUT_RUN_MODE:-all}
       BERKUT_DB_DRIVER: ${BERKUT_DB_DRIVER:-postgres}
       BERKUT_DB_URL: ${BERKUT_DB_URL:-postgres://berkut:berkut@postgres:5432/berkut?sslmode=disable}
       BERKUT_DOCS_STORAGE_DIR: ${BERKUT_DOCS_STORAGE_DIR:-${DATA_PATH:-/app/data}/docs}
@@ -76,6 +77,22 @@ services:
       BERKUT_SCHEDULER_INTERVAL_SECONDS: ${BERKUT_SCHEDULER_INTERVAL_SECONDS:-60}
       BERKUT_SCHEDULER_MAX_JOBS_PER_TICK: ${BERKUT_SCHEDULER_MAX_JOBS_PER_TICK:-20}
 
+      # Observability (/metrics is disabled by default)
+      BERKUT_METRICS_ENABLED: ${BERKUT_METRICS_ENABLED:-false}
+      BERKUT_METRICS_TOKEN: ${BERKUT_METRICS_TOKEN:-}
+      BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME: ${BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME:-false}
+
+      # Upgrade / migrations
+      BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE: ${BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE:-false}
+      BERKUT_UPGRADE_BACKUP_INCLUDE_FILES: ${BERKUT_UPGRADE_BACKUP_INCLUDE_FILES:-true}
+      BERKUT_UPGRADE_BACKUP_LABEL: ${BERKUT_UPGRADE_BACKUP_LABEL:-}
+
+      # Passkeys (WebAuthn)
+      BERKUT_WEBAUTHN_ENABLED: ${BERKUT_WEBAUTHN_ENABLED:-true}
+      BERKUT_WEBAUTHN_RP_ID: ${BERKUT_WEBAUTHN_RP_ID:-}
+      BERKUT_WEBAUTHN_RP_NAME: ${BERKUT_WEBAUTHN_RP_NAME:-SCC}
+      BERKUT_WEBAUTHN_ORIGINS: ${BERKUT_WEBAUTHN_ORIGINS:-}
+
       ONLYOFFICE_JWT_ENABLED: ${ONLYOFFICE_JWT_ENABLED:-true}
       ONLYOFFICE_JWT_SECRET: ${ONLYOFFICE_JWT_SECRET:-change-me-onlyoffice-jwt-secret}
       ONLYOFFICE_JWT_HEADER: ${ONLYOFFICE_JWT_HEADER:-Authorization}
@@ -89,7 +106,7 @@ services:
       - "${PORT:-8080}:${PORT:-8080}"
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/login >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/readyz >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5
@@ -98,7 +115,7 @@ services:
       - internal
 
   onlyoffice:
-    image: onlyoffice/documentserver:latest
+    image: onlyoffice/documentserver:8.3
     container_name: onlyoffice
     environment:
       TZ: ${TZ:-Europe/Moscow}

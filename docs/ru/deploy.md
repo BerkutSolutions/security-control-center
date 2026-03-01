@@ -18,6 +18,28 @@ DB/runtime:
 - `BERKUT_DB_URL=postgres://...`
 - прочие `BERKUT_*` overrides при необходимости
 
+HA / Scaling:
+- Режим запуска: `BERKUT_RUN_MODE=all|api|worker` (по умолчанию `all`).
+- Для HA рекомендуется: несколько реплик `api` (только HTTP/UI/API) + одна реплика `worker` (фоновые воркеры).
+
+Observability:
+- Liveness: `GET /healthz`
+- Readiness (DB ping): `GET /readyz`
+- Prometheus-метрики (по умолчанию выключено): `BERKUT_METRICS_ENABLED=true` и `GET /metrics` (если задан `BERKUT_METRICS_TOKEN`, используйте `Authorization: Bearer $BERKUT_METRICS_TOKEN`)
+- (только для home/dev) разрешить `/metrics` без токена: `BERKUT_METRICS_ALLOW_UNAUTH_IN_HOME=true`
+
+Passkeys (WebAuthn):
+- Включение/выключение: `BERKUT_WEBAUTHN_ENABLED=true|false`
+- RP ID / origins (рекомендуется для prod):
+  - `BERKUT_WEBAUTHN_RP_ID=scc.example.com`
+  - `BERKUT_WEBAUTHN_ORIGINS=https://scc.example.com`
+  - `BERKUT_WEBAUTHN_RP_NAME=SCC`
+- Требования: HTTPS (или `localhost`).
+
+Upgrade:
+- Preflight: `GET /api/app/preflight` (право `app.preflight.view`)
+- Backup-before-migrate (опционально): `BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE=true`
+
 ## Типовой деплой
 ```bash
 cp .env.example .env

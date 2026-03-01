@@ -6,8 +6,8 @@ import (
 
 	"berkut-scc/api"
 	"berkut-scc/config"
-	"berkut-scc/core/appmeta"
 	"berkut-scc/core/appjobs"
+	"berkut-scc/core/appmeta"
 	"berkut-scc/core/backups"
 	backupsstore "berkut-scc/core/backups/store"
 	"berkut-scc/core/docs"
@@ -26,6 +26,10 @@ type runtimeComposition struct {
 }
 
 func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*runtimeComposition, error) {
+	if err := ensureStorageDirs(cfg, logger); err != nil {
+		return nil, err
+	}
+
 	users := store.NewUsersStore(db)
 	sessions := store.NewSessionsStore(db)
 	roles := store.NewRolesStore(db)
@@ -80,6 +84,7 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 
 	return &runtimeComposition{
 		serverDeps: api.ServerDeps{
+			DB:               db,
 			Users:            users,
 			Sessions:         sessions,
 			Roles:            roles,
@@ -106,6 +111,9 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			TasksStore:       tasksStore,
 			TasksSvc:         tasksSvc,
 			MonitoringEngine: monitoringEngine,
+			AppJobsWorker:    appJobsWorker,
+			BackupsScheduler: backupsScheduler,
+			TasksScheduler:   tasksScheduler,
 		},
 		sessions: sessions,
 		workers:  []api.BackgroundWorker{tasksScheduler, monitoringEngine, backupsScheduler, appJobsWorker},

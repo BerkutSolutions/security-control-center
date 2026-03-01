@@ -21,6 +21,8 @@ type RecurringScheduler struct {
 	cancel  context.CancelFunc
 	running bool
 	wg      sync.WaitGroup
+
+	obs recurringSchedulerObs
 }
 
 func NewRecurringScheduler(cfg config.SchedulerConfig, store Store, audits cstore.AuditStore, logger *utils.Logger) *RecurringScheduler {
@@ -62,7 +64,9 @@ func (s *RecurringScheduler) StartWithContext(ctx context.Context) {
 		for {
 			select {
 			case <-ticker.C:
-				_ = s.RunOnce(runCtx, time.Now().UTC())
+				now := time.Now().UTC()
+				err := s.RunOnce(runCtx, now)
+				s.obs.recordTick(now, err)
 			case <-runCtx.Done():
 				return
 			}

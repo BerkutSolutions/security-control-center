@@ -30,6 +30,7 @@ type AccountsHandler struct {
 	policy         *rbac.Policy
 	sessionManager *auth.SessionManager
 	sessions       store.SessionStore
+	twoFA          store.Auth2FAStore
 	cfg            *config.AppConfig
 	audits         store.AuditStore
 	logger         *utils.Logger
@@ -37,13 +38,14 @@ type AccountsHandler struct {
 	imports        *userImportManager
 }
 
-func NewAccountsHandler(users store.UsersStore, groups store.GroupsStore, roles store.RolesStore, sessions store.SessionStore, policy *rbac.Policy, sm *auth.SessionManager, cfg *config.AppConfig, audits store.AuditStore, logger *utils.Logger, refreshPolicy func(context.Context) error) *AccountsHandler {
+func NewAccountsHandler(users store.UsersStore, groups store.GroupsStore, roles store.RolesStore, sessions store.SessionStore, twoFA store.Auth2FAStore, policy *rbac.Policy, sm *auth.SessionManager, cfg *config.AppConfig, audits store.AuditStore, logger *utils.Logger, refreshPolicy func(context.Context) error) *AccountsHandler {
 	return &AccountsHandler{
 		users:          users,
 		groups:         groups,
 		roles:          roles,
 		sessionManager: sm,
 		sessions:       sessions,
+		twoFA:          twoFA,
 		policy:         policy,
 		cfg:            cfg,
 		audits:         audits,

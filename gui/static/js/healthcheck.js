@@ -1,4 +1,4 @@
-(() => {
+(async () => {
   const MIN_STEP_MS = 180;
   const PROBE_TIMEOUT_MS = 12_000;
 
@@ -13,6 +13,14 @@
   const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
   const lang = (localStorage.getItem('berkut_lang') || 'ru').trim() || 'ru';
+  if (window.BerkutI18n && typeof BerkutI18n.load === 'function') {
+    try {
+      await BerkutI18n.load(lang);
+      BerkutI18n.apply();
+    } catch (_) {
+      // ignore
+    }
+  }
   const t = (key) => (window.BerkutI18n && BerkutI18n.t ? BerkutI18n.t(key) : key);
 
   const state = {
@@ -20,6 +28,7 @@
     steps: new Map(), // id -> { spec, status, desc }
     stepEls: new Map(), // id -> HTMLElement
     compatItems: [],
+    preflight: { loaded: false, loading: false, checks: [] },
   };
 
   function setError(msg) {
@@ -77,6 +86,27 @@
   function updateCompatCount() {
     const total = Array.isArray(state.compatItems) ? state.compatItems.length : 0;
     setToggleCount('hc-compat-count', t('healthcheck.count.checked').replace('{done}', String(total)).replace('{total}', String(total)));
+  }
+
+  function updatePreflightCount(checks) {
+    const items = Array.isArray(checks) ? checks : [];
+    const total = items.length;
+    setToggleCount('hc-preflight-count', t('healthcheck.count.checked').replace('{done}', String(total)).replace('{total}', String(total)));
+
+    if (!state.preflight.loaded) {
+      setToggleStatus('hc-preflight', 'pending');
+      return;
+    }
+    let hasFailed = false;
+    let hasNeeds = false;
+    items.forEach((c) => {
+      const st = String(c && c.status ? c.status : '').trim();
+      if (st === 'failed') hasFailed = true;
+      if (st === 'needs_attention') hasNeeds = true;
+    });
+    if (hasFailed) setToggleStatus('hc-preflight', 'failed');
+    else if (hasNeeds) setToggleStatus('hc-preflight', 'skipped');
+    else setToggleStatus('hc-preflight', 'done');
   }
 
   function iconStatusFor(status) {
@@ -267,6 +297,69 @@
     });
   }
 
+  function renderPreflightReport(report) {
+    const listEl = document.getElementById('healthcheck-preflight');
+    const summaryEl = document.getElementById('hc-preflight-summary');
+    if (!listEl) return;
+    listEl.innerHTML = '';
+
+    const checks = report && Array.isArray(report.checks) ? report.checks : [];
+    state.preflight.checks = checks;
+    updatePreflightCount(checks);
+
+    const counts = { ok: 0, needs_attention: 0, failed: 0 };
+    checks.forEach((c) => {
+      const st = String(c && c.status ? c.status : '').trim() || 'ok';
+      if (counts[st] != null) counts[st]++;
+    });
+    if (summaryEl) {
+      const ver = report && report.version ? String(report.version) : '';
+      const mode = report && report.run_mode ? String(report.run_mode) : '';
+      const head = [];
+      if (ver) head.push(`v${ver}`);
+      if (mode) head.push(t('healthcheck.preflight.runMode').replace('{mode}', mode));
+      const headText = head.length ? `${head.join(' ')} — ` : '';
+      summaryEl.textContent = t('healthcheck.preflight.summary')
+        .replace('{head}', headText)
+        .replace('{ok}', String(counts.ok))
+        .replace('{needs_attention}', String(counts.needs_attention))
+        .replace('{failed}', String(counts.failed));
+    }
+
+    checks.forEach((c) => {
+      const id = String(c && c.id ? c.id : '').trim() || 'check';
+      const key = String(c && c.i18n_key ? c.i18n_key : '').trim();
+      const title = key ? (BerkutI18n.t(key) || key) : id;
+      const details = c && c.details ? JSON.stringify(c.details) : '';
+      addRow(listEl, `preflight.${id}`, title, details, c && c.status ? c.status : '');
+    });
+  }
+
+  async function loadPreflightIfNeeded() {
+    if (state.preflight.loading || state.preflight.loaded) return;
+    state.preflight.loading = true;
+    const listEl = document.getElementById('healthcheck-preflight');
+    if (listEl) {
+      listEl.innerHTML = '';
+      addRow(listEl, 'preflight.loading', t('healthcheck.preflight.loading'), t('healthcheck.desc.running'), 'running');
+    }
+
+    const res = await probeJSON('/api/app/preflight');
+    state.preflight.loading = false;
+    state.preflight.loaded = true;
+
+    if (!res.ok) {
+      if (listEl) {
+        listEl.innerHTML = '';
+        const msg = res.status === 403 ? t('healthcheck.preflight.noAccess') : (res.text || `HTTP ${res.status}`);
+        addRow(listEl, 'preflight.error', t('healthcheck.preflight.title'), msg, res.status === 403 ? 'skipped' : 'failed');
+      }
+      updatePreflightCount([]);
+      return;
+    }
+    renderPreflightReport(res.json || {});
+  }
+
   function bindAccordion() {
     document.querySelectorAll('[data-hc-toggle]').forEach((btn) => {
       btn.addEventListener('click', () => {
@@ -276,6 +369,9 @@
         const open = !panel.hidden;
         panel.hidden = open;
         btn.dataset.open = open ? '0' : '1';
+        if (!open && id === 'hc-preflight') {
+          loadPreflightIfNeeded();
+        }
       });
     });
   }
@@ -297,6 +393,8 @@
     if (checksPanel) checksPanel.hidden = false;
     const compatPanel = document.getElementById('hc-compat');
     if (compatPanel) compatPanel.hidden = true;
+    const preflightPanel = document.getElementById('hc-preflight');
+    if (preflightPanel) preflightPanel.hidden = true;
     document.querySelectorAll('[data-hc-toggle]').forEach((btn) => {
       const id = btn.getAttribute('data-hc-toggle');
       const panel = id ? document.getElementById(id) : null;
@@ -319,6 +417,8 @@
       state.stepEls.set(spec.id, el);
     });
     setToggleStatus('hc-compat', 'pending');
+    setToggleStatus('hc-preflight', 'pending');
+    updatePreflightCount([]);
     updateChecksCount();
 
     for (const spec of checks) {

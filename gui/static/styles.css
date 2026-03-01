@@ -1454,6 +1454,9 @@
   }
 
   /* Healthcheck: normalize glyphs even if file encoding changes. */
+  /* Healthcheck: force stable glyphs and tweak vertical alignment. */
+  .healthcheck-step-icon[data-status='failed']::after { content: '\00D7' !important; line-height: 1; transform: translateY(-1px) !important; }
+  .healthcheck-step-icon[data-status='skipped']::after { content: '\2013' !important; line-height: 1; transform: translateY(-1px) !important; }
   .healthcheck-step-icon[data-status='failed']::after { content: '×' !important; }
   .healthcheck-step-icon[data-status='skipped']::after { content: '–' !important; }
 
@@ -2499,6 +2502,14 @@
     border-radius: 10px;
     max-height: 260px;
     overflow-y: auto;
+  }
+
+  .qr-image {
+    display: block;
+    width: 100%;
+    max-width: 256px;
+    border: 1px solid rgba(96, 121, 187, 0.25);
+    border-radius: 10px;
   }
 
   .modal-content li {

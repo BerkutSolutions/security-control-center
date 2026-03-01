@@ -66,7 +66,7 @@ func setupBulkHandler(t *testing.T) (*handlers.AccountsHandler, store.UsersStore
 	}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
 	sessions := &bulkSessionsMock{killed: map[int64]int{}}
-	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, policy, auth.NewSessionManager(sessions, cfg, logger), cfg, store.NewAuditStore(db), logger, nil)
+	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, store.NewAuth2FAStore(db), policy, auth.NewSessionManager(sessions, cfg, logger), cfg, store.NewAuditStore(db), logger, nil)
 	return acc, users, sessions, func() { db.Close() }
 }
 

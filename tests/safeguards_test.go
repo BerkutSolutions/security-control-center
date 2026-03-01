@@ -60,7 +60,7 @@ func newTestAccountsHandler(t *testing.T) (*handlers.AccountsHandler, *safeguard
 	users := store.NewUsersStore(db)
 	sessionsStore := &safeguardsMockSessions{}
 	policy := rbac.NewPolicy(rbac.DefaultRoles())
-	acc := handlers.NewAccountsHandler(users, nil, nil, sessionsStore, policy, auth.NewSessionManager(sessionsStore, cfg, logger), cfg, store.NewAuditStore(db), logger, nil)
+	acc := handlers.NewAccountsHandler(users, nil, nil, sessionsStore, store.NewAuth2FAStore(db), policy, auth.NewSessionManager(sessionsStore, cfg, logger), cfg, store.NewAuditStore(db), logger, nil)
 	return acc, sessionsStore, users
 }
 

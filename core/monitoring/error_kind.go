@@ -21,6 +21,7 @@ const (
 	ErrorKindTLS                ErrorKind = "tls"
 	ErrorKindInvalidURL         ErrorKind = "invalid_url"
 	ErrorKindPrivateBlocked     ErrorKind = "private_blocked"
+	ErrorKindRestrictedTarget   ErrorKind = "restricted_target"
 	ErrorKindHTTPStatus         ErrorKind = "http_status"
 	ErrorKindKeyword            ErrorKind = "keyword"
 	ErrorKindJSON               ErrorKind = "json"
@@ -37,6 +38,9 @@ func classifyAttemptError(err error) ErrorKind {
 	}
 	if errors.Is(err, ErrPrivateBlocked) {
 		return ErrorKindPrivateBlocked
+	}
+	if errors.Is(err, ErrTargetBlocked) {
+		return ErrorKindRestrictedTarget
 	}
 	if errors.Is(err, context.DeadlineExceeded) {
 		return ErrorKindTimeout
@@ -105,6 +109,8 @@ func classifyResultKind(res CheckResult) ErrorKind {
 		return ErrorKindInvalidURL
 	case "monitoring.error.privateBlocked":
 		return ErrorKindPrivateBlocked
+	case "monitoring.error.targetBlocked":
+		return ErrorKindRestrictedTarget
 	case "monitoring.error.tlsHandshakeFailed":
 		return ErrorKindTLS
 	}

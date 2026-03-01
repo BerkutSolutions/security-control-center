@@ -15,6 +15,12 @@ func (s *Server) registerRoutes() {
 	staticHandler := s.staticHandler()
 	s.router.Handle("/static/*", http.StripPrefix("/static/", staticHandler))
 
+	s.registerObservabilityRoutes()
+
+	if s.cfg != nil && s.cfg.RunMode == "worker" {
+		return
+	}
+
 	h := s.newRouteHandlers()
 	appShell := s.withSession(s.requirePermission("app.view")(handlers.ServeStatic("app.html")))
 

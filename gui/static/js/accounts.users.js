@@ -81,6 +81,7 @@
       updateSelectAllCheckbox();
       return;
     }
+    const canReset2FA = Array.isArray(state.currentUser?.roles) && state.currentUser.roles.some(r => String(r || '').toLowerCase() === 'superadmin');
     state.users.forEach(u => {
       const status = userStatus(u);
       const statusLines = [status];
@@ -106,10 +107,13 @@
           <button class="btn ghost" data-action="edit">${BerkutI18n.t('accounts.edit')}</button>
           <button class="btn ghost" data-action="lock">${BerkutI18n.t('accounts.lock') || 'Lock'}</button>
           <button class="btn ghost" data-action="reset">${BerkutI18n.t('accounts.reset')}</button>
+          ${canReset2FA ? `<button class="btn ghost danger" data-action="reset2fa">${BerkutI18n.t('accounts.reset2fa') || 'Reset 2FA'}</button>` : ''}
         </td>`;
       tr.querySelector('[data-action="edit"]').onclick = () => openUserModal(u);
       tr.querySelector('[data-action="lock"]').onclick = () => toggleLock(u);
       tr.querySelector('[data-action="reset"]').onclick = () => resetPassword(u);
+      const reset2faBtn = tr.querySelector('[data-action="reset2fa"]');
+      if (reset2faBtn) reset2faBtn.onclick = () => reset2FA(u);
       const checkbox = tr.querySelector('.user-select');
       if (checkbox) {
         checkbox.addEventListener('change', (e) => toggleUserSelection(u.id, e.target.checked));
@@ -371,6 +375,18 @@
     if (!pwd) return;
     await Api.post(`/api/accounts/users/${user.id}/reset-password`, { password: pwd, require_change: true });
     await loadUsers();
+  }
+
+  async function reset2FA(user) {
+    if (!user || !user.id) return;
+    const msg = BerkutI18n.t('accounts.reset2faConfirm') || 'Reset 2FA for this user?';
+    if (!confirm(msg)) return;
+    try {
+      await Api.post(`/api/accounts/users/${user.id}/reset-2fa`, {});
+      await loadUsers();
+    } catch (err) {
+      alert(err.message || (BerkutI18n.t('common.error') || 'Error'));
+    }
   }
 
   function renderEffective(user) {

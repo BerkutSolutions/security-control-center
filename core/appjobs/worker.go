@@ -25,13 +25,14 @@ const (
 var errJobCanceled = errors.New("job canceled")
 
 type Worker struct {
-	cfg       *config.AppConfig
-	db        *sql.DB
-	jobs      store.AppJobsStore
-	modules   store.AppModuleStateStore
-	audits    store.AuditStore
-	logger    *utils.Logger
-	registry  *Registry
+	cfg      *config.AppConfig
+	db       *sql.DB
+	jobs     store.AppJobsStore
+	modules  store.AppModuleStateStore
+	audits   store.AuditStore
+	logger   *utils.Logger
+	registry *Registry
+	obs      workerObs
 
 	mu      sync.Mutex
 	cancel  context.CancelFunc
@@ -43,7 +44,7 @@ func NewWorker(cfg *config.AppConfig, db *sql.DB, jobs store.AppJobsStore, modul
 		cfg:      cfg,
 		db:       db,
 		jobs:     jobs,
-		modules: modules,
+		modules:  modules,
 		audits:   audits,
 		logger:   logger,
 		registry: DefaultModuleRegistry(),
@@ -89,7 +90,10 @@ func (w *Worker) loop(ctx context.Context) {
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			if err := w.tick(ctx); err != nil && w.logger != nil {
+			now := time.Now().UTC()
+			err := w.tick(ctx)
+			w.obs.recordTick(now, err)
+			if err != nil && w.logger != nil {
 				w.logger.Errorf("app jobs tick: %v", err)
 			}
 		}
@@ -258,10 +262,10 @@ func normalizeModuleResult(res ModuleResult) ModuleResult {
 }
 
 type LogEntry struct {
-	TS     time.Time       `json:"ts"`
-	Level  string          `json:"level"`
-	Msg    string          `json:"msg"`
-	Fields map[string]any  `json:"fields,omitempty"`
+	TS     time.Time      `json:"ts"`
+	Level  string         `json:"level"`
+	Msg    string         `json:"msg"`
+	Fields map[string]any `json:"fields,omitempty"`
 }
 
 func appendLog(logJSON string, entry LogEntry) string {

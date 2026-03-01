@@ -19,12 +19,13 @@ type BackgroundController interface {
 }
 
 type backgroundManager struct {
-	sessions store.SessionStore
-	logger   *utils.Logger
-	workers  []BackgroundWorker
+	sessions        store.SessionStore
+	revokeOnStartup bool
+	logger          *utils.Logger
+	workers         []BackgroundWorker
 }
 
-func newBackgroundManager(sessions store.SessionStore, logger *utils.Logger, workers ...BackgroundWorker) *backgroundManager {
+func newBackgroundManager(sessions store.SessionStore, revokeOnStartup bool, logger *utils.Logger, workers ...BackgroundWorker) *backgroundManager {
 	out := make([]BackgroundWorker, 0, len(workers))
 	for _, w := range workers {
 		if w == nil {
@@ -33,21 +34,22 @@ func newBackgroundManager(sessions store.SessionStore, logger *utils.Logger, wor
 		out = append(out, w)
 	}
 	return &backgroundManager{
-		sessions: sessions,
-		logger:   logger,
-		workers:  out,
+		sessions:        sessions,
+		revokeOnStartup: revokeOnStartup,
+		logger:          logger,
+		workers:         out,
 	}
 }
 
-func BuildBackgroundController(sessions store.SessionStore, logger *utils.Logger, workers ...BackgroundWorker) BackgroundController {
-	return newBackgroundManager(sessions, logger, workers...)
+func BuildBackgroundController(sessions store.SessionStore, revokeOnStartup bool, logger *utils.Logger, workers ...BackgroundWorker) BackgroundController {
+	return newBackgroundManager(sessions, revokeOnStartup, logger, workers...)
 }
 
 func (m *backgroundManager) Start(ctx context.Context) {
 	if m == nil {
 		return
 	}
-	if m.sessions != nil {
+	if m.revokeOnStartup && m.sessions != nil {
 		if err := m.sessions.DeleteAll(ctx, "system_startup"); err != nil && m.logger != nil {
 			m.logger.Errorf("revoke sessions on startup: %v", err)
 		}

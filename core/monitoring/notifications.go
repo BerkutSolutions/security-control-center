@@ -403,6 +403,7 @@ func notifyErrorText(lang, raw string) string {
 	switch trimmed {
 	case "monitoring.error.invalidUrl",
 		"monitoring.error.privateBlocked",
+		"monitoring.error.targetBlocked",
 		"monitoring.error.tlsHandshakeFailed",
 		"monitoring.error.timeout",
 		"monitoring.error.requestFailed",
@@ -452,6 +453,7 @@ func notifyText(lang, key string) string {
 		"monitoring.notify.daysLeft":              "\u0414\u043d\u0435\u0439 \u043e\u0441\u0442\u0430\u043b\u043e\u0441\u044c",
 		"monitoring.error.invalidUrl":             "\u041d\u0435\u043a\u043e\u0440\u0440\u0435\u043a\u0442\u043d\u044b\u0439 URL",
 		"monitoring.error.privateBlocked":         "\u041f\u0440\u0438\u0432\u0430\u0442\u043d\u044b\u0435 \u0441\u0435\u0442\u0438 \u0437\u0430\u043f\u0440\u0435\u0449\u0435\u043d\u044b",
+		"monitoring.error.targetBlocked":          "\u0426\u0435\u043b\u044c \u0437\u0430\u043f\u0440\u0435\u0449\u0435\u043d\u0430 \u043f\u043e\u043b\u0438\u0442\u0438\u043a\u043e\u0439 \u0441\u0435\u0442\u0438",
 		"monitoring.error.tlsHandshakeFailed":     "\u041e\u0448\u0438\u0431\u043a\u0430 TLS \u0440\u0443\u043a\u043e\u043f\u043e\u0436\u0430\u0442\u0438\u044f",
 		"monitoring.error.timeout":                "\u041f\u0440\u0435\u0432\u044b\u0448\u0435\u043d \u0442\u0430\u0439\u043c\u0430\u0443\u0442",
 		"monitoring.error.requestFailed":          "\u0417\u0430\u043f\u0440\u043e\u0441 \u0437\u0430\u0432\u0435\u0440\u0448\u0438\u043b\u0441\u044f \u043e\u0448\u0438\u0431\u043a\u043e\u0439",
@@ -480,6 +482,7 @@ func notifyText(lang, key string) string {
 		"monitoring.notify.daysLeft":              "Days left",
 		"monitoring.error.invalidUrl":             "Invalid URL",
 		"monitoring.error.privateBlocked":         "Private networks are blocked",
+		"monitoring.error.targetBlocked":          "Target is blocked by network policy",
 		"monitoring.error.tlsHandshakeFailed":     "TLS handshake failed",
 		"monitoring.error.timeout":                "Timeout exceeded",
 		"monitoring.error.requestFailed":          "Request failed",

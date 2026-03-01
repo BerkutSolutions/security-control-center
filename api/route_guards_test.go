@@ -29,6 +29,11 @@ func TestRoutegroupsRequireSessionGuards(t *testing.T) {
 			if strings.Contains(line, "g.SessionPerm(") || strings.Contains(line, "g.SessionAnyPerm(") {
 				continue
 			}
+			// OnlyOffice Document Server callbacks are validated by signed tokens/JWT inside handlers
+			// and are intentionally reachable without a user session.
+			if strings.Contains(line, "/office/file") || strings.Contains(line, "/office/callback") {
+				continue
+			}
 			t.Fatalf("unguarded routegroup handler in %s:%d -> %s", path, i+1, strings.TrimSpace(line))
 		}
 	}
@@ -82,6 +87,15 @@ func TestCoreAPIRoutesHaveSessionGuards(t *testing.T) {
 		switch {
 		case strings.Contains(line, "apiRouter.MethodFunc("):
 			if strings.Contains(line, "\"/auth/login\"") {
+				continue
+			}
+			if strings.Contains(line, "\"/auth/login/2fa\"") {
+				continue
+			}
+			if strings.Contains(line, "\"/auth/passkeys/login/begin\"") || strings.Contains(line, "\"/auth/passkeys/login/finish\"") {
+				continue
+			}
+			if strings.Contains(line, "\"/auth/login/2fa/passkey/begin\"") || strings.Contains(line, "\"/auth/login/2fa/passkey/finish\"") {
 				continue
 			}
 			if strings.Contains(line, "s.withSession(") {

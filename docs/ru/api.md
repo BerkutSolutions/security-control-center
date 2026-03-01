@@ -18,9 +18,11 @@ Base path: `/api`
 - Все state-changing запросы требуют CSRF.
 - Сервер всегда выполняет permission-check.
 
-## Приложение: совместимость вкладок и jobs (v1.0.12)
+## Приложение: совместимость вкладок и jobs (v1.0.13)
 - Compat:
   - `GET /api/app/compat`
+- Preflight (проверки администратора):
+  - `GET /api/app/preflight`
 - Jobs (ручные операции Partial adapt / Full reset, без авто-миграций):
   - `POST /api/app/jobs`
   - `GET /api/app/jobs`
@@ -31,6 +33,36 @@ Base path: `/api`
 - `app.compat.view`
 - `app.compat.manage.partial`
 - `app.compat.manage.full`
+- `app.preflight.view`
+
+## Auth (v1.0.13)
+
+Публичные endpoints:
+- `POST /api/auth/login`
+- `POST /api/auth/login/2fa` (подтверждение второго фактора после пароля)
+- Passkeys (WebAuthn) login:
+  - `POST /api/auth/passkeys/login/begin`
+  - `POST /api/auth/passkeys/login/finish`
+- Passkeys (WebAuthn) как второй фактор:
+  - `POST /api/auth/login/2fa/passkey/begin`
+  - `POST /api/auth/login/2fa/passkey/finish`
+
+Session endpoints (нужна сессия + права вкладки):
+- 2FA (TOTP):
+  - `GET /api/auth/2fa/status`
+  - `POST /api/auth/2fa/setup`
+  - `POST /api/auth/2fa/enable`
+  - `POST /api/auth/2fa/disable`
+- Passkeys (управление ключами доступа):
+  - `GET /api/auth/passkeys`
+  - `POST /api/auth/passkeys/register/begin`
+  - `POST /api/auth/passkeys/register/finish`
+  - `PUT /api/auth/passkeys/{id}/rename`
+  - `DELETE /api/auth/passkeys/{id}`
+
+Примечания:
+- UI для подтверждения TOTP/recovery находится на `/login/2fa` (чтобы менеджеры паролей подхватывали `one-time-code`).
+- Passkeys требуют HTTPS (или `localhost`) и корректной конфигурации `security.webauthn.*`.
 
 ## Бэкапы (v1.0.3)
 Основные endpoint:
@@ -51,7 +83,7 @@ Base path: `/api`
 Права:
 - `backups.read`, `backups.create`, `backups.import`, `backups.download`, `backups.delete`, `backups.restore`, `backups.plan.update`.
 
-## Мониторинг (v1.0.12)
+## Мониторинг (v1.0.13)
 - Типы мониторов, поддерживаемые backend:
   - `http`, `tcp`, `ping`, `http_keyword`, `http_json`, `grpc_keyword`, `dns`, `docker`, `push`, `steam`, `gamedig`, `mqtt`, `kafka_producer`, `mssql`, `postgres`, `mysql`, `mongodb`, `radius`, `redis`, `tailscale_ping`.
 - Пассивный push ingestion:

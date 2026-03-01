@@ -66,8 +66,23 @@ func Validate(cfg *AppConfig) error {
 		if strings.TrimSpace(cfg.Docs.OnlyOffice.AppInternalURL) == "" {
 			return fmt.Errorf("docs.onlyoffice.app_internal_url must be set when onlyoffice is enabled")
 		}
-		if strings.TrimSpace(cfg.Docs.OnlyOffice.JWTSecret) == "" {
+		ooSecret := strings.TrimSpace(cfg.Docs.OnlyOffice.JWTSecret)
+		if ooSecret == "" {
 			return fmt.Errorf("docs.onlyoffice.jwt_secret must be set when onlyoffice is enabled")
+		}
+		if len(ooSecret) < 32 {
+			return fmt.Errorf("docs.onlyoffice.jwt_secret must be at least 32 characters")
+		}
+	}
+	if cfg.Observability.MetricsEnabled {
+		token := strings.TrimSpace(cfg.Observability.MetricsToken)
+		if token == "" {
+			allowUnauth := cfg.IsHomeMode() && cfg.Observability.MetricsAllowUnauthInHome
+			if cfg.AppEnv != "dev" && !allowUnauth {
+				return fmt.Errorf("observability.metrics_token must be set when metrics are enabled")
+			}
+		} else if len(token) < 32 {
+			return fmt.Errorf("observability.metrics_token must be at least 32 characters")
 		}
 	}
 	return nil

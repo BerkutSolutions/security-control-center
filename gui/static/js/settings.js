@@ -312,6 +312,12 @@ const SettingsPage = (() => {
       const ctx = await loadCurrentUser();
       applyAccessControls(ctx, alertBox);
       renderPasswordMeta(ctx);
+      if (window.Settings2FA && typeof window.Settings2FA.bind === 'function') {
+        window.Settings2FA.bind(alertBox);
+      }
+      if (window.SettingsPasskeys && typeof window.SettingsPasskeys.bind === 'function') {
+        window.SettingsPasskeys.bind(alertBox);
+      }
       // Bind only what the current user can actually access to avoid noisy 403s in console.
       if (canViewTab('settings-advanced')) {
         bindRuntimeSettings(alertBox);

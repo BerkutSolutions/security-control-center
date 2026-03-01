@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCC | 2FA</title>
+  <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon16.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon32.png">
+  <link rel="icon" type="image/png" sizes="48x48" href="/static/favicon48.png">
+  <link rel="icon" type="image/png" sizes="64x64" href="/static/favicon64.png">
+  <link rel="icon" type="image/x-icon" href="/static/favicon32.ico">
+  <link rel="stylesheet" href="/static/styles.css">
+</head>
+<body class="login-body">
+  <div class="login-wrapper">
+    <div class="login-card">
+      <img class="login-logo" src="/static/logo.png" alt="Berkut Solutions logo">
+      <h1 data-i18n="login.title">Berkut Solutions</h1>
+      <p class="muted" data-i18n="login.subtitle">Security Control Center</p>
+      <p class="muted" data-i18n="auth.2fa.pageTitle">Подтверждение входа</p>
+
+      <div class="alert" id="login2fa-alert" hidden></div>
+
+      <form id="login2fa-form">
+        <p class="muted" id="login2fa-hint" data-i18n="auth.2fa.prompt">Требуется подтверждение второго фактора.</p>
+        <label for="twofa-code" data-i18n="auth.2fa.code">Код 2FA</label>
+        <input id="twofa-code" name="otp" type="text" autocomplete="one-time-code" inputmode="numeric" pattern="[0-9]*" autocapitalize="off" spellcheck="false" required>
+        <label class="checkbox">
+          <input type="checkbox" id="twofa-use-recovery">
+          <span data-i18n="auth.2fa.useRecovery">Использовать recovery code</span>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" id="login2fa-submit" data-i18n="auth.2fa.submit">Подтвердить</button>
+          <button type="button" class="btn ghost" id="login2fa-passkey-btn" data-i18n="auth.passkeys.useAs2FA" hidden>Использовать ключ доступа</button>
+          <button type="button" class="btn ghost" id="login2fa-back" data-i18n="common.back">Назад</button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <script src="/static/js/i18n.js"></script>
+  <script src="/static/js/api.js"></script>
+  <script src="/static/js/webauthn.js"></script>
+  <script src="/static/js/login_2fa.js"></script>
+</body>
+</html>

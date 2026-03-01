@@ -66,6 +66,37 @@ func TestIsHTTPSRequestIgnoresUntrustedProxyHeader(t *testing.T) {
 	}
 }
 
+func TestIsHTTPSRequestIgnoresBroadTrustedProxyCIDR(t *testing.T) {
+	cfg := &config.AppConfig{
+		Security: config.SecurityConfig{
+			TrustedProxies: []string{"0.0.0.0/0"},
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req.RemoteAddr = "10.0.0.10:12345"
+	req.Header.Set("X-Forwarded-Proto", "https")
+	if isHTTPSRequest(req, cfg) {
+		t.Fatalf("expected broad trusted proxy cidr to be ignored")
+	}
+}
+
+func TestClientIPIgnoresBroadTrustedProxyCIDR(t *testing.T) {
+	s := &Server{
+		cfg: &config.AppConfig{
+			Security: config.SecurityConfig{
+				TrustedProxies: []string{"0.0.0.0/0"},
+			},
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
+	req.RemoteAddr = "10.0.0.10:54321"
+	req.Header.Set("X-Forwarded-For", "203.0.113.9, 10.0.0.11")
+	got := s.clientIP(req)
+	if got != "10.0.0.10" {
+		t.Fatalf("expected remote addr ip when broad proxy cidr is ignored, got %s", got)
+	}
+}
+
 func TestClientIPUsesNearestUntrustedXFFHop(t *testing.T) {
 	s := &Server{
 		cfg: &config.AppConfig{

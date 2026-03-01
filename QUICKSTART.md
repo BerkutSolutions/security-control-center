@@ -19,7 +19,8 @@ docker compose up -d --build
 ```
 
 ## 3. Проверка
-- UI: `http://localhost:8080/login`
+- UI: `http://localhost:8080/login` (без reverse-proxy) или `http://localhost/login` (если запускали `docker compose --profile proxy ...`).
+- Если включён 2FA, подтверждение происходит на отдельной странице: `/login/2fa`.
 - Сразу после входа может открыться одноразовая страница `/healthcheck` (проверки/Compat) — нажмите «Продолжить» для входа в приложение.
 - Статус контейнеров:
 ```bash

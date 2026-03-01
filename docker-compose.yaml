@@ -31,6 +31,7 @@ services:
       PORT: ${PORT:-8080}
       DATA_PATH: ${DATA_PATH:-/app/data}
       BERKUT_LISTEN_ADDR: ${BERKUT_LISTEN_ADDR:-0.0.0.0:8080}
+      BERKUT_RUN_MODE: ${BERKUT_RUN_MODE:-all}
       BERKUT_DB_DRIVER: ${BERKUT_DB_DRIVER:-postgres}
       BERKUT_DB_URL: ${BERKUT_DB_URL:-postgres://berkut:berkut@postgres:5432/berkut?sslmode=disable}
       BERKUT_DOCS_STORAGE_DIR: ${BERKUT_DOCS_STORAGE_DIR:-/app/data/docs}
@@ -45,7 +46,7 @@ services:
       - berkut_data:${DATA_PATH:-/app/data}
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/login >/dev/null 2>&1 || exit 1"]
+      test: ["CMD-SHELL", "wget -q -O - http://127.0.0.1:${PORT:-8080}/readyz >/dev/null 2>&1 || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 5

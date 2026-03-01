@@ -32,6 +32,7 @@ type onlyOfficeCallbackPayload struct {
 	Error         int      `json:"error"`
 	UserData      string   `json:"userdata"`
 	ForceSaveType int      `json:"forcesavetype"`
+	Token         string   `json:"token"`
 }
 
 type onlyOfficePendingSave struct {
@@ -295,16 +296,32 @@ func (h *DocsHandler) OnlyOfficeCallback(w http.ResponseWriter, r *http.Request)
 		writeErr(1)
 		return
 	}
-	if err := verifyOnlyOfficeJWTFromRequest(r, h.cfg.Docs.OnlyOffice.JWTSecret, h.cfg.Docs.OnlyOffice.JWTHeader, time.Now()); err != nil {
-		if h.logger != nil {
-			h.logger.Errorf("onlyoffice callback jwt rejected for doc %d: %v", id, err)
-		}
+
+	body, err := io.ReadAll(io.LimitReader(r.Body, 2<<20))
+	if err != nil {
 		writeErr(1)
 		return
 	}
-
 	var payload onlyOfficeCallbackPayload
-	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+	if err := json.Unmarshal(body, &payload); err != nil {
+		writeErr(1)
+		return
+	}
+	// OnlyOffice may deliver JWT token either via header or inside callback JSON payload ("token").
+	jwtToken := strings.TrimSpace(r.Header.Get(h.cfg.Docs.OnlyOffice.JWTHeader))
+	if jwtToken == "" && !strings.EqualFold(strings.TrimSpace(h.cfg.Docs.OnlyOffice.JWTHeader), "Authorization") {
+		jwtToken = strings.TrimSpace(r.Header.Get("Authorization"))
+	}
+	if strings.HasPrefix(strings.ToLower(jwtToken), "bearer ") {
+		jwtToken = strings.TrimSpace(jwtToken[7:])
+	}
+	if jwtToken == "" {
+		jwtToken = strings.TrimSpace(payload.Token)
+	}
+	if err := verifyOnlyOfficeJWT(h.cfg.Docs.OnlyOffice.JWTSecret, jwtToken, time.Now()); err != nil {
+		if h.logger != nil {
+			h.logger.Errorf("onlyoffice callback jwt rejected for doc %d: %v", id, err)
+		}
 		writeErr(1)
 		return
 	}
@@ -433,9 +450,9 @@ func (h *DocsHandler) resolveOnlyOfficeAuthor(r *http.Request, tokenUser string,
 }
 
 func (h *DocsHandler) downloadOnlyOfficeResult(r *http.Request, rawURL string) ([]byte, error) {
-	downloadURL := strings.TrimSpace(rawURL)
-	if rewritten := h.rewriteOnlyOfficeDownloadURL(downloadURL); rewritten != "" {
-		downloadURL = rewritten
+	downloadURL, err := h.onlyOfficePrepareDownloadURL(r.Context(), rawURL)
+	if err != nil {
+		return nil, err
 	}
 	req, err := http.NewRequestWithContext(r.Context(), http.MethodGet, downloadURL, nil)
 	if err != nil {
@@ -535,6 +552,9 @@ func (h *DocsHandler) sendOnlyOfficeForceSave(r *http.Request, docKey, userData 
 	baseURL := strings.TrimRight(strings.TrimSpace(h.cfg.Docs.OnlyOffice.InternalURL), "/")
 	if baseURL == "" {
 		return errors.New("empty onlyoffice internal url")
+	}
+	if err := h.onlyOfficeValidateInternalURL(r.Context()); err != nil {
+		return err
 	}
 	userData = strings.TrimSpace(userData)
 	body := map[string]any{

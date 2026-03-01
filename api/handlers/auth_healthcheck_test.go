@@ -17,7 +17,7 @@ import (
 )
 
 func TestHealthcheckPageRequiresCookieAndConsumesIt(t *testing.T) {
-	h := NewAuthHandler(&config.AppConfig{}, nil, nil, nil, nil, nil, nil, nil)
+	h := NewAuthHandler(&config.AppConfig{}, nil, nil, nil, nil, nil, nil, nil, nil, nil)
 
 	// Missing cookie -> redirect.
 	req := httptest.NewRequest(http.MethodGet, "/healthcheck", nil)

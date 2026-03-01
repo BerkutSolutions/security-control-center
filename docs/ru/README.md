@@ -2,7 +2,7 @@
 
 
 
-Актуальная версия документации: `1.0.12`
+Актуальная версия документации: `1.0.13`
 
 
 
@@ -22,6 +22,8 @@
 
 7. Runbook (запуск и восстановление): `docs/ru/runbook.md`
 
+7.1 Обновление / откат: `docs/ru/upgrade.md`
+
 8. Wiki по вкладкам: `docs/ru/wiki/tabs.md`
 
 9. Wiki по функционалу: `docs/ru/wiki/features.md`
@@ -33,6 +35,8 @@
 12. HTTPS + OnlyOffice: `docs/ru/https_onlyoffice.md`
 
 13. Пример compose для reverse-proxy + OnlyOffice: `docs/ru/docker-compose.https.yml`
+
+13.1 Пример HA compose (api + worker): `docs/ru/docker-compose.ha.yml`
 
 
 14. Шаблон message уведомлений мониторинга: `docs/ru/monitoring_notifications_message_template.md`
@@ -56,7 +60,7 @@
 
 
 
-## Что учтено для 1.0.12
+## Что учтено для 1.0.13
 
 - UI/навигация: вкладка «Реестры» (`/registry/...`) включает Активы/ПО/Замечания как внутренние вкладки с маршрутами вида `/registry/assets`, `/registry/software`, `/registry/findings`.
 
@@ -76,3 +80,8 @@
 
 - Compose/runtime: добавлена единая таймзона контейнеров через `TZ` (рекомендуемое значение `Europe/Moscow`).
 
+- Observability: `GET /healthz` (liveness), `GET /readyz` (readiness, DB ping), Prometheus `GET /metrics` (по умолчанию выключено; включение через `BERKUT_METRICS_ENABLED=true`).
+
+- Upgrade: добавлен preflight `GET /api/app/preflight` (проверки администратора) и опциональный backup-before-migrate.
+
+- Auth: добавлены 2FA (TOTP + recovery codes), passkeys (WebAuthn) и отдельная страница подтверждения 2FA `/login/2fa` для совместимости с менеджерами паролей.

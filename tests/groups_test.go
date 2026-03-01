@@ -188,8 +188,11 @@ func setupGroupHandlers(t *testing.T) (*handlers.AccountsHandler, *handlers.Auth
 	sessions := &mockSessions{}
 	audits := store.NewAuditStore(db)
 	incidents := store.NewIncidentsStore(db)
-	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, policy, auth.NewSessionManager(sessions, cfg, logger), cfg, audits, logger, nil)
-	authHandler := handlers.NewAuthHandler(cfg, users, sessions, incidents, auth.NewSessionManager(sessions, cfg, logger), policy, audits, logger)
+	twoFA := store.NewAuth2FAStore(db)
+	passkeys := store.NewPasskeysStore(db)
+	sm := auth.NewSessionManager(sessions, cfg, logger)
+	acc := handlers.NewAccountsHandler(users, groups, roles, sessions, twoFA, policy, sm, cfg, audits, logger, nil)
+	authHandler := handlers.NewAuthHandler(cfg, users, sessions, incidents, twoFA, passkeys, sm, policy, audits, logger)
 	return acc, authHandler, users, groups, policy, sessions, func() { db.Close() }
 }
 

@@ -13,6 +13,7 @@ func RegisterAccounts(apiRouter chi.Router, g Guards, h *handlers.AccountsHandle
 		accounts.MethodFunc("POST", "/users/bulk", g.SessionPerm("accounts.manage", h.BulkUsers))
 		accounts.MethodFunc("PUT", "/users/{id}", g.SessionPerm("accounts.manage", h.UpdateUser))
 		accounts.MethodFunc("POST", "/users/{id}/reset-password", g.SessionPerm("accounts.manage", h.ResetPassword))
+		accounts.MethodFunc("POST", "/users/{id}/reset-2fa", g.SessionPerm("accounts.manage", h.ResetUser2FA))
 		accounts.MethodFunc("POST", "/users/{id}/lock", g.SessionPerm("accounts.manage", h.LockUser))
 		accounts.MethodFunc("POST", "/users/{id}/unlock", g.SessionPerm("accounts.manage", h.UnlockUser))
 		accounts.MethodFunc("GET", "/users/{id}/sessions", g.SessionAnyPerm([]string{"accounts.manage", "sessions.manage"}, h.ListSessions))

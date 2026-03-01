@@ -42,6 +42,9 @@ type maintenancePayload struct {
 }
 
 func (h *MonitoringHandler) ListMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.maintenance.view") {
+		return
+	}
 	q := r.URL.Query()
 	filter := store.MaintenanceFilter{}
 	if val := strings.TrimSpace(q.Get("active")); val != "" {
@@ -62,6 +65,9 @@ func (h *MonitoringHandler) ListMaintenance(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *MonitoringHandler) CreateMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.maintenance.manage") {
+		return
+	}
 	var payload maintenancePayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -87,6 +93,9 @@ func (h *MonitoringHandler) CreateMaintenance(w http.ResponseWriter, r *http.Req
 }
 
 func (h *MonitoringHandler) UpdateMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.maintenance.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -124,6 +133,9 @@ func (h *MonitoringHandler) UpdateMaintenance(w http.ResponseWriter, r *http.Req
 }
 
 func (h *MonitoringHandler) StopMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.maintenance.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -138,6 +150,9 @@ func (h *MonitoringHandler) StopMaintenance(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *MonitoringHandler) DeleteMaintenance(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.maintenance.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

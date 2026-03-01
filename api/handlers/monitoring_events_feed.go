@@ -19,6 +19,9 @@ type monitoringEventItem struct {
 }
 
 func (h *MonitoringHandler) EventsFeed(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.events.view") {
+		return
+	}
 	q := r.URL.Query()
 	filter := store.EventFilter{
 		Since: rangeSince(q.Get("range"), 24*time.Hour),

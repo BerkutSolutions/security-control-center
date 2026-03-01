@@ -2,10 +2,12 @@ package appbootstrap
 
 import (
 	"database/sql"
+	"time"
 
 	"berkut-scc/api"
 	"berkut-scc/config"
 	"berkut-scc/core/appmeta"
+	"berkut-scc/core/appjobs"
 	"berkut-scc/core/backups"
 	backupsstore "berkut-scc/core/backups/store"
 	"berkut-scc/core/docs"
@@ -38,6 +40,8 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 	softwareStore := store.NewSoftwareStore(db)
 	entityLinks := store.NewEntityLinksStore(db)
 	monitoringStore := store.NewMonitoringStore(db)
+	appModules := store.NewAppModuleStateStore(db)
+	appJobs := store.NewAppJobsStore(db)
 	appHTTPSStore := store.NewAppHTTPSStore(db)
 	appRuntimeStore := store.NewAppRuntimeStore(db)
 	updateChecker := appmeta.NewUpdateChecker()
@@ -66,7 +70,13 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 		monitoring.NewHTTPTelegramSender(),
 		logger,
 	)
+	monitoringEngine.SetTuning(monitoring.Tuning{
+		JitterPercent:    cfg.Monitoring.JitterPercent,
+		JitterMaxSeconds: cfg.Monitoring.JitterMaxSeconds,
+		StatsLogInterval: time.Duration(cfg.Monitoring.StatsLogIntervalSeconds) * time.Second,
+	})
 	monitoringEngine.SetTaskStore(tasksStore)
+	appJobsWorker := appjobs.NewWorker(cfg, db, appJobs, appModules, audits, logger)
 
 	return &runtimeComposition{
 		serverDeps: api.ServerDeps{
@@ -84,6 +94,8 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			SoftwareStore:    softwareStore,
 			EntityLinksStore: entityLinks,
 			MonitoringStore:  monitoringStore,
+			AppModules:       appModules,
+			AppJobs:          appJobs,
 			AppHTTPSStore:    appHTTPSStore,
 			AppRuntimeStore:  appRuntimeStore,
 			UpdateChecker:    updateChecker,
@@ -96,6 +108,6 @@ func composeRuntime(cfg *config.AppConfig, db *sql.DB, logger *utils.Logger) (*r
 			MonitoringEngine: monitoringEngine,
 		},
 		sessions: sessions,
-		workers:  []api.BackgroundWorker{tasksScheduler, monitoringEngine, backupsScheduler},
+		workers:  []api.BackgroundWorker{tasksScheduler, monitoringEngine, backupsScheduler, appJobsWorker},
 	}, nil
 }

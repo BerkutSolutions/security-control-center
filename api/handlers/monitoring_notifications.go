@@ -55,6 +55,9 @@ type notificationTokenView struct {
 }
 
 func (h *MonitoringHandler) ListNotificationChannels(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.view") {
+		return
+	}
 	items, err := h.store.ListNotificationChannels(r.Context())
 	if err != nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
@@ -90,6 +93,9 @@ func (h *MonitoringHandler) ListNotificationChannels(w http.ResponseWriter, r *h
 }
 
 func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	if h.encryptor == nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
@@ -174,6 +180,9 @@ func (h *MonitoringHandler) CreateNotificationChannel(w http.ResponseWriter, r *
 }
 
 func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	if h.encryptor == nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
@@ -272,6 +281,9 @@ func (h *MonitoringHandler) UpdateNotificationChannel(w http.ResponseWriter, r *
 }
 
 func (h *MonitoringHandler) DeleteNotificationChannel(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -286,6 +298,9 @@ func (h *MonitoringHandler) DeleteNotificationChannel(w http.ResponseWriter, r *
 }
 
 func (h *MonitoringHandler) TestNotificationChannel(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	if h.encryptor == nil || h.engine == nil {
 		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
@@ -322,6 +337,9 @@ func (h *MonitoringHandler) TestNotificationChannel(w http.ResponseWriter, r *ht
 }
 
 func (h *MonitoringHandler) RevealNotificationChannelToken(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	if h.encryptor == nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
@@ -350,6 +368,9 @@ func (h *MonitoringHandler) RevealNotificationChannelToken(w http.ResponseWriter
 }
 
 func (h *MonitoringHandler) ListMonitorNotifications(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -364,6 +385,9 @@ func (h *MonitoringHandler) ListMonitorNotifications(w http.ResponseWriter, r *h
 }
 
 func (h *MonitoringHandler) UpdateMonitorNotifications(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -421,6 +445,9 @@ func (h *MonitoringHandler) applyChannelToAllMonitors(ctx context.Context, chann
 }
 
 func (h *MonitoringHandler) ListNotificationDeliveries(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.view") {
+		return
+	}
 	limit := 100
 	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 && parsed <= 500 {
@@ -436,6 +463,9 @@ func (h *MonitoringHandler) ListNotificationDeliveries(w http.ResponseWriter, r 
 }
 
 func (h *MonitoringHandler) AcknowledgeNotificationDelivery(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.notifications.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

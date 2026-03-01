@@ -82,7 +82,8 @@ func defaultMonitoringSettings() MonitorSettings {
 	return MonitorSettings{
 		RetentionDays:           30,
 		MaxConcurrentChecks:     10,
-		DefaultTimeoutSec:       20,
+		// Conservative defaults to reduce slot hold time during transient network flaps.
+		DefaultTimeoutSec:       10,
 		DefaultIntervalSec:      30,
 		EngineEnabled:           true,
 		AllowPrivateNetworks:    false,
@@ -96,8 +97,8 @@ func defaultMonitoringSettings() MonitorSettings {
 		AutoTLSIncident:         true,
 		AutoTLSIncidentDays:     14,
 		AutoIncidentCloseOnUp:   false,
-		DefaultRetries:          2,
-		DefaultRetryIntervalSec: 30,
+		DefaultRetries:          1,
+		DefaultRetryIntervalSec: 5,
 		DefaultSLATargetPct:     90,
 	}
 }

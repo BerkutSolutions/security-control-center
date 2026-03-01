@@ -6,6 +6,9 @@ import (
 )
 
 func (h *MonitoringHandler) DeleteMonitorEvents(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -21,6 +24,9 @@ func (h *MonitoringHandler) DeleteMonitorEvents(w http.ResponseWriter, r *http.R
 }
 
 func (h *MonitoringHandler) DeleteMonitorMetrics(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

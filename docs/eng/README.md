@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.0.11`
+Documentation version baseline: `1.0.12`
 
 
 
@@ -14,29 +14,33 @@ Documentation version baseline: `1.0.11`
 
 3. Security: `docs/eng/security.md`
 
-4. Deploy and CI/CD: `docs/eng/deploy.md`
+4. Tab compatibility (Compat): `docs/eng/compatibility.md` (cheatsheet: `docs/eng/compatibility_cheatsheet.md`)
 
-5. Runbook (start and recovery): `docs/eng/runbook.md`
+5. Healthcheck (/healthcheck): `docs/eng/healthcheck.md`
 
-6. Tabs wiki: `docs/eng/wiki/tabs.md`
+6. Deploy and CI/CD: `docs/eng/deploy.md`
 
-7. Features wiki: `docs/eng/wiki/features.md`
+7. Runbook (start and recovery): `docs/eng/runbook.md`
 
-8. Assets module (MVP): `docs/eng/assets.md`
+8. Tabs wiki: `docs/eng/wiki/tabs.md`
 
-9. Findings module (MVP): `docs/eng/findings.md`
+9. Features wiki: `docs/eng/wiki/features.md`
 
-10. Software module (MVP): `docs/eng/software.md`
+10. Assets module (MVP): `docs/eng/assets.md`
 
-11. Current evolution plan: `docs/eng/roadmap.md`
+11. Findings module (MVP): `docs/eng/findings.md`
 
-12. Backups (.bscc): `docs/eng/backups.md`
+12. Software module (MVP): `docs/eng/software.md`
 
-13. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
+13. Current evolution plan: `docs/eng/roadmap.md`
 
-14. Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
+14. Backups (.bscc): `docs/eng/backups.md`
 
-15. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
+15. HTTPS + OnlyOffice: `docs/eng/https_onlyoffice.md`
+
+16. Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
+
+17. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
 
 
 
@@ -58,13 +62,19 @@ Documentation is aligned with current runtime reality:
 
 
 
-## Included for 1.0.11
+## Included for 1.0.12
 
 - UI navigation: Registries tab (`/registry/...`) now contains Assets/Software/Findings as internal tabs with path routes (e.g. `/registry/assets`, `/registry/software`, `/registry/findings`).
 
 - Settings: dedicated Cleanup tab with selective per-module data cleanup.
 
+- Healthcheck: one-time post-login page `/healthcheck` (available only immediately after login/password change) with basic probes and per-tab Compat report.
+
+- Compat: `/api/app/compat` plus background jobs `/api/app/jobs*` for user-driven Partial adapt / Full reset (no auto migrations/resets).
+
 - Monitoring: server-side flag to auto-close incidents when monitor recovers (`DOWN -> UP`).
+
+- Monitoring engine: deterministic due jitter, scheduled retries (single-attempt, no `sleep` in slots), and `GET /api/monitoring/engine/stats` for diagnostics (inflight/due/skipped, p95 start wait/attempt duration, error kinds).
 
 - Localization and UX: fixes for logs/monitoring UI alignment and missing i18n labels.
 

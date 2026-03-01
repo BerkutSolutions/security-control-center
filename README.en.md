@@ -18,7 +18,13 @@ Berkut Solutions - Security Control Center (SCC) is a self-hosted platform for s
 
 
 
-Current version: `1.0.11`
+Current version: `1.0.12`
+
+## Healthcheck and Tab Compatibility (1.0.12)
+
+- After a successful login (or after changing the password on first login), a **one-time** post-login status page is available at `/healthcheck`.
+- It runs basic health probes (session/permissions/availability of key endpoints) and shows a tab (module) compatibility report (Compat) **without any automatic migrations**.
+- If any tab is in `needs_attention`/`incompatible` state, the app shows a post-login wizard that offers **user-driven** actions only (Partial adapt / Full reset) via background jobs with progress and a double confirmation for destructive actions.
 
 
 
@@ -69,6 +75,10 @@ It replaces fragmented spreadsheets, chat approvals, and disconnected trackers w
 - Monitoring and SLA:
 
   operational events, availability metrics, SLA policy, and maintenance windows.
+
+- Monitoring engine diagnostics (1.0.12):
+
+  `Engine stats` (inflight/due/skipped, p95 start wait/attempt duration, error kinds) + resilience to short network flaps (due jitter + scheduled retries without `sleep` in slots).
 
 - Monitoring automation:
 
@@ -138,6 +148,7 @@ It replaces fragmented spreadsheets, chat approvals, and disconnected trackers w
 
 - English docs: [`docs/eng/README.md`](docs/eng/README.md)
 - Monitoring notification message template: [`docs/eng/monitoring_notifications_message_template.md`](docs/eng/monitoring_notifications_message_template.md)
+- Healthcheck (/healthcheck): [`docs/eng/healthcheck.md`](docs/eng/healthcheck.md)
 
 
 

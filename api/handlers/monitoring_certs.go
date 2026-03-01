@@ -10,6 +10,9 @@ import (
 )
 
 func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.certs.view") {
+		return
+	}
 	q := r.URL.Query()
 	filter := store.CertFilter{
 		Tags:   splitCSV(q.Get("tag")),
@@ -39,6 +42,9 @@ func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) TestCertNotification(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.certs.manage") {
+		return
+	}
 	if h.engine == nil {
 		http.Error(w, errServiceUnavailable, http.StatusServiceUnavailable)
 		return
@@ -77,6 +83,9 @@ func int64SliceToStrings(items []int64) []string {
 }
 
 func (h *MonitoringHandler) GetTLS(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.certs.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

@@ -2,7 +2,7 @@
 
 
 
-Актуальная версия документации: `1.0.11`
+Актуальная версия документации: `1.0.12`
 
 
 
@@ -14,24 +14,28 @@
 
 3. Безопасность: `docs/ru/security.md`
 
-4. Деплой и CI/CD: `docs/ru/deploy.md`
+4. Совместимость вкладок (Compat): `docs/ru/compatibility.md` (шпаргалка: `docs/ru/compatibility_cheatsheet.md`)
 
-5. Runbook (запуск и восстановление): `docs/ru/runbook.md`
+5. Проверка состояния (/healthcheck): `docs/ru/healthcheck.md`
 
-6. Wiki по вкладкам: `docs/ru/wiki/tabs.md`
+6. Деплой и CI/CD: `docs/ru/deploy.md`
 
-7. Wiki по функционалу: `docs/ru/wiki/features.md`
+7. Runbook (запуск и восстановление): `docs/ru/runbook.md`
 
-8. Актуальный план развития: `docs/ru/roadmap.md`
+8. Wiki по вкладкам: `docs/ru/wiki/tabs.md`
 
-9. Бэкапы (.bscc): `docs/ru/backups.md`
+9. Wiki по функционалу: `docs/ru/wiki/features.md`
 
-10. HTTPS + OnlyOffice: `docs/ru/https_onlyoffice.md`
+10. Актуальный план развития: `docs/ru/roadmap.md`
 
-11. Пример compose для reverse-proxy + OnlyOffice: `docs/ru/docker-compose.https.yml`
+11. Бэкапы (.bscc): `docs/ru/backups.md`
+
+12. HTTPS + OnlyOffice: `docs/ru/https_onlyoffice.md`
+
+13. Пример compose для reverse-proxy + OnlyOffice: `docs/ru/docker-compose.https.yml`
 
 
-12. Шаблон message уведомлений мониторинга: `docs/ru/monitoring_notifications_message_template.md`
+14. Шаблон message уведомлений мониторинга: `docs/ru/monitoring_notifications_message_template.md`
 
 
 ## Контекст
@@ -52,13 +56,19 @@
 
 
 
-## Что учтено для 1.0.11
+## Что учтено для 1.0.12
 
 - UI/навигация: вкладка «Реестры» (`/registry/...`) включает Активы/ПО/Замечания как внутренние вкладки с маршрутами вида `/registry/assets`, `/registry/software`, `/registry/findings`.
 
 - Settings: выделена отдельная вкладка «Очистка» с выборочной очисткой данных по модулям.
 
+- Проверка состояния: добавлена одноразовая страница `/healthcheck` (доступна только сразу после входа/смены пароля) с серией probes и отчётом Compat по вкладкам.
+
+- Compat: добавлены `/api/app/compat` и jobs `/api/app/jobs*` для ручного Partial adapt / Full reset (без авто-миграций).
+
 - Monitoring: добавлен флаг авто-закрытия инцидента при восстановлении монитора (`DOWN -> UP`).
+
+- Monitoring engine: добавлены детерминированный jitter due-планирования, scheduled retries (одна попытка = один слот; без `sleep` внутри слота) и `GET /api/monitoring/engine/stats` для диагностики (inflight/due/skipped, p95 ожидания старта/длительности, распределение ошибок).
 
 - Локализация и UX: выровнены проблемные элементы интерфейса логов/мониторинга и закрыты пропуски i18n.
 

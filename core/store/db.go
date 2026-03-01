@@ -53,6 +53,10 @@ func NewDB(cfg *config.AppConfig, logger *utils.Logger) (*sql.DB, error) {
 			}
 			return nil, err
 		}
+		// Improve concurrent read/write behavior for integration-style tests.
+		// modernc.org/sqlite supports these pragmas.
+		_, _ = db.Exec("PRAGMA busy_timeout = 5000;")
+		_, _ = db.Exec("PRAGMA journal_mode = WAL;")
 		if logger != nil {
 			logger.Printf("db open sqlite (test runtime)")
 		}

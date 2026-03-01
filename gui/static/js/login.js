@@ -13,10 +13,10 @@
       const body = { username: username.value.trim(), password: password.value };
       const resp = await Api.post('/api/auth/login', body);
       if (resp.user && (resp.user.password_set === false || resp.user.require_password_change)) {
-        window.location.href = '/password-change';
+        window.location.href = '/password-change?next=/healthcheck';
         return;
       }
-      window.location.href = '/dashboard';
+      window.location.href = '/healthcheck';
     } catch (err) {
       const raw = err.message || 'common.error';
       let msg = BerkutI18n.t(raw);

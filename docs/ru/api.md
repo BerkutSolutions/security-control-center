@@ -18,6 +18,20 @@ Base path: `/api`
 - Все state-changing запросы требуют CSRF.
 - Сервер всегда выполняет permission-check.
 
+## Приложение: совместимость вкладок и jobs (v1.0.12)
+- Compat:
+  - `GET /api/app/compat`
+- Jobs (ручные операции Partial adapt / Full reset, без авто-миграций):
+  - `POST /api/app/jobs`
+  - `GET /api/app/jobs`
+  - `GET /api/app/jobs/{id}`
+  - `POST /api/app/jobs/{id}/cancel`
+
+Права:
+- `app.compat.view`
+- `app.compat.manage.partial`
+- `app.compat.manage.full`
+
 ## Бэкапы (v1.0.3)
 Основные endpoint:
 - `GET /api/backups`
@@ -37,7 +51,7 @@ Base path: `/api`
 Права:
 - `backups.read`, `backups.create`, `backups.import`, `backups.download`, `backups.delete`, `backups.restore`, `backups.plan.update`.
 
-## Мониторинг (v1.0.3)
+## Мониторинг (v1.0.12)
 - Типы мониторов, поддерживаемые backend:
   - `http`, `tcp`, `ping`, `http_keyword`, `http_json`, `grpc_keyword`, `dns`, `docker`, `push`, `steam`, `gamedig`, `mqtt`, `kafka_producer`, `mssql`, `postgres`, `mysql`, `mongodb`, `radius`, `redis`, `tailscale_ping`.
 - Пассивный push ingestion:
@@ -45,6 +59,8 @@ Base path: `/api`
   - Пример payload: `{ "ok": true, "latency_ms": 42, "status_code": 200, "error": "" }`
 
 Основные endpoint:
+- Engine stats (диагностика движка/планировщика):
+  - `GET /api/monitoring/engine/stats`
 - Мониторы:
   - `GET /api/monitoring/monitors`
   - `POST /api/monitoring/monitors`

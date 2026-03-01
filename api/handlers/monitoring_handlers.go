@@ -43,6 +43,9 @@ func NewMonitoringHandler(store store.MonitoringStore, users store.UsersStore, a
 }
 
 func (h *MonitoringHandler) ListMonitors(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	q := r.URL.Query()
 	filter := store.MonitorFilter{
 		Query:  strings.TrimSpace(q.Get("q")),
@@ -62,6 +65,9 @@ func (h *MonitoringHandler) ListMonitors(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *MonitoringHandler) CreateMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	var payload monitorPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -94,6 +100,9 @@ func (h *MonitoringHandler) CreateMonitor(w http.ResponseWriter, r *http.Request
 }
 
 func (h *MonitoringHandler) GetMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -112,6 +121,9 @@ func (h *MonitoringHandler) GetMonitor(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) UpdateMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -175,6 +187,9 @@ func (h *MonitoringHandler) UpdateMonitor(w http.ResponseWriter, r *http.Request
 }
 
 func (h *MonitoringHandler) DeleteMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -189,10 +204,16 @@ func (h *MonitoringHandler) DeleteMonitor(w http.ResponseWriter, r *http.Request
 }
 
 func (h *MonitoringHandler) PauseMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	h.setPaused(w, r, true, monitorAuditMonitorPause)
 }
 
 func (h *MonitoringHandler) ResumeMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	h.setPaused(w, r, false, monitorAuditMonitorResume)
 }
 
@@ -215,6 +236,9 @@ func (h *MonitoringHandler) setPaused(w http.ResponseWriter, r *http.Request, pa
 }
 
 func (h *MonitoringHandler) CheckNow(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -266,6 +290,9 @@ func (h *MonitoringHandler) allowCheckNow(monitorID int64) bool {
 }
 
 func (h *MonitoringHandler) CloneMonitor(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

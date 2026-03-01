@@ -6,6 +6,10 @@
     els.form = document.getElementById('monitoring-settings-form');
     els.defaultsForm = document.getElementById('monitoring-defaults-form');
     els.save = document.getElementById('monitoring-settings-save');
+    els.engineStatsCard = document.getElementById('monitoring-engine-stats-card');
+    els.engineStats = document.getElementById('monitoring-engine-stats');
+    els.engineStatsAlert = document.getElementById('monitoring-engine-stats-alert');
+    els.engineStatsRefresh = document.getElementById('monitoring-engine-stats-refresh');
     els.retention = document.getElementById('monitoring-retention');
     els.maxConcurrent = document.getElementById('monitoring-max-concurrent');
     els.defaultTimeout = document.getElementById('monitoring-default-timeout');
@@ -25,19 +29,37 @@
     els.autoTLSIncidentDays = document.getElementById('monitoring-auto-tls-incident-days');
     els.autoIncidentCloseOnUp = document.getElementById('monitoring-auto-incident-close-on-up');
 
-    if (!MonitoringPage.hasPermission('monitoring.settings.manage')) {
+    const canManage = MonitoringPage.hasPermission('monitoring.settings.manage');
+    if (!canManage) {
       const card = els.form?.closest('.card');
       if (card) card.hidden = true;
       const defaultsCard = els.defaultsForm?.closest('.card');
       if (defaultsCard) defaultsCard.hidden = true;
-      return;
     }
-    if (els.save) {
+    if (canManage && els.save) {
       els.save.addEventListener('click', async () => {
         await saveSettings();
       });
     }
-    loadSettings();
+    if (canManage) loadSettings();
+
+    bindEngineStats();
+  }
+
+  function bindEngineStats() {
+    if (!MonitoringPage.hasPermission('monitoring.view')) {
+      if (els.engineStatsCard) els.engineStatsCard.hidden = true;
+      return;
+    }
+    if (els.engineStatsRefresh) {
+      els.engineStatsRefresh.addEventListener('click', async () => {
+        await loadEngineStats();
+      });
+    }
+    loadEngineStats();
+    setInterval(() => {
+      loadEngineStats();
+    }, 15000);
   }
 
   async function loadSettings() {
@@ -70,6 +92,59 @@
     if (els.autoTLSIncident) els.autoTLSIncident.checked = !!settings.auto_tls_incident;
     if (els.autoTLSIncidentDays) els.autoTLSIncidentDays.value = settings.auto_tls_incident_days || 14;
     if (els.autoIncidentCloseOnUp) els.autoIncidentCloseOnUp.checked = !!settings.auto_incident_close_on_up;
+  }
+
+  async function loadEngineStats() {
+    if (!MonitoringPage.hasPermission('monitoring.view')) return;
+    try {
+      const stats = await Api.get('/api/monitoring/engine/stats');
+      renderEngineStats(stats);
+    } catch (err) {
+      if (els.engineStatsAlert) {
+        MonitoringPage.showAlert(els.engineStatsAlert, MonitoringPage.sanitizeErrorMessage(err.message || err), false);
+      }
+    }
+  }
+
+  function renderEngineStats(stats) {
+    if (!els.engineStats) return;
+    if (!stats) {
+      els.engineStats.innerHTML = '';
+      return;
+    }
+    MonitoringPage.hideAlert(els.engineStatsAlert);
+    const tuning = stats.tuning || {};
+    const jitter = (tuning.jitter_percent || 0) > 0
+      ? `${tuning.jitter_percent}% (max ${tuning.jitter_max_seconds || 0}s)`
+      : MonitoringPage.t('monitoring.engineStats.jitterDisabled');
+    const waitQ = stats.check_wait_time_seconds_quantiles || {};
+    const durQ = stats.attempt_duration_ms_quantiles || {};
+    const errCounts = stats.error_class_counts || {};
+    const errPairs = Object.keys(errCounts)
+      .sort()
+      .map(k => `${k}: ${errCounts[k]}`)
+      .join(', ') || '-';
+    const totalAttempts = stats.attempts_total ?? 0;
+    const retryAttempts = stats.retry_attempts_total ?? 0;
+    const retryShare = totalAttempts > 0 ? (retryAttempts / totalAttempts) : 0;
+    els.engineStats.innerHTML = `
+      <ul class="metric-list">
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.inflight')}</strong> ${stats.inflight_checks ?? 0} / ${stats.max_concurrent ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.dueLast')}</strong> ${stats.due_count_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.startedLast')}</strong> ${stats.started_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.retryDueLast')}</strong> ${stats.retry_due_count_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.retryStartedLast')}</strong> ${stats.retry_started_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.retryBudgetLast')}</strong> ${stats.retry_budget_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.skippedSem')}</strong> ${stats.skipped_due_due_to_semaphore_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.skippedJitter')}</strong> ${stats.skipped_due_due_to_jitter_last_tick ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.waitP95')}</strong> ${(waitQ.p95 ?? 0).toFixed(3)}s</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.durP95')}</strong> ${(durQ.p95 ?? 0).toFixed(0)}ms</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.jitter')}</strong> ${jitter}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.retryScheduled')}</strong> ${stats.retry_scheduled_total ?? 0}</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.retryShare')}</strong> ${(retryShare * 100).toFixed(1)}%</li>
+        <li><strong>${MonitoringPage.t('monitoring.engineStats.errors')}</strong> ${errPairs}</li>
+      </ul>
+    `;
   }
 
   async function saveSettings() {

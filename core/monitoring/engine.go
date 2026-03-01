@@ -22,6 +22,8 @@ type Engine struct {
 	incidentRegFormat string
 	taskStore         tasks.Store
 	logger            *utils.Logger
+	tuning            Tuning
+	obs               *engineObservability
 	cancel            context.CancelFunc
 	running           bool
 	wg                sync.WaitGroup
@@ -34,6 +36,7 @@ type Engine struct {
 	lastCleanupAt     time.Time
 	lastMaintenanceAt time.Time
 	lastSLAAt         time.Time
+	attemptFn         func(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error)
 }
 
 func NewEngine(store store.MonitoringStore, logger *utils.Logger) *Engine {
@@ -50,6 +53,8 @@ func NewEngineWithDeps(store store.MonitoringStore, incidents store.IncidentsSto
 		sender:            sender,
 		logger:            logger,
 		inFlight:          map[int64]struct{}{},
+		obs:               newEngineObservability(),
+		attemptFn:         AttemptMonitor,
 	}
 }
 
@@ -134,7 +139,8 @@ func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 	// Manual check should be responsive for UI: single attempt with hard deadline.
 	manual.Retries = 0
 	manual.RetryIntervalSec = 0
-	return e.runCheck(checkCtx, manual, settings)
+	_, _, err = e.runCheck(checkCtx, manual, settings)
+	return err
 }
 
 func (e *Engine) InvalidateSettings() {
@@ -226,24 +232,103 @@ func (e *Engine) ensureSemaphore(max int) {
 }
 
 func (e *Engine) runDueChecks(ctx context.Context, settings store.MonitorSettings) {
-	list, err := e.store.ListDueMonitors(ctx, time.Now().UTC())
+	e.runDueChecksAt(ctx, settings, time.Now().UTC())
+}
+
+func (e *Engine) runDueChecksAt(ctx context.Context, settings store.MonitorSettings, now time.Time) {
+	list, err := e.store.ListDueMonitors(ctx, now)
 	if err != nil {
 		if e.logger != nil {
 			e.logger.Errorf("monitoring due checks: %v", err)
 		}
 		return
 	}
+	tuning := e.tuningSnapshot()
+	obs := e.obs
+	started := 0
+	skippedSem := 0
+	skippedJitter := 0
+
+	normalDue := make([]store.Monitor, 0, len(list))
+	retryDue := make([]store.Monitor, 0, len(list))
 	for _, m := range list {
 		if TypeIsPassive(m.Type) {
 			continue
 		}
-		if !e.acquireSlot(m.ID) {
+		if m.RetryAt != nil {
+			retryDue = append(retryDue, m)
 			continue
+		}
+		normalDue = append(normalDue, m)
+	}
+	dueCount := len(normalDue) + len(retryDue)
+
+	for _, m := range normalDue {
+		interval := m.IntervalSec
+		if interval <= 0 {
+			interval = 60
+		}
+		eligible := eligibleAt(m.ID, m.CreatedAt, m.LastCheckedAt, interval, tuning)
+		if now.Before(eligible) {
+			skippedJitter++
+			continue
+		}
+		if !e.acquireSlot(m.ID) {
+			skippedSem++
+			continue
+		}
+		started++
+		if obs != nil {
+			obs.RecordWaitTime(now.Sub(eligible))
 		}
 		go func(mon store.Monitor) {
 			defer e.releaseSlot(mon.ID)
-			_ = e.runCheck(ctx, mon, settings)
+			start := time.Now()
+			res, decision, _ := e.runCheck(ctx, mon, settings)
+			if obs != nil {
+				obs.RecordAttemptDuration(time.Since(start))
+				obs.RecordResult(res)
+				obs.RecordRetry(decision)
+			}
 		}(m)
+	}
+
+	retryBudget := retryStartBudget(e.maxConcurrent, len(normalDue))
+	retryStarted := 0
+	for _, m := range retryDue {
+		if len(normalDue) > 0 && retryStarted >= retryBudget {
+			break
+		}
+		eligible := now
+		if m.RetryAt != nil {
+			eligible = m.RetryAt.UTC()
+		}
+		if !e.acquireSlot(m.ID) {
+			skippedSem++
+			continue
+		}
+		started++
+		retryStarted++
+		if obs != nil {
+			obs.RecordWaitTime(now.Sub(eligible))
+		}
+		go func(mon store.Monitor) {
+			defer e.releaseSlot(mon.ID)
+			start := time.Now()
+			res, decision, _ := e.runCheck(ctx, mon, settings)
+			if obs != nil {
+				obs.RecordAttemptDuration(time.Since(start))
+				obs.RecordResult(res)
+				obs.RecordRetry(decision)
+			}
+		}(m)
+	}
+	if obs != nil {
+		obs.RecordTick(now, dueCount, started, len(retryDue), retryStarted, retryBudget, skippedSem, skippedJitter)
+		e.mu.Lock()
+		maxConc := e.maxConcurrent
+		e.mu.Unlock()
+		obs.MaybeLog(now, tuning, maxConc, e.logger)
 	}
 }
 
@@ -274,12 +359,19 @@ func (e *Engine) acquireSlot(id int64) bool {
 	}
 	e.inFlight[id] = struct{}{}
 	sem := e.sem
+	obs := e.obs
 	e.mu.Unlock()
 	if sem == nil {
+		if obs != nil {
+			obs.OnAcquireSlot()
+		}
 		return true
 	}
 	select {
 	case sem <- struct{}{}:
+		if obs != nil {
+			obs.OnAcquireSlot()
+		}
 		return true
 	default:
 		e.mu.Lock()
@@ -293,7 +385,11 @@ func (e *Engine) releaseSlot(id int64) {
 	e.mu.Lock()
 	delete(e.inFlight, id)
 	sem := e.sem
+	obs := e.obs
 	e.mu.Unlock()
+	if obs != nil {
+		obs.OnReleaseSlot()
+	}
 	if sem == nil {
 		return
 	}
@@ -303,11 +399,19 @@ func (e *Engine) releaseSlot(id int64) {
 	}
 }
 
-func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.MonitorSettings) error {
-	result := CheckMonitor(ctx, m, settings)
+func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, RetryDecision, error) {
+	attemptFn := e.attemptFn
+	if attemptFn == nil {
+		attemptFn = AttemptMonitor
+	}
+	result, attemptErr := attemptFn(ctx, m, settings)
+	if attemptErr != nil {
+		result = failedResult(result, attemptErr)
+	}
 	if result.CheckedAt.IsZero() {
 		result.CheckedAt = time.Now().UTC()
 	}
+	decision := DecideRetry(result.CheckedAt, m, settings, result, attemptErr)
 	var statusCode *int
 	if result.StatusCode != nil {
 		val := *result.StatusCode
@@ -330,15 +434,15 @@ func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.M
 		e.logger.Errorf("monitoring add metric: %v", err)
 	}
 	tlsRecord := e.updateTLS(ctx, m, result, settings)
-	return e.updateState(ctx, m, result, tlsRecord, settings)
+	return result, decision, e.updateState(ctx, m, result, tlsRecord, settings, decision)
 }
 
-func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckResult, tlsRecord *store.MonitorTLS, settings store.MonitorSettings) error {
+func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckResult, tlsRecord *store.MonitorTLS, settings store.MonitorSettings, decision RetryDecision) error {
 	prev, _ := e.store.GetMonitorState(ctx, m.ID)
 	rawStatus := "down"
 	if result.OK {
 		rawStatus = "up"
-	} else if isDNSErrorText(result.Error) {
+	} else if decision.ErrorKind == ErrorKindDNS || isDNSErrorText(result.Error) {
 		rawStatus = "dns"
 	}
 	now := result.CheckedAt
@@ -359,6 +463,10 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		MaintenanceActive: maintenanceActive,
 		LastCheckedAt:     &now,
 		LastError:         result.Error,
+		RetryAt:           decision.RetryAt,
+		RetryAttempt:      decision.RetryAttempt,
+		LastAttemptAt:     &now,
+		LastErrorKind:     string(decision.ErrorKind),
 	}
 	if result.StatusCode != nil {
 		val := *result.StatusCode

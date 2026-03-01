@@ -8,6 +8,9 @@ import (
 )
 
 func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -35,6 +38,9 @@ func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)
@@ -55,6 +61,9 @@ func (h *MonitoringHandler) GetMetrics(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *MonitoringHandler) GetEvents(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.events.view") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

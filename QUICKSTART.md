@@ -20,6 +20,7 @@ docker compose up -d --build
 
 ## 3. Проверка
 - UI: `http://localhost:8080/login`
+- Сразу после входа может открыться одноразовая страница `/healthcheck` (проверки/Compat) — нажмите «Продолжить» для входа в приложение.
 - Статус контейнеров:
 ```bash
 docker compose ps

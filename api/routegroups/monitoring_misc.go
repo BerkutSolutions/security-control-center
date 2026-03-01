@@ -38,6 +38,7 @@ func RegisterMonitoring(apiRouter chi.Router, g Guards, monitoring *handlers.Mon
 		monitoringRouter.MethodFunc("DELETE", "/maintenance/{id:[0-9]+}", g.SessionPerm("monitoring.maintenance.manage", monitoring.DeleteMaintenance))
 		monitoringRouter.MethodFunc("GET", "/settings", g.SessionPerm("monitoring.settings.manage", monitoring.GetSettings))
 		monitoringRouter.MethodFunc("PUT", "/settings", g.SessionPerm("monitoring.settings.manage", monitoring.UpdateSettings))
+		monitoringRouter.MethodFunc("GET", "/engine/stats", g.SessionPerm("monitoring.view", monitoring.GetEngineStats))
 		monitoringRouter.MethodFunc("GET", "/notifications", g.SessionPerm("monitoring.notifications.view", monitoring.ListNotificationChannels))
 		monitoringRouter.MethodFunc("POST", "/notifications", g.SessionPerm("monitoring.notifications.manage", monitoring.CreateNotificationChannel))
 		monitoringRouter.MethodFunc("PUT", "/notifications/{id:[0-9]+}", g.SessionPerm("monitoring.notifications.manage", monitoring.UpdateNotificationChannel))

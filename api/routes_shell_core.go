@@ -10,6 +10,7 @@ import (
 func (s *Server) registerShellRoutes(appShell http.HandlerFunc, h routeHandlers) {
 	s.router.MethodFunc("GET", "/login", handlers.ServeStatic("login.html"))
 	s.router.MethodFunc("GET", "/password-change", s.withSession(h.auth.PasswordChangePage))
+	s.router.MethodFunc("GET", "/healthcheck", s.withSession(h.auth.HealthcheckPage))
 	s.router.HandleFunc("/", s.redirectToEntry)
 	s.router.MethodFunc("GET", "/app", handlers.ServeStatic("app.html"))
 	s.registerShellTabRoutes(appShell)
@@ -26,6 +27,11 @@ func (s *Server) registerCoreAPIRoutes(apiRouter chi.Router, h routeHandlers) {
 	apiRouter.MethodFunc("POST", "/app/ping", s.withSession(h.auth.Ping))
 	apiRouter.MethodFunc("POST", "/app/view", s.withSession(s.appView))
 	apiRouter.MethodFunc("GET", "/app/meta", s.withSession(s.requirePermission("app.view")(h.runtime.Meta)))
+	apiRouter.MethodFunc("GET", "/app/compat", s.withSession(s.requirePermission("app.compat.view")(h.compat.Report)))
+	apiRouter.MethodFunc("POST", "/app/jobs", s.withSession(s.requirePermission("app.compat.manage.partial")(h.jobs.Create)))
+	apiRouter.MethodFunc("GET", "/app/jobs", s.withSession(s.requirePermission("app.compat.view")(h.jobs.List)))
+	apiRouter.MethodFunc("GET", "/app/jobs/{id}", s.withSession(s.requirePermission("app.compat.view")(h.jobs.Get)))
+	apiRouter.MethodFunc("POST", "/app/jobs/{id}/cancel", s.withSession(s.requirePermission("app.compat.manage.partial")(h.jobs.Cancel)))
 	apiRouter.MethodFunc("GET", "/dashboard", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.Data)))
 	apiRouter.MethodFunc("POST", "/dashboard/layout", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.SaveLayout)))
 }

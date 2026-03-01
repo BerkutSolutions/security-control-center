@@ -9,7 +9,7 @@ import (
 
 func (s *monitoringStore) GetMonitorState(ctx context.Context, id int64) (*MonitorState, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT monitor_id, status, last_result_status, maintenance_active, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
+		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
 		FROM monitor_state WHERE monitor_id=?`, id)
 	return scanMonitorState(row)
 }
@@ -23,7 +23,7 @@ func (s *monitoringStore) ListMonitorStates(ctx context.Context, ids []int64) ([
 		args = append(args, id)
 	}
 	query := `
-		SELECT monitor_id, status, last_result_status, maintenance_active, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
+		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
 		FROM monitor_state WHERE monitor_id IN (` + placeholders(len(ids)) + `)`
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -45,13 +45,17 @@ func (s *monitoringStore) ListMonitorStates(ctx context.Context, ids []int64) ([
 
 func (s *monitoringStore) UpsertMonitorState(ctx context.Context, st *MonitorState) error {
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO monitor_state(monitor_id, status, last_result_status, maintenance_active, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		INSERT INTO monitor_state(monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT (monitor_id)
 		DO UPDATE SET
 			status=excluded.status,
 			last_result_status=excluded.last_result_status,
 			maintenance_active=excluded.maintenance_active,
+			retry_at=excluded.retry_at,
+			retry_attempt=excluded.retry_attempt,
+			last_attempt_at=excluded.last_attempt_at,
+			last_error_kind=excluded.last_error_kind,
 			last_checked_at=excluded.last_checked_at,
 			last_up_at=excluded.last_up_at,
 			last_down_at=excluded.last_down_at,
@@ -63,7 +67,7 @@ func (s *monitoringStore) UpsertMonitorState(ctx context.Context, st *MonitorSta
 			avg_latency_24h=excluded.avg_latency_24h,
 			tls_days_left=excluded.tls_days_left,
 			tls_not_after=excluded.tls_not_after`,
-		st.MonitorID, st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError, st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter)
+		st.MonitorID, st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.RetryAt, st.RetryAttempt, st.LastAttemptAt, st.LastErrorKind, st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError, st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter)
 	return err
 }
 
@@ -71,10 +75,10 @@ func (s *monitoringStore) MarkMonitorDueNow(ctx context.Context, monitorID int64
 	// Ensures the monitor becomes due for checks ASAP (engine loop will pick it up).
 	// We do not touch any other state fields, only reset last_checked_at.
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO monitor_state(monitor_id, status, last_checked_at)
-		VALUES(?, ?, NULL)
+		INSERT INTO monitor_state(monitor_id, status, retry_at, retry_attempt, last_checked_at)
+		VALUES(?, ?, NULL, 0, NULL)
 		ON CONFLICT (monitor_id)
-		DO UPDATE SET last_checked_at=NULL`,
+		DO UPDATE SET last_checked_at=NULL, retry_at=NULL, retry_attempt=0`,
 		monitorID, "down",
 	)
 	return err
@@ -228,13 +232,17 @@ func scanMonitorState(row interface {
 	Scan(dest ...any) error
 }) (*MonitorState, error) {
 	var st MonitorState
+	var retryAt, lastAttemptAt sql.NullTime
+	var retryAttempt sql.NullInt64
+	var lastErrorKind sql.NullString
 	var lastChecked, lastUp, lastDown sql.NullTime
 	var lastLatency, lastStatus sql.NullInt64
 	var maintenanceInt sql.NullInt64
 	var tlsDays sql.NullInt64
 	var tlsNotAfter sql.NullTime
 	if err := row.Scan(
-		&st.MonitorID, &st.Status, &st.LastResultStatus, &maintenanceInt, &lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &st.LastError,
+		&st.MonitorID, &st.Status, &st.LastResultStatus, &maintenanceInt, &retryAt, &retryAttempt, &lastAttemptAt, &lastErrorKind,
+		&lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &st.LastError,
 		&st.Uptime24h, &st.Uptime30d, &st.AvgLatency24h, &tlsDays, &tlsNotAfter); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
@@ -246,6 +254,20 @@ func scanMonitorState(row interface {
 	}
 	if lastChecked.Valid {
 		st.LastCheckedAt = &lastChecked.Time
+	}
+	if retryAt.Valid {
+		t := retryAt.Time.UTC()
+		st.RetryAt = &t
+	}
+	if retryAttempt.Valid {
+		st.RetryAttempt = int(retryAttempt.Int64)
+	}
+	if lastAttemptAt.Valid {
+		t := lastAttemptAt.Time.UTC()
+		st.LastAttemptAt = &t
+	}
+	if lastErrorKind.Valid {
+		st.LastErrorKind = lastErrorKind.String
 	}
 	if lastUp.Valid {
 		st.LastUpAt = &lastUp.Time

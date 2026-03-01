@@ -10,6 +10,8 @@ type routeHandlers struct {
 	settings    *handlers.SettingsHandler
 	https       *handlers.HTTPSSettingsHandler
 	runtime     *handlers.RuntimeSettingsHandler
+	compat      *handlers.AppCompatHandler
+	jobs        *handlers.AppJobsHandler
 	hardening   *handlers.HardeningHandler
 	docs        *handlers.DocsHandler
 	reports     *handlers.ReportsHandler
@@ -31,6 +33,8 @@ func (s *Server) newRouteHandlers() routeHandlers {
 		settings:    handlers.NewSettingsHandler(),
 		https:       handlers.NewHTTPSSettingsHandler(s.cfg, s.appHTTPSStore, s.audits),
 		runtime:     handlers.NewRuntimeSettingsHandler(s.cfg, s.appRuntimeStore, s.updateChecker, s.audits),
+		compat:      handlers.NewAppCompatHandler(s.appModules, s.policy),
+		jobs:        handlers.NewAppJobsHandler(s.appJobs, s.policy),
 		hardening:   handlers.NewHardeningHandler(s.cfg, s.appHTTPSStore, s.appRuntimeStore, s.audits),
 		docs:        handlers.NewDocsHandler(s.cfg, s.docsStore, s.entityLinksStore, s.controlsStore, s.assetsStore, s.softwareStore, s.users, s.policy, s.docsSvc, s.audits, s.logger),
 		reports:     handlers.NewReportsHandler(s.cfg, s.docsStore, s.reportsStore, s.users, s.policy, s.docsSvc, s.incidentsStore, s.incidentsSvc, s.controlsStore, s.monitoringStore, s.tasksSvc, s.audits, s.logger),

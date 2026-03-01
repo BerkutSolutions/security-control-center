@@ -113,7 +113,7 @@ func (s *monitoringStore) ListDueMonitors(ctx context.Context, now time.Time) ([
 		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, m.request_body, m.request_body_type, m.headers_json,
 			m.interval_sec, m.timeout_sec, m.retries, m.retry_interval_sec, m.allowed_status_json, m.ignore_tls_errors, m.notify_tls_expiring, m.is_active, m.is_paused,
 			m.tags_json, m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, m.incident_severity, m.incident_type_id, m.created_by, m.created_at, m.updated_at,
-			s.last_checked_at
+			s.last_checked_at, s.retry_at, s.retry_attempt
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id
 		WHERE m.is_active=1 AND m.is_paused=0`,
@@ -130,11 +130,13 @@ func (s *monitoringStore) ListDueMonitors(ctx context.Context, now time.Time) ([
 		var groupID sql.NullInt64
 		var sla sql.NullFloat64
 		var lastChecked sql.NullTime
+		var retryAt sql.NullTime
+		var retryAttempt sql.NullInt64
 		if err := rows.Scan(
 			&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &m.RequestBody, &m.RequestBodyType, &headersRaw,
 			&m.IntervalSec, &m.TimeoutSec, &m.Retries, &m.RetryIntervalSec, &allowedRaw, &ignoreTLS, &notifyTLS, &isActive, &isPaused,
 			&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &m.IncidentSeverity, &m.IncidentTypeID, &m.CreatedBy, &m.CreatedAt, &m.UpdatedAt,
-			&lastChecked,
+			&lastChecked, &retryAt, &retryAttempt,
 		); err != nil {
 			return nil, err
 		}
@@ -160,9 +162,26 @@ func (s *monitoringStore) ListDueMonitors(ctx context.Context, now time.Time) ([
 			val := sla.Float64
 			m.SLATargetPct = &val
 		}
+		if lastChecked.Valid {
+			t := lastChecked.Time.UTC()
+			m.LastCheckedAt = &t
+		}
+		if retryAt.Valid {
+			t := retryAt.Time.UTC()
+			m.RetryAt = &t
+		}
+		if retryAttempt.Valid {
+			m.RetryAttempt = int(retryAttempt.Int64)
+		}
 		interval := m.IntervalSec
 		if interval <= 0 {
 			interval = 60
+		}
+		if retryAt.Valid {
+			if !now.Before(retryAt.Time) {
+				res = append(res, m)
+			}
+			continue
 		}
 		if !lastChecked.Valid || now.Sub(lastChecked.Time) >= time.Duration(interval)*time.Second {
 			res = append(res, m)
@@ -200,6 +219,10 @@ func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused
 	var avg24h float64
 	var tlsDaysLeft *int
 	var tlsNotAfter *time.Time
+	var retryAt *time.Time
+	var retryAttempt int
+	var lastAttemptAt *time.Time
+	lastErrorKind := ""
 	if current != nil {
 		if strings.TrimSpace(current.LastResultStatus) != "" {
 			lastResult = strings.TrimSpace(current.LastResultStatus)
@@ -215,6 +238,10 @@ func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused
 		avg24h = current.AvgLatency24h
 		tlsDaysLeft = current.TLSDaysLeft
 		tlsNotAfter = current.TLSNotAfter
+		retryAt = current.RetryAt
+		retryAttempt = current.RetryAttempt
+		lastAttemptAt = current.LastAttemptAt
+		lastErrorKind = current.LastErrorKind
 	}
 	if !paused {
 		status = strings.ToLower(strings.TrimSpace(lastResult))
@@ -245,6 +272,10 @@ func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused
 		Status:            status,
 		LastResultStatus:  lastResult,
 		MaintenanceActive: maintenanceActive == 1,
+		RetryAt:           retryAt,
+		RetryAttempt:      retryAttempt,
+		LastAttemptAt:     lastAttemptAt,
+		LastErrorKind:     lastErrorKind,
 		LastCheckedAt:     lastChecked,
 		LastUpAt:          lastUp,
 		LastDownAt:        lastDown,

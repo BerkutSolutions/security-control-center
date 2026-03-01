@@ -46,39 +46,27 @@ type TLSInfo struct {
 }
 
 func CheckMonitor(ctx context.Context, m store.Monitor, settings store.MonitorSettings) CheckResult {
+	res, err := AttemptMonitor(ctx, m, settings)
+	if err != nil {
+		return failedResult(res, err)
+	}
+	return res
+}
+
+// AttemptMonitor runs exactly one attempt with a hard deadline based on the monitor timeout.
+// It never sleeps and never performs retries.
+func AttemptMonitor(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
 	timeoutSec := m.TimeoutSec
 	if timeoutSec <= 0 {
 		timeoutSec = settings.DefaultTimeoutSec
 	}
-	retries := m.Retries
-	if retries < 0 {
-		retries = 0
+	if timeoutSec <= 0 {
+		timeoutSec = 20
 	}
-	retryInterval := m.RetryIntervalSec
-	if retryInterval <= 0 {
-		retryInterval = 5
-	}
-	var lastErr error
-	var lastRes CheckResult
-	for attempt := 0; attempt <= retries; attempt++ {
-		res, err := runSingleCheck(ctx, m, settings, time.Duration(timeoutSec)*time.Second)
-		lastRes = res
-		if err == nil {
-			return res
-		}
-		lastErr = err
-		if attempt < retries {
-			select {
-			case <-ctx.Done():
-				return failedResult(res, ctx.Err())
-			case <-time.After(time.Duration(retryInterval) * time.Second):
-			}
-		}
-	}
-	if lastErr != nil {
-		return failedResult(lastRes, lastErr)
-	}
-	return lastRes
+	timeout := time.Duration(timeoutSec) * time.Second
+	checkCtx, cancel := context.WithTimeout(ctx, timeout)
+	defer cancel()
+	return runSingleCheck(checkCtx, m, settings, timeout)
 }
 
 func runSingleCheck(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {

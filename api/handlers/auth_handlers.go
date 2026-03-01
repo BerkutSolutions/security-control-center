@@ -29,8 +29,42 @@ type AuthHandler struct {
 	logger         *utils.Logger
 }
 
+const HealthcheckCookieName = "berkut_healthcheck"
+
+const healthcheckCookiePath = "/healthcheck"
+const healthcheckCookieMaxAgeSeconds = 30
+const healthcheckCookieMaxSkew = 15 * time.Second
+
 func NewAuthHandler(cfg *config.AppConfig, users store.UsersStore, sessions store.SessionStore, incidents store.IncidentsStore, sm *auth.SessionManager, policy *rbac.Policy, audits store.AuditStore, logger *utils.Logger) *AuthHandler {
 	return &AuthHandler{cfg: cfg, users: users, sessions: sessions, incidents: incidents, sessionManager: sm, policy: policy, audits: audits, logger: logger}
+}
+
+func setHealthcheckCookie(w http.ResponseWriter, r *http.Request, cfg *config.AppConfig, enabled bool) {
+	cookieSecure := isSecureRequest(r, cfg)
+	if !enabled {
+		http.SetCookie(w, &http.Cookie{
+			Name:     HealthcheckCookieName,
+			Value:    "",
+			Path:     healthcheckCookiePath,
+			MaxAge:   -1,
+			HttpOnly: true,
+			Secure:   cookieSecure,
+			SameSite: http.SameSiteLaxMode,
+		})
+		return
+	}
+	now := time.Now().UTC()
+	expires := now.Add(time.Duration(healthcheckCookieMaxAgeSeconds) * time.Second)
+	http.SetCookie(w, &http.Cookie{
+		Name:     HealthcheckCookieName,
+		Value:    "v1:" + strconv.FormatInt(now.UnixMilli(), 10),
+		Path:     healthcheckCookiePath,
+		MaxAge:   healthcheckCookieMaxAgeSeconds,
+		HttpOnly: true,
+		Secure:   cookieSecure,
+		SameSite: http.SameSiteLaxMode,
+		Expires:  expires,
+	})
 }
 
 func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
@@ -152,6 +186,8 @@ func (h *AuthHandler) Login(w http.ResponseWriter, r *http.Request) {
 		SameSite: http.SameSiteLaxMode,
 		Expires:  sess.ExpiresAt,
 	})
+	// One-time healthcheck page marker (consumed by GET /healthcheck).
+	setHealthcheckCookie(w, r, h.cfg, true)
 	groups, _ := h.users.UserGroups(r.Context(), user.ID)
 	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
@@ -205,6 +241,10 @@ func (h *AuthHandler) Logout(w http.ResponseWriter, r *http.Request) {
 func (h *AuthHandler) Ping(w http.ResponseWriter, r *http.Request) {
 	sr := r.Context().Value(auth.SessionContextKey).(*store.SessionRecord)
 	now := time.Now().UTC()
+	// Ensure activity timestamp strictly increases even when requests happen in the same clock tick.
+	if !sr.LastSeenAt.IsZero() && !now.After(sr.LastSeenAt) {
+		now = sr.LastSeenAt.Add(1 * time.Millisecond)
+	}
 	_ = h.sessions.UpdateActivity(r.Context(), sr.ID, now, h.cfg.EffectiveSessionTTL())
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "last_seen_at": now})
 }
@@ -340,6 +380,8 @@ func (h *AuthHandler) ChangePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.audits.Log(r.Context(), sr.Username, "auth.password_changed", "")
+	// Show healthcheck page again after first password change / forced change.
+	setHealthcheckCookie(w, r, h.cfg, true)
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
 }
 
@@ -356,6 +398,40 @@ func ServeStatic(name string) http.HandlerFunc {
 
 func RedirectToApp(w http.ResponseWriter, r *http.Request) {
 	http.Redirect(w, r, "/dashboard", http.StatusFound)
+}
+
+func (h *AuthHandler) HealthcheckPage(w http.ResponseWriter, r *http.Request) {
+	// This page is only available right after login (or first password change),
+	// controlled by a short-lived, one-time cookie.
+	c, err := r.Cookie(HealthcheckCookieName)
+	if err != nil || c == nil || strings.TrimSpace(c.Value) == "" {
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+	raw := strings.TrimSpace(c.Value)
+	if !strings.HasPrefix(raw, "v1:") {
+		setHealthcheckCookie(w, r, h.cfg, false)
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+	issuedAtMS, parseErr := strconv.ParseInt(strings.TrimPrefix(raw, "v1:"), 10, 64)
+	if parseErr != nil {
+		setHealthcheckCookie(w, r, h.cfg, false)
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+	issuedAt := time.UnixMilli(issuedAtMS).UTC()
+	now := time.Now().UTC()
+	diff := now.Sub(issuedAt)
+	if issuedAt.IsZero() || diff < (-2*time.Second) || diff > healthcheckCookieMaxSkew {
+		// Too old: treat as invalid and clear.
+		setHealthcheckCookie(w, r, h.cfg, false)
+		http.Redirect(w, r, "/dashboard", http.StatusFound)
+		return
+	}
+	// Consume the marker to prevent opening without re-login.
+	setHealthcheckCookie(w, r, h.cfg, false)
+	ServeStatic("healthcheck.html")(w, r)
 }
 
 func (h *AuthHandler) PasswordChangePage(w http.ResponseWriter, r *http.Request) {

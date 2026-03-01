@@ -25,6 +25,8 @@ type ServerDeps struct {
 	SoftwareStore    store.SoftwareStore
 	EntityLinksStore store.EntityLinksStore
 	MonitoringStore  store.MonitoringStore
+	AppModules       store.AppModuleStateStore
+	AppJobs          store.AppJobsStore
 	AppHTTPSStore    store.AppHTTPSStore
 	AppRuntimeStore  store.AppRuntimeStore
 	UpdateChecker    *appmeta.UpdateChecker

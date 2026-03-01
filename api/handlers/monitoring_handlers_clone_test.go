@@ -11,6 +11,7 @@ import (
 
 	"berkut-scc/config"
 	"berkut-scc/core/auth"
+	"berkut-scc/core/rbac"
 	"berkut-scc/core/store"
 	"berkut-scc/core/utils"
 	"github.com/go-chi/chi/v5"
@@ -84,9 +85,10 @@ func TestCloneMonitor_CopiesNotificationBindings(t *testing.T) {
 		t.Fatalf("replace notifications: %v", err)
 	}
 
-	h := NewMonitoringHandler(ms, nil, nil, nil, nil, nil)
+	policy := rbac.NewPolicy([]rbac.Role{{Name: "r1", Permissions: []rbac.Permission{"monitoring.manage"}}})
+	h := NewMonitoringHandler(ms, nil, nil, nil, policy, nil)
 	req := httptest.NewRequest("POST", "/api/monitoring/monitors/"+strconv.FormatInt(monID, 10)+"/clone", nil)
-	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u"}))
+	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u", Roles: []string{"r1"}}))
 	req = withChiURLParam(req, "id", strconv.FormatInt(monID, 10))
 	rec := httptest.NewRecorder()
 	h.CloneMonitor(rec, req)
@@ -140,9 +142,10 @@ func TestCloneMonitor_PassiveMonitorGetsNewToken(t *testing.T) {
 		t.Fatalf("create monitor: %v", err)
 	}
 
-	h := NewMonitoringHandler(ms, nil, nil, nil, nil, nil)
+	policy := rbac.NewPolicy([]rbac.Role{{Name: "r1", Permissions: []rbac.Permission{"monitoring.manage"}}})
+	h := NewMonitoringHandler(ms, nil, nil, nil, policy, nil)
 	req := httptest.NewRequest("POST", "/api/monitoring/monitors/"+strconv.FormatInt(monID, 10)+"/clone", nil)
-	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u"}))
+	req = req.WithContext(context.WithValue(req.Context(), auth.SessionContextKey, &store.SessionRecord{UserID: 123, Username: "u", Roles: []string{"r1"}}))
 	req = withChiURLParam(req, "id", strconv.FormatInt(monID, 10))
 	rec := httptest.NewRecorder()
 	h.CloneMonitor(rec, req)

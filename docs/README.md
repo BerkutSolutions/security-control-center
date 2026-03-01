@@ -1,12 +1,14 @@
 # Documentation
 
-Version baseline: `1.0.11`
+Version baseline: `1.0.12`
 
 This directory contains detailed technical documentation for the current runtime model.
 
 Primary entry points:
 - Russian: `docs/ru/README.md`
 - English: `docs/eng/README.md`
+- Healthcheck (/healthcheck) RU: `docs/ru/healthcheck.md`
+- Healthcheck (/healthcheck) EN: `docs/eng/healthcheck.md`
 - Assets module RU: `docs/ru/assets.md`
 - Assets module EN: `docs/eng/assets.md`
 - Findings module RU: `docs/ru/findings.md`
@@ -22,6 +24,10 @@ Primary entry points:
 - Tabs/UX wiki EN: `docs/eng/wiki/tabs.md`
 - Monitoring message template RU: `docs/ru/monitoring_notifications_message_template.md`
 - Monitoring message template EN: `docs/eng/monitoring_notifications_message_template.md`
+- Compatibility (user guide) RU: `docs/ru/compatibility.md`
+- Compatibility (cheatsheet) RU: `docs/ru/compatibility_cheatsheet.md`
+- Compatibility (user guide) EN: `docs/eng/compatibility.md`
+- Compatibility (cheatsheet) EN: `docs/eng/compatibility_cheatsheet.md`
 - Local compose example (runtime TZ, Postgres, OnlyOffice): `docker-compose.local.yml`
 
 Root product overview:

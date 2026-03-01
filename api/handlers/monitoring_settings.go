@@ -32,6 +32,9 @@ type monitoringSettingsPayload struct {
 }
 
 func (h *MonitoringHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.settings.manage") {
+		return
+	}
 	settings, err := h.store.GetSettings(r.Context())
 	if err != nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
@@ -41,6 +44,9 @@ func (h *MonitoringHandler) GetSettings(w http.ResponseWriter, r *http.Request) 
 }
 
 func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.settings.manage") {
+		return
+	}
 	var payload monitoringSettingsPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

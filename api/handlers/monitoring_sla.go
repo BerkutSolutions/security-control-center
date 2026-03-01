@@ -40,6 +40,9 @@ type monitorSLAPolicyPayload struct {
 }
 
 func (h *MonitoringHandler) ListSLAOverview(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	monitors, err := h.store.ListMonitors(r.Context(), store.MonitorFilter{})
 	if err != nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
@@ -112,6 +115,9 @@ func (h *MonitoringHandler) ListSLAOverview(w http.ResponseWriter, r *http.Reque
 }
 
 func (h *MonitoringHandler) ListSLAHistory(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.view") {
+		return
+	}
 	limit := 100
 	if raw := strings.TrimSpace(r.URL.Query().Get("limit")); raw != "" {
 		if parsed, err := strconv.Atoi(raw); err == nil && parsed > 0 && parsed <= 500 {
@@ -161,6 +167,9 @@ func (h *MonitoringHandler) ListSLAHistory(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *MonitoringHandler) UpdateMonitorSLAPolicy(w http.ResponseWriter, r *http.Request) {
+	if !h.requirePerm(w, r, "monitoring.manage") {
+		return
+	}
 	id, err := parseID(pathParams(r)["id"])
 	if err != nil {
 		http.Error(w, errBadRequest, http.StatusBadRequest)

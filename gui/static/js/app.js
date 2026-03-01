@@ -45,6 +45,9 @@
   if (window.location.pathname === '/' || window.location.pathname === '/app') {
     window.history.replaceState({}, '', `/${currentPage}`);
   }
+  if (typeof window !== 'undefined' && window.AppCompat && typeof window.AppCompat.checkAndShowWizard === 'function') {
+    window.AppCompat.checkAndShowWizard().catch(() => {});
+  }
 
   window.addEventListener('popstate', async () => {
     const target = pathFromLocation(menuResp.menu) || currentPage;

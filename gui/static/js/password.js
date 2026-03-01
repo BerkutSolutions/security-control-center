@@ -3,6 +3,8 @@
   BerkutI18n.apply();
   const alertBox = document.getElementById('password-alert');
   const form = document.getElementById('password-form');
+  const params = new URLSearchParams(window.location.search || '');
+  const next = params.get('next') || '/healthcheck';
 
   let me;
   try {
@@ -33,7 +35,7 @@
     }
     try {
       await Api.post('/api/auth/change-password', { password: pwd });
-      window.location.href = '/dashboard';
+      window.location.href = next;
     } catch (err) {
       alertBox.textContent = err.message || BerkutI18n.t('common.error');
       alertBox.hidden = false;

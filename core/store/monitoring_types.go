@@ -32,6 +32,11 @@ type Monitor struct {
 	CreatedBy         int64             `json:"created_by"`
 	CreatedAt         time.Time         `json:"created_at"`
 	UpdatedAt         time.Time         `json:"updated_at"`
+	// LastCheckedAt is populated for scheduler/due evaluations and may be omitted in regular monitor responses.
+	LastCheckedAt *time.Time `json:"last_checked_at,omitempty"`
+	// RetryAt/RetryAttempt are populated for scheduler/due evaluations (scheduled retries) and may be omitted elsewhere.
+	RetryAt      *time.Time `json:"retry_at,omitempty"`
+	RetryAttempt int        `json:"retry_attempt,omitempty"`
 }
 
 type MonitorSummary struct {
@@ -56,6 +61,10 @@ type MonitorState struct {
 	LastLatencyMs     *int       `json:"last_latency_ms,omitempty"`
 	LastStatusCode    *int       `json:"last_status_code,omitempty"`
 	LastError         string     `json:"last_error,omitempty"`
+	RetryAt           *time.Time `json:"retry_at,omitempty"`
+	RetryAttempt      int        `json:"retry_attempt,omitempty"`
+	LastAttemptAt     *time.Time `json:"last_attempt_at,omitempty"`
+	LastErrorKind     string     `json:"last_error_kind,omitempty"`
 	Uptime24h         float64    `json:"uptime_24h"`
 	Uptime30d         float64    `json:"uptime_30d"`
 	AvgLatency24h     float64    `json:"avg_latency_24h"`

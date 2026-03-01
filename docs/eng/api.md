@@ -18,6 +18,20 @@ Base path: `/api`
 - State-changing requests require CSRF.
 - All endpoints are enforced server-side with permission checks.
 
+## App: Tab Compatibility and Jobs (v1.0.12)
+- Compat:
+  - `GET /api/app/compat`
+- Jobs (manual Partial adapt / Full reset actions, no auto migrations):
+  - `POST /api/app/jobs`
+  - `GET /api/app/jobs`
+  - `GET /api/app/jobs/{id}`
+  - `POST /api/app/jobs/{id}/cancel`
+
+Permissions:
+- `app.compat.view`
+- `app.compat.manage.partial`
+- `app.compat.manage.full`
+
 ## Backups (v1.0.3)
 Primary endpoints:
 - `GET /api/backups`
@@ -37,7 +51,7 @@ Primary endpoints:
 Permissions:
 - `backups.read`, `backups.create`, `backups.import`, `backups.download`, `backups.delete`, `backups.restore`, `backups.plan.update`.
 
-## Monitoring (v1.0.3)
+## Monitoring (v1.0.12)
 - Monitor types currently supported by backend:
   - `http`, `tcp`, `ping`, `http_keyword`, `http_json`, `grpc_keyword`, `dns`, `docker`, `push`, `steam`, `gamedig`, `mqtt`, `kafka_producer`, `mssql`, `postgres`, `mysql`, `mongodb`, `radius`, `redis`, `tailscale_ping`.
 - Passive push monitor ingestion:
@@ -45,6 +59,8 @@ Permissions:
   - Payload example: `{ "ok": true, "latency_ms": 42, "status_code": 200, "error": "" }`
 
 Primary endpoints:
+- Engine stats (scheduler/engine diagnostics):
+  - `GET /api/monitoring/engine/stats`
 - Monitors:
   - `GET /api/monitoring/monitors`
   - `POST /api/monitoring/monitors`

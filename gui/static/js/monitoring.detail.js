@@ -263,6 +263,26 @@
     els.stats.appendChild(statCard(MonitoringPage.t('monitoring.stats.avg24h'), MonitoringPage.formatLatency(state?.avg_latency_24h)));
     els.stats.appendChild(statCard(MonitoringPage.t('monitoring.stats.uptime24h'), MonitoringPage.formatUptime(state?.uptime_24h)));
     els.stats.appendChild(statCard(MonitoringPage.t('monitoring.stats.uptime30d'), MonitoringPage.formatUptime(state?.uptime_30d)));
+
+    const kind = `${state?.last_error_kind || ''}`.trim();
+    const kindKey = kind ? `monitoring.errorKind.${kind}` : '';
+    const kindLabel = kindKey ? MonitoringPage.t(kindKey) : '';
+    if (kind && kind !== 'ok') {
+      els.stats.appendChild(statCard(
+        MonitoringPage.t('monitoring.stats.errorKind'),
+        (kindLabel && kindLabel !== kindKey) ? kindLabel : kind,
+      ));
+    }
+
+    const retryAtRaw = state?.retry_at || null;
+    const retryAtMs = retryAtRaw ? Date.parse(retryAtRaw) : 0;
+    if (retryAtMs && retryAtMs > Date.now()) {
+      els.stats.appendChild(statCard(MonitoringPage.t('monitoring.stats.retryUntil'), MonitoringPage.formatDate(retryAtRaw)));
+      const attempt = state?.retry_attempt ?? 0;
+      const retriesMax = mon?.retries ?? 0;
+      const attemptText = retriesMax > 0 ? `${attempt}/${retriesMax}` : `${attempt}`;
+      els.stats.appendChild(statCard(MonitoringPage.t('monitoring.stats.retryAttempt'), attemptText));
+    }
     if (mon.sla_target_pct) {
       const slaOk = (state?.uptime_30d || 0) >= mon.sla_target_pct;
       const label = MonitoringPage.t('monitoring.stats.sla');

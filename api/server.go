@@ -50,6 +50,8 @@ type Server struct {
 	softwareStore    store.SoftwareStore
 	entityLinksStore store.EntityLinksStore
 	monitoringStore  store.MonitoringStore
+	appModules       store.AppModuleStateStore
+	appJobs          store.AppJobsStore
 	appHTTPSStore    store.AppHTTPSStore
 	appRuntimeStore  store.AppRuntimeStore
 	updateChecker    *appmeta.UpdateChecker
@@ -81,6 +83,8 @@ func NewServer(cfg *config.AppConfig, logger *utils.Logger, deps ServerDeps) *Se
 		softwareStore:    deps.SoftwareStore,
 		entityLinksStore: deps.EntityLinksStore,
 		monitoringStore:  deps.MonitoringStore,
+		appModules:       deps.AppModules,
+		appJobs:          deps.AppJobs,
 		appHTTPSStore:    deps.AppHTTPSStore,
 		appRuntimeStore:  deps.AppRuntimeStore,
 		updateChecker:    deps.UpdateChecker,

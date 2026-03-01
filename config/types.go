@@ -16,6 +16,7 @@ type AppConfig struct {
 	TLSCert        string          `yaml:"tls_cert" env:"BERKUT_TLS_CERT"`
 	TLSKey         string          `yaml:"tls_key" env:"BERKUT_TLS_KEY"`
 	Scheduler      SchedulerConfig `yaml:"scheduler"`
+	Monitoring     MonitoringConfig `yaml:"monitoring"`
 	Docs           DocsConfig      `yaml:"docs"`
 	Security       SecurityConfig  `yaml:"security"`
 	Incidents      IncidentsConfig `yaml:"incidents"`
@@ -98,6 +99,17 @@ type SchedulerConfig struct {
 	Enabled         bool `yaml:"enabled" env:"BERKUT_SCHEDULER_ENABLED" env-default:"true"`
 	IntervalSeconds int  `yaml:"interval_seconds" env:"BERKUT_SCHEDULER_INTERVAL_SECONDS" env-default:"60"`
 	MaxJobsPerTick  int  `yaml:"max_jobs_per_tick" env:"BERKUT_SCHEDULER_MAX_JOBS_PER_TICK" env-default:"20"`
+}
+
+type MonitoringConfig struct {
+	// JitterPercent adds a deterministic per-monitor delay to due checks to avoid synchronized waves.
+	// 0 disables jitter.
+	JitterPercent int `yaml:"jitter_percent" env:"BERKUT_MONITORING_JITTER_PERCENT" env-default:"15"`
+	// JitterMaxSeconds caps the jitter window regardless of interval length.
+	JitterMaxSeconds int `yaml:"jitter_max_seconds" env:"BERKUT_MONITORING_JITTER_MAX_SECONDS" env-default:"10"`
+	// StatsLogIntervalSeconds controls how often engine emits aggregate observability logs.
+	// 0 disables periodic logging.
+	StatsLogIntervalSeconds int `yaml:"stats_log_interval_seconds" env:"BERKUT_MONITORING_STATS_LOG_INTERVAL_SECONDS" env-default:"60"`
 }
 
 type BackupsConfig struct {

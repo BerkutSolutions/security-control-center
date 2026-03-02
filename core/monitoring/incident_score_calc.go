@@ -95,7 +95,9 @@ func ComputeIncidentScore(in IncidentScoreInput) IncidentScore {
 	}
 
 	// HTTP status code.
-	if in.StatusCode != nil {
+	// If the check is effectively UP (i.e. allowed status / success), do not treat 4xx/5xx as incident signals.
+	// This avoids false "risk" for monitors intentionally configured to expect e.g. 404 as a healthy response.
+	if in.StatusCode != nil && rawStatus != "up" {
 		code := *in.StatusCode
 		switch {
 		case code >= 500 && code <= 599:

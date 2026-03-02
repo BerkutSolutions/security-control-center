@@ -120,12 +120,32 @@ func (e *Engine) handleAutomation(ctx context.Context, m store.Monitor, prev, ne
 	if rawStatus == "" {
 		rawStatus = "down"
 	}
+	prevStatus := "down"
+	if prev != nil {
+		prevStatus = strings.ToLower(strings.TrimSpace(prev.LastResultStatus))
+		if prevStatus == "" {
+			prevStatus = "down"
+		}
+		// A retryable failure should not be treated as a confirmed DOWN/DNS transition for automation purposes.
+		// If the previous state was still within a scheduled-retry window, treat it as not having transitioned yet.
+		if prev.RetryAt != nil && prevStatus != "up" {
+			prevStatus = "up"
+		}
+	}
+	effectiveStatus := rawStatus
+	// If this attempt failed but a retry is scheduled, keep the effective status unchanged (do not flap).
+	if rawStatus != "up" && next.RetryAt != nil {
+		effectiveStatus = prevStatus
+		if strings.TrimSpace(effectiveStatus) == "" {
+			effectiveStatus = "up"
+		}
+	}
 	st, _ := e.store.GetNotificationState(ctx, m.ID)
 	if st == nil {
 		st = &store.MonitorNotificationState{MonitorID: m.ID}
 	}
-	if rawStatus != "up" {
-		if prev == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) == "up" {
+	if effectiveStatus != "up" {
+		if prev == nil || prevStatus == "up" {
 			st.DownStartedAt = &now
 			st.DownSequence = 1
 		} else {
@@ -135,10 +155,10 @@ func (e *Engine) handleAutomation(ctx context.Context, m store.Monitor, prev, ne
 		st.DownStartedAt = nil
 		st.DownSequence = 0
 	}
-	e.handleNotifications(ctx, m, prev, next, rawStatus, now, st, tlsRecord, result, settings)
+	e.handleNotifications(ctx, m, prev, next, effectiveStatus, now, st, tlsRecord, result, settings)
 	e.handleAutoTaskOnDown(ctx, m, prev, next, now)
 	e.handleAutoTLSIncident(ctx, m, prev, next, tlsRecord, now, settings)
-	e.handleAutoIncident(ctx, m, prev, next, rawStatus, now, st, settings)
+	e.handleAutoIncident(ctx, m, prev, next, effectiveStatus, now, st, settings)
 	_ = e.store.UpsertNotificationState(ctx, st)
 }
 
@@ -201,8 +221,16 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 		}
 		return
 	}
-	if rawStatus == "down" &&
-		(prev == nil || prev.LastCheckedAt == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) != "down") &&
+	prevRaw := ""
+	prevRetryingDown := false
+	if prev != nil {
+		prevRaw = strings.ToLower(strings.TrimSpace(prev.LastResultStatus))
+		prevRetryingDown = prevRaw == "down" && prev.RetryAt != nil
+	}
+	confirmedDown := rawStatus == "down" && next.RetryAt == nil
+	downBecameConfirmed := confirmedDown && prevRetryingDown
+	downTransition := confirmedDown && (prev == nil || prev.LastCheckedAt == nil || prevRaw != "down" || downBecameConfirmed)
+	if downTransition &&
 		canNotifyDownOutage() &&
 		canSend(st.LastNotifiedAt) &&
 		canSend(st.LastDownNotifiedAt) {

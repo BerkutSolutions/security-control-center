@@ -456,6 +456,29 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		rawStatus = "up"
 	} else if decision.ErrorKind == ErrorKindDNS || isDNSErrorText(result.Error) {
 		rawStatus = "dns"
+	} else if decision.ErrorKind == ErrorKindTimeout ||
+		decision.ErrorKind == ErrorKindConnect ||
+		decision.ErrorKind == ErrorKindNetworkUnreachable ||
+		decision.ErrorKind == ErrorKindTLS ||
+		decision.ErrorKind == ErrorKindRequestFailed {
+		// Non-HTTP transient failures (timeouts, TLS/network issues, unexpected EOF) are ambiguous and often caused
+		// by the monitoring host/network rather than the target. Represent them as an orange "issue" state instead
+		// of a hard DOWN to reduce false positives and alert noise.
+		rawStatus = "issue"
+	}
+	// Retry policy: if a retry is scheduled for this failed attempt, keep the last_result_status stable
+	// (do not flip UP->DOWN/DNS until the retry budget is exhausted). This prevents false positives
+	// from transient network glitches (e.g. unexpected EOF, short DNS issues).
+	deferFailure := !result.OK && decision.Scheduled
+	if deferFailure {
+		carry := ""
+		if prev != nil {
+			carry = strings.ToLower(strings.TrimSpace(prev.LastResultStatus))
+		}
+		if carry == "" {
+			carry = "up"
+		}
+		rawStatus = carry
 	}
 	now := result.CheckedAt
 	maintenanceActive := false
@@ -472,13 +495,19 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	inp := IncidentScoreInput{
 		RawStatus:      rawStatus,
 		DisplayStatus:  status,
-		ErrorKind:  string(decision.ErrorKind),
+		ErrorKind:      string(decision.ErrorKind),
 		StatusCode: result.StatusCode,
 		LatencyMs:  result.LatencyMs,
 		Now:        now,
 		Prev:       prev,
 		Monitor:    m,
 		Settings:   settings,
+	}
+	if deferFailure {
+		// A deferred (retrying) failure should not affect incident scoring and auto-incidents until confirmed.
+		inp.ErrorKind = string(ErrorKindOK)
+		inp.StatusCode = nil
+		inp.LatencyMs = 0
 	}
 	model := strings.ToLower(strings.TrimSpace(settings.IncidentScoringModel))
 	if model == "" {
@@ -517,17 +546,27 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		IncidentScoreState:     scoreState,
 		IncidentScoreObs:       scoreObs,
 	}
+	if deferFailure && prev != nil {
+		next.LastError = prev.LastError
+		next.LastErrorKind = prev.LastErrorKind
+		next.LastStatusCode = prev.LastStatusCode
+		next.LastLatencyMs = prev.LastLatencyMs
+	}
 	if result.StatusCode != nil {
 		val := *result.StatusCode
-		next.LastStatusCode = &val
+		if !deferFailure {
+			next.LastStatusCode = &val
+		}
 	}
 	if result.LatencyMs > 0 {
 		val := result.LatencyMs
-		next.LastLatencyMs = &val
+		if !deferFailure {
+			next.LastLatencyMs = &val
+		}
 	}
-	if rawStatus == "up" {
+	if !deferFailure && rawStatus == "up" {
 		next.LastUpAt = &now
-	} else if rawStatus == "down" {
+	} else if !deferFailure && rawStatus == "down" {
 		next.LastDownAt = &now
 	}
 	if prev != nil {
@@ -551,6 +590,23 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 				codeChanged = true
 			}
 			if result.Error != "" && (prev.LastError != result.Error || codeChanged) {
+				shouldLog = true
+			}
+		}
+		// Do not log transient retryable failures as outages. If a retry is scheduled, defer logging until
+		// the retry budget is exhausted and the failure becomes confirmed (retry_at is cleared).
+		if rawStatus != "up" && next.RetryAt != nil {
+			shouldLog = false
+		}
+		// If the previous attempt was a retrying failure and the current one is a confirmed failure,
+		// log the event even though last_result_status might already be "down"/"dns".
+		prevRetrying := prev.RetryAt != nil
+		nowConfirmed := next.RetryAt == nil
+		if prevRetrying && nowConfirmed {
+			if rawStatus == "down" {
+				shouldLog = true
+			}
+			if rawStatus == "dns" && logDNSEvents {
 				shouldLog = true
 			}
 		}

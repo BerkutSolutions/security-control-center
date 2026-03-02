@@ -3074,6 +3074,10 @@
   background: #f2994a;
 }
 
+.status-dot.issue {
+  background: #f2994a;
+}
+
 .status-dot.paused {
   background: #f2c94c;
 }
@@ -3142,6 +3146,10 @@
 }
 
 .monitoring-status-strip span.dns {
+  background: rgba(242, 153, 74, 0.82);
+}
+
+.monitoring-status-strip span.issue {
   background: rgba(242, 153, 74, 0.82);
 }
 
@@ -3292,6 +3300,10 @@
 }
 
 .monitoring-event.dns {
+  border: 1px solid rgba(242, 153, 74, 0.35);
+}
+
+.monitoring-event.issue {
   border: 1px solid rgba(242, 153, 74, 0.35);
 }
 

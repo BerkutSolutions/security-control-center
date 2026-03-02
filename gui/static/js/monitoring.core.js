@@ -231,6 +231,28 @@ const MonitoringPage = (() => {
     return false;
   }
 
+  function isIssueErrorMessage(msg) {
+    if (!msg) return false;
+    const val = String(msg).trim().toLowerCase();
+    if (!val) return false;
+    if (val.startsWith('status_')) return false;
+    if (val.startsWith('monitoring.error.')) return false;
+    // DNS errors have their own class.
+    if (isDnsErrorMessage(val)) return false;
+
+    if (val.includes('unexpected eof')) return true;
+    if (val === 'eof' || val.endsWith(': eof') || val.includes(' eof')) return true;
+    if (val.includes('connection reset by peer')) return true;
+    if (val.includes('broken pipe')) return true;
+    if (val.includes('context deadline exceeded')) return true;
+    if (val.includes('i/o timeout')) return true;
+    if (val.includes('timeout')) return true;
+    if (val.includes('tls') || val.includes('x509') || val.includes('handshake')) return true;
+    if (val.includes('network is unreachable') || val.includes('no route to host')) return true;
+    if (val.includes('dial tcp') || val.includes('connect:')) return true;
+    return false;
+  }
+
   function selectedMonitor() {
     return state.monitors.find(m => m.id === state.selectedId);
   }
@@ -255,6 +277,7 @@ const MonitoringPage = (() => {
     hideAlert,
     sanitizeErrorMessage,
     isDnsErrorMessage,
+    isIssueErrorMessage,
     selectedMonitor,
     resolveMonitorDeepLink,
   };

@@ -1969,6 +1969,7 @@
   "monitoring.status.up": "UP",
   "monitoring.status.down": "DOWN",
   "monitoring.status.dns": "DNS",
+  "monitoring.status.issue": "ПРОБЛЕМА",
   "monitoring.status.paused": "Пауза",
   "monitoring.status.maintenance": "Обслуживание",
   "monitoring.event.maintenanceStart": "Начало обслуживания",

@@ -2144,6 +2144,7 @@
   "monitoring.status.up": "UP",
   "monitoring.status.down": "DOWN",
   "monitoring.status.dns": "DNS",
+  "monitoring.status.issue": "ISSUE",
   "monitoring.status.paused": "PAUSED",
   "monitoring.status.maintenance": "MAINTENANCE",
   "monitoring.event.maintenanceStart": "Maintenance start",

@@ -19,8 +19,12 @@ func (e *Engine) handleAutoTaskOnDown(ctx context.Context, m store.Monitor, prev
 	if next == nil || m.IsPaused || next.MaintenanceActive {
 		return
 	}
+	// Create tasks only for confirmed DOWN transitions (after retries, if any, are exhausted).
+	if monitorRawStatus(next) != "down" || next.RetryAt != nil {
+		return
+	}
 	prevStatus := monitorRawStatus(prev)
-	if monitorRawStatus(next) != "down" || prevStatus == "down" {
+	if prevStatus == "down" && prev != nil && prev.RetryAt == nil {
 		return
 	}
 

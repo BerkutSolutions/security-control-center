@@ -138,5 +138,26 @@ func TestComputeIncidentScore_Deterministic(t *testing.T) {
 	}
 }
 
-func ptrTime(t time.Time) *time.Time { return &t }
+func TestComputeIncidentScore_HTTP404AllowedDoesNotIncreaseRiskWhenUp(t *testing.T) {
+	now := time.Date(2026, 3, 2, 12, 0, 0, 0, time.UTC)
+	code := 404
+	res := ComputeIncidentScore(IncidentScoreInput{
+		RawStatus:  "up",
+		ErrorKind:  string(ErrorKindOK),
+		StatusCode: &code,
+		LatencyMs:  0,
+		Now:        now,
+		Prev:       nil,
+		Monitor:    store.Monitor{IntervalSec: 60},
+	})
+	if res.Value != 0 {
+		t.Fatalf("expected score 0 for UP with allowed 404, got=%v reasons=%v", res.Value, res.Reasons)
+	}
+	for _, r := range res.Reasons {
+		if r == IncidentScoreReasonHTTP4xx {
+			t.Fatalf("expected no http_4xx reason for UP, got reasons=%v", res.Reasons)
+		}
+	}
+}
 
+func ptrTime(t time.Time) *time.Time { return &t }

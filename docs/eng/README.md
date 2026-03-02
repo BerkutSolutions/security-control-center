@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.0.13`
+Documentation version baseline: `1.0.15`
 
 
 
@@ -66,7 +66,7 @@ Documentation is aligned with current runtime reality:
 
 
 
-## Included for 1.0.13
+## Included for 1.0.15
 
 - UI navigation: Registries tab (`/registry/...`) now contains Assets/Software/Findings as internal tabs with path routes (e.g. `/registry/assets`, `/registry/software`, `/registry/findings`).
 

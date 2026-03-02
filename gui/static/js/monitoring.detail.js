@@ -247,7 +247,9 @@
     const slice = metrics.slice(-50);
     slice.forEach(m => {
       const bar = document.createElement('span');
-      bar.className = m.ok ? 'up' : ((MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(m.error)) ? 'dns' : 'down');
+      const dns = !m.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(m.error);
+      const issue = !m.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(m.error);
+      bar.className = m.ok ? 'up' : (dns ? 'dns' : (issue ? 'issue' : 'down'));
       els.strip.appendChild(bar);
     });
     if (!slice.length) {
@@ -646,6 +648,7 @@
     points.forEach((pt, idx) => {
       if (pt.ok) return;
       const dns = MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
+      const issue = !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
       const prevX = idx > 0 ? points[idx - 1].x : pt.x;
       const nextX = idx < points.length - 1 ? points[idx + 1].x : pt.x;
       const startX = idx > 0 ? (prevX + pt.x) / 2 : Math.max(pad.left, pt.x - Math.max(6, (nextX - pt.x) / 2));
@@ -656,18 +659,19 @@
       rect.setAttribute('y', `${top}`);
       rect.setAttribute('width', `${width}`);
       rect.setAttribute('height', `${bottom - top}`);
-      rect.setAttribute('fill', dns ? 'rgba(242, 153, 74, 0.22)' : 'rgba(255, 77, 79, 0.20)');
+      rect.setAttribute('fill', (dns || issue) ? 'rgba(242, 153, 74, 0.22)' : 'rgba(255, 77, 79, 0.20)');
       svg.appendChild(rect);
     });
   }
 
   function renderPoint(svg, pt, idx, total) {
     const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
+    const issue = !pt.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', pt.x.toFixed(2));
     circle.setAttribute('cy', pt.y.toFixed(2));
     circle.setAttribute('r', (idx === 0 || idx === total - 1) ? '4' : '2.5');
-    circle.setAttribute('fill', pt.ok ? '#2dd27b' : (dns ? '#f2994a' : '#ff6b6b'));
+    circle.setAttribute('fill', pt.ok ? '#2dd27b' : ((dns || issue) ? '#f2994a' : '#ff6b6b'));
     svg.appendChild(circle);
   }
 
@@ -707,7 +711,10 @@
 
   function pointTooltipText(pt) {
     const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
-    const statusText = pt.ok ? MonitoringPage.t('monitoring.status.up') : (dns ? MonitoringPage.t('monitoring.status.dns') : MonitoringPage.t('monitoring.status.down'));
+    const issue = !pt.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
+    const statusText = pt.ok
+      ? MonitoringPage.t('monitoring.status.up')
+      : (dns ? MonitoringPage.t('monitoring.status.dns') : (issue ? MonitoringPage.t('monitoring.status.issue') : MonitoringPage.t('monitoring.status.down')));
     const codeText = pt.statusCode ? `HTTP ${pt.statusCode}` : '-';
     const errText = pt.error ? MonitoringPage.sanitizeErrorMessage(pt.error) : '-';
     return [
@@ -912,6 +919,7 @@
     const val = (status || '').toLowerCase();
     if (val === 'up') return 'up';
     if (val === 'dns') return 'dns';
+    if (val === 'issue') return 'issue';
     if (val === 'paused') return 'paused';
     if (val === 'maintenance' || val === 'maintenance_start' || val === 'maintenance_end') return 'maintenance';
     return 'down';

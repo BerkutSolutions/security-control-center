@@ -20,6 +20,10 @@ func (e *Engine) handleAutoIncident(ctx context.Context, m store.Monitor, prev, 
 	prevStatus := ""
 	if prev != nil {
 		prevStatus = strings.ToLower(strings.TrimSpace(prev.LastResultStatus))
+		// Do not treat retrying failures as a confirmed DOWN/DNS state for automation transitions.
+		if prev.RetryAt != nil && prevStatus != "up" {
+			prevStatus = "up"
+		}
 	}
 
 	// Adaptive policy (score-based), keeps backward compatibility when disabled.
@@ -136,7 +140,8 @@ func (e *Engine) handleAutoIncident(ctx context.Context, m store.Monitor, prev, 
 
 		return
 	}
-	if rawStatus == "down" && prevStatus != "down" {
+	// Legacy policy: open only on confirmed DOWN transitions (after retries are exhausted).
+	if rawStatus == "down" && next.RetryAt == nil && prevStatus != "down" {
 		existing, _ := e.incidents.FindOpenIncidentBySource(ctx, "monitoring", m.ID)
 		if existing != nil {
 			return

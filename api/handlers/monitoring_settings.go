@@ -29,6 +29,12 @@ type monitoringSettingsPayload struct {
 	AutoTLSIncident         *bool   `json:"auto_tls_incident"`
 	AutoTLSIncidentDays     int     `json:"auto_tls_incident_days"`
 	AutoIncidentCloseOnUp   *bool   `json:"auto_incident_close_on_up"`
+
+	IncidentScoringEnabled         *bool   `json:"incident_scoring_enabled"`
+	IncidentScoringModel           string  `json:"incident_scoring_model"`
+	IncidentScoreOpenThreshold     float64 `json:"incident_score_open_threshold"`
+	IncidentScoreCloseThreshold    float64 `json:"incident_score_close_threshold"`
+	IncidentScoreOpenConfirmations int     `json:"incident_score_open_confirmations"`
 }
 
 func (h *MonitoringHandler) GetSettings(w http.ResponseWriter, r *http.Request) {
@@ -116,6 +122,21 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.AutoIncidentCloseOnUp != nil {
 		current.AutoIncidentCloseOnUp = *payload.AutoIncidentCloseOnUp
 	}
+	if payload.IncidentScoringEnabled != nil {
+		current.IncidentScoringEnabled = *payload.IncidentScoringEnabled
+	}
+	if strings.TrimSpace(payload.IncidentScoringModel) != "" {
+		current.IncidentScoringModel = strings.ToLower(strings.TrimSpace(payload.IncidentScoringModel))
+	}
+	if payload.IncidentScoreOpenThreshold > 0 {
+		current.IncidentScoreOpenThreshold = payload.IncidentScoreOpenThreshold
+	}
+	if payload.IncidentScoreCloseThreshold > 0 {
+		current.IncidentScoreCloseThreshold = payload.IncidentScoreCloseThreshold
+	}
+	if payload.IncidentScoreOpenConfirmations > 0 {
+		current.IncidentScoreOpenConfirmations = payload.IncidentScoreOpenConfirmations
+	}
 	if current.RetentionDays <= 0 || current.DefaultTimeoutSec <= 0 || current.DefaultIntervalSec <= 0 || current.MaxConcurrentChecks <= 0 {
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
@@ -140,6 +161,29 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
 	}
+	if current.IncidentScoreOpenThreshold < 0 || current.IncidentScoreOpenThreshold > 1 {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
+	if current.IncidentScoringModel == "" {
+		current.IncidentScoringModel = "heuristic"
+	}
+	if current.IncidentScoringModel != "heuristic" && current.IncidentScoringModel != "hmm3" {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
+	if current.IncidentScoreCloseThreshold < 0 || current.IncidentScoreCloseThreshold > 1 {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
+	if current.IncidentScoreCloseThreshold >= current.IncidentScoreOpenThreshold {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
+	if current.IncidentScoreOpenConfirmations < 1 || current.IncidentScoreOpenConfirmations > 10 {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
 	if err := h.store.UpdateSettings(r.Context(), current); err != nil {
 		http.Error(w, errServerError, http.StatusInternalServerError)
 		return
@@ -151,6 +195,7 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if prevTLSRefresh != current.TLSRefreshHours || prevTLSExpiring != current.TLSExpiringDays {
 		h.audit(r, monitorAuditCertsSettingsUpdate, settingsDetails(current))
 	}
+	h.audit(r, monitorAuditIncidentScoringUpdate, settingsDetails(current))
 	writeJSON(w, http.StatusOK, current)
 }
 
@@ -178,6 +223,11 @@ func settingsDetails(s *store.MonitorSettings) string {
 		"auto_tls_incident=" + strconv.FormatBool(s.AutoTLSIncident),
 		"auto_tls_incident_days=" + strconv.Itoa(s.AutoTLSIncidentDays),
 		"auto_incident_close_on_up=" + strconv.FormatBool(s.AutoIncidentCloseOnUp),
+		"incident_scoring_enabled=" + strconv.FormatBool(s.IncidentScoringEnabled),
+		"incident_scoring_model=" + s.IncidentScoringModel,
+		"incident_score_open_threshold=" + strconv.FormatFloat(s.IncidentScoreOpenThreshold, 'f', 4, 64),
+		"incident_score_close_threshold=" + strconv.FormatFloat(s.IncidentScoreCloseThreshold, 'f', 4, 64),
+		"incident_score_open_confirmations=" + strconv.Itoa(s.IncidentScoreOpenConfirmations),
 	}
 	return strings.Join(parts, "|")
 }

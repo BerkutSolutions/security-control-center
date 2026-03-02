@@ -28,6 +28,11 @@
     els.autoTLSIncident = document.getElementById('monitoring-auto-tls-incident');
     els.autoTLSIncidentDays = document.getElementById('monitoring-auto-tls-incident-days');
     els.autoIncidentCloseOnUp = document.getElementById('monitoring-auto-incident-close-on-up');
+    els.incidentScoringEnabled = document.getElementById('monitoring-incident-scoring-enabled');
+    els.incidentScoringModel = document.getElementById('monitoring-incident-scoring-model');
+    els.incidentScoreOpen = document.getElementById('monitoring-incident-score-open-threshold');
+    els.incidentScoreClose = document.getElementById('monitoring-incident-score-close-threshold');
+    els.incidentScoreConfirmations = document.getElementById('monitoring-incident-score-open-confirmations');
 
     const canManage = MonitoringPage.hasPermission('monitoring.settings.manage');
     if (!canManage) {
@@ -92,6 +97,11 @@
     if (els.autoTLSIncident) els.autoTLSIncident.checked = !!settings.auto_tls_incident;
     if (els.autoTLSIncidentDays) els.autoTLSIncidentDays.value = settings.auto_tls_incident_days || 14;
     if (els.autoIncidentCloseOnUp) els.autoIncidentCloseOnUp.checked = !!settings.auto_incident_close_on_up;
+    if (els.incidentScoringEnabled) els.incidentScoringEnabled.checked = !!settings.incident_scoring_enabled;
+    if (els.incidentScoringModel) els.incidentScoringModel.value = settings.incident_scoring_model || 'heuristic';
+    if (els.incidentScoreOpen) els.incidentScoreOpen.value = (settings.incident_score_open_threshold ?? 0.85);
+    if (els.incidentScoreClose) els.incidentScoreClose.value = (settings.incident_score_close_threshold ?? 0.25);
+    if (els.incidentScoreConfirmations) els.incidentScoreConfirmations.value = (settings.incident_score_open_confirmations ?? 2);
   }
 
   async function loadEngineStats() {
@@ -169,6 +179,11 @@
       auto_tls_incident: !!els.autoTLSIncident?.checked,
       auto_tls_incident_days: parseInt(els.autoTLSIncidentDays?.value, 10) || 0,
       auto_incident_close_on_up: !!els.autoIncidentCloseOnUp?.checked,
+      incident_scoring_enabled: !!els.incidentScoringEnabled?.checked,
+      incident_scoring_model: `${els.incidentScoringModel?.value || 'heuristic'}`.trim(),
+      incident_score_open_threshold: parseFloat(els.incidentScoreOpen?.value) || 0,
+      incident_score_close_threshold: parseFloat(els.incidentScoreClose?.value) || 0,
+      incident_score_open_confirmations: parseInt(els.incidentScoreConfirmations?.value, 10) || 0,
     };
     try {
       const res = await Api.put('/api/monitoring/settings', payload);

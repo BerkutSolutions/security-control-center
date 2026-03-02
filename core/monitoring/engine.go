@@ -468,17 +468,54 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	} else if maintenanceActive {
 		status = "maintenance"
 	}
+
+	inp := IncidentScoreInput{
+		RawStatus:      rawStatus,
+		DisplayStatus:  status,
+		ErrorKind:  string(decision.ErrorKind),
+		StatusCode: result.StatusCode,
+		LatencyMs:  result.LatencyMs,
+		Now:        now,
+		Prev:       prev,
+		Monitor:    m,
+		Settings:   settings,
+	}
+	model := strings.ToLower(strings.TrimSpace(settings.IncidentScoringModel))
+	if model == "" {
+		model = IncidentScoringModelHeuristic
+	}
+	score := IncidentScore{Value: 0, Reasons: nil}
+	var posterior []float64
+	var scoreState string
+	var scoreObs string
+	if model == IncidentScoringModelHMM3 {
+		hmmRes := ComputeIncidentScoreHMM3(inp)
+		score = hmmRes.Score
+		posterior = hmmRes.Posterior
+		scoreState = hmmRes.State
+		scoreObs = hmmRes.Observation
+	} else {
+		score = ComputeIncidentScore(inp)
+	}
+	scoreVal := score.Value
+	scoreAt := now.UTC()
 	next := &store.MonitorState{
-		MonitorID:         m.ID,
-		Status:            status,
-		LastResultStatus:  rawStatus,
-		MaintenanceActive: maintenanceActive,
-		LastCheckedAt:     &now,
-		LastError:         result.Error,
-		RetryAt:           decision.RetryAt,
-		RetryAttempt:      decision.RetryAttempt,
-		LastAttemptAt:     &now,
-		LastErrorKind:     string(decision.ErrorKind),
+		MonitorID:              m.ID,
+		Status:                 status,
+		LastResultStatus:       rawStatus,
+		MaintenanceActive:      maintenanceActive,
+		LastCheckedAt:          &now,
+		LastError:              result.Error,
+		RetryAt:                decision.RetryAt,
+		RetryAttempt:           decision.RetryAttempt,
+		LastAttemptAt:          &now,
+		LastErrorKind:          string(decision.ErrorKind),
+		IncidentScore:          &scoreVal,
+		IncidentScoreUpdatedAt: &scoreAt,
+		IncidentScoreReasons:   score.Reasons,
+		IncidentScorePosterior: posterior,
+		IncidentScoreState:     scoreState,
+		IncidentScoreObs:       scoreObs,
 	}
 	if result.StatusCode != nil {
 		val := *result.StatusCode

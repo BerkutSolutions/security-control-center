@@ -1,4 +1,55 @@
 services:
+  certgen:
+    image: alpine:3.20
+    profiles: ["proxy"]
+    restart: "no"
+    environment:
+      # Optional overrides (if not set, defaults are used in the script)
+      - CERT_DAYS
+      - CERT_CN
+      - CERT_DNS
+      - CERT_IP
+    volumes:
+      # Host path for TLS certs. certgen will create `fullchain.pem` + `privkey.pem` if missing.
+      - ${TLS_CERTS_PATH:-./docker/certs}:/certs
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -e
+        apk add --no-cache openssl >/dev/null
+        mkdir -p /certs
+        if [ -s /certs/fullchain.pem ] && [ -s /certs/privkey.pem ]; then
+          echo "certgen: certs already exist"
+          exit 0
+        fi
+        CERT_DAYS="${CERT_DAYS:-365}"
+        CERT_CN="${CERT_CN:-localhost}"
+        CERT_DNS="${CERT_DNS:-localhost}"
+        CERT_IP="${CERT_IP:-127.0.0.1}"
+        echo "certgen: generating self-signed certs into /certs"
+        cat >/tmp/openssl.cnf <<EOF
+        [ req ]
+        default_bits       = 2048
+        prompt             = no
+        default_md         = sha256
+        req_extensions     = req_ext
+        distinguished_name = dn
+
+        [ dn ]
+        CN = $${CERT_CN}
+
+        [ req_ext ]
+        subjectAltName = @alt_names
+
+        [ alt_names ]
+        DNS.1 = $${CERT_DNS}
+        IP.1  = $${CERT_IP}
+        EOF
+        openssl req -x509 -nodes -newkey rsa:2048 -days "$${CERT_DAYS}" \
+          -keyout /certs/privkey.pem -out /certs/fullchain.pem \
+          -config /tmp/openssl.cnf
+
   postgres:
     image: postgres:16-alpine
     environment:
@@ -67,6 +118,8 @@ services:
     image: nginx:1.27-alpine
     profiles: ["proxy"]
     depends_on:
+      certgen:
+        condition: service_completed_successfully
       berkut:
         condition: service_healthy
       onlyoffice:

@@ -21,7 +21,9 @@
 docker compose -f docs/ru/docker-compose.https.yml up -d
 ```
 
-После запуска открывайте приложение через адрес `nginx` (обычно `http://<host>:80`), а не напрямую через `berkut:8080`.
+После запуска открывайте приложение через адрес `nginx` (обычно `https://<host>`), а не напрямую через `berkut:8080`.
+
+Примечание: в примере есть сервис `certgen` — он создаёт self-signed сертификаты в `TLS_CERTS_PATH` (файлы `fullchain.pem` и `privkey.pem`), если их ещё нет. Вы можете заменить эти файлы своими сертификатами.
 
 Важно: если вы откроете SCC напрямую на `http://localhost:8080`, путь `/office/*` на этом origin не будет проксироваться в OnlyOffice, и редактор не загрузится (404).
 
@@ -56,6 +58,8 @@ Security notes:
 ### 2. Создайте сертификаты
 
 Из корня проекта:
+
+Примечание: при запуске `docker compose --profile proxy ...` сервис `certgen` создаёт self-signed сертификаты автоматически (в `TLS_CERTS_PATH`), так что ручная генерация ниже — опциональна (полезно, если хотите контролировать CN/SAN).
 
 ```powershell
 cd C:\Users\chape\Desktop\SCC
@@ -107,6 +111,8 @@ docker compose --profile proxy up -d --build
 ### 2. Создайте сертификаты
 
 Из корня проекта:
+
+Примечание: при запуске `docker compose --profile proxy ...` сервис `certgen` создаёт self-signed сертификаты автоматически (в `TLS_CERTS_PATH`), так что ручная генерация ниже — опциональна (полезно, если хотите контролировать CN/SAN).
 
 ```bash
 cd ~/path/to/SCC

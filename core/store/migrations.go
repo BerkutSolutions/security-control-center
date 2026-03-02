@@ -1364,6 +1364,12 @@ func ensureMonitoringColumns(ctx context.Context, db *sql.DB) error {
 		{Table: "monitor_state", Name: "last_error_kind", SQL: "ALTER TABLE monitor_state ADD COLUMN last_error_kind TEXT NOT NULL DEFAULT ''"},
 		{Table: "monitor_state", Name: "tls_days_left", SQL: "ALTER TABLE monitor_state ADD COLUMN tls_days_left INTEGER"},
 		{Table: "monitor_state", Name: "tls_not_after", SQL: "ALTER TABLE monitor_state ADD COLUMN tls_not_after TIMESTAMP"},
+		{Table: "monitor_state", Name: "incident_score", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score REAL"},
+		{Table: "monitor_state", Name: "incident_score_updated_at", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_updated_at TIMESTAMP"},
+		{Table: "monitor_state", Name: "incident_score_reasons", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_reasons TEXT NOT NULL DEFAULT '[]'"},
+		{Table: "monitor_state", Name: "incident_score_posterior", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_posterior TEXT NOT NULL DEFAULT '[]'"},
+		{Table: "monitor_state", Name: "incident_score_state", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_state TEXT NOT NULL DEFAULT ''"},
+		{Table: "monitor_state", Name: "incident_score_observation", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_observation TEXT NOT NULL DEFAULT ''"},
 		{Table: "monitoring_settings", Name: "tls_refresh_hours", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_refresh_hours INTEGER NOT NULL DEFAULT 24"},
 		{Table: "monitoring_settings", Name: "tls_expiring_days", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_expiring_days INTEGER NOT NULL DEFAULT 30"},
 		{Table: "monitoring_settings", Name: "notify_suppress_minutes", SQL: "ALTER TABLE monitoring_settings ADD COLUMN notify_suppress_minutes INTEGER NOT NULL DEFAULT 5"},
@@ -1379,6 +1385,11 @@ func ensureMonitoringColumns(ctx context.Context, db *sql.DB) error {
 		{Table: "monitoring_settings", Name: "default_retries", SQL: "ALTER TABLE monitoring_settings ADD COLUMN default_retries INTEGER NOT NULL DEFAULT 2"},
 		{Table: "monitoring_settings", Name: "default_retry_interval_sec", SQL: "ALTER TABLE monitoring_settings ADD COLUMN default_retry_interval_sec INTEGER NOT NULL DEFAULT 30"},
 		{Table: "monitoring_settings", Name: "default_sla_target_pct", SQL: "ALTER TABLE monitoring_settings ADD COLUMN default_sla_target_pct REAL NOT NULL DEFAULT 90"},
+		{Table: "monitoring_settings", Name: "incident_scoring_enabled", SQL: "ALTER TABLE monitoring_settings ADD COLUMN incident_scoring_enabled INTEGER NOT NULL DEFAULT 0"},
+		{Table: "monitoring_settings", Name: "incident_scoring_model", SQL: "ALTER TABLE monitoring_settings ADD COLUMN incident_scoring_model TEXT NOT NULL DEFAULT 'heuristic'"},
+		{Table: "monitoring_settings", Name: "incident_score_open_threshold", SQL: "ALTER TABLE monitoring_settings ADD COLUMN incident_score_open_threshold REAL NOT NULL DEFAULT 0.85"},
+		{Table: "monitoring_settings", Name: "incident_score_close_threshold", SQL: "ALTER TABLE monitoring_settings ADD COLUMN incident_score_close_threshold REAL NOT NULL DEFAULT 0.25"},
+		{Table: "monitoring_settings", Name: "incident_score_open_confirmations", SQL: "ALTER TABLE monitoring_settings ADD COLUMN incident_score_open_confirmations INTEGER NOT NULL DEFAULT 2"},
 	}
 	for _, c := range cols {
 		exists, err := columnExists(ctx, db, c.Table, c.Name)

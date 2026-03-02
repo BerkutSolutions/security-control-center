@@ -119,3 +119,9 @@ func classifyResultKind(res CheckResult) ErrorKind {
 	}
 	return ErrorKindRequestFailed
 }
+
+// ClassifyResultKind is a small exported wrapper used by internal modules (e.g. experiments)
+// to keep the error kind logic consistent without duplicating heuristics.
+func ClassifyResultKind(res CheckResult) ErrorKind {
+	return classifyResultKind(res)
+}

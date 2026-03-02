@@ -186,6 +186,14 @@
       badge.textContent = MonitoringPage.t('monitoring.status.maintenance');
       meta.appendChild(badge);
     }
+    const score = item.incident_score;
+    if (score !== undefined && score !== null && typeof MonitoringPage !== 'undefined' && MonitoringPage.incidentScoring) {
+      const badge = document.createElement('span');
+      const cls = MonitoringPage.incidentScoring.scoreClass(score);
+      badge.className = `status-badge ${cls}`;
+      badge.textContent = `${MonitoringPage.t('monitoring.scoring.score')}: ${MonitoringPage.incidentScoring.formatScore(score)}`;
+      meta.appendChild(badge);
+    }
     card.appendChild(title);
     card.appendChild(meta);
     card.addEventListener('click', () => {

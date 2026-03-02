@@ -64,7 +64,7 @@ func (s *monitoringStore) ListMonitors(ctx context.Context, filter MonitorFilter
 		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, m.request_body, m.request_body_type, m.headers_json,
 			m.interval_sec, m.timeout_sec, m.retries, m.retry_interval_sec, m.allowed_status_json, m.ignore_tls_errors, m.notify_tls_expiring, m.is_active, m.is_paused,
 			m.tags_json, m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, m.incident_severity, m.incident_type_id, m.created_by, m.created_at, m.updated_at,
-			COALESCE(s.status, ''), s.last_checked_at, s.last_up_at, s.last_down_at, s.last_latency_ms, s.last_status_code, s.last_error
+			COALESCE(s.status, ''), s.last_checked_at, s.last_up_at, s.last_down_at, s.last_latency_ms, s.last_status_code, s.last_error, s.incident_score
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id`
 	var clauses []string
@@ -341,11 +341,12 @@ func scanMonitorSummary(rows *sql.Rows) (MonitorSummary, error) {
 	var status sql.NullString
 	var lastChecked, lastUp, lastDown sql.NullTime
 	var lastLatency, lastStatus sql.NullInt64
+	var incidentScore sql.NullFloat64
 	if err := rows.Scan(
 		&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &m.RequestBody, &m.RequestBodyType, &headersRaw,
 		&m.IntervalSec, &m.TimeoutSec, &m.Retries, &m.RetryIntervalSec, &allowedRaw, &ignoreTLS, &notifyTLS, &isActive, &isPaused,
 		&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &m.IncidentSeverity, &m.IncidentTypeID, &m.CreatedBy, &m.CreatedAt, &m.UpdatedAt,
-		&status, &lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &m.LastError); err != nil {
+		&status, &lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &m.LastError, &incidentScore); err != nil {
 		return m, err
 	}
 	m.IgnoreTLSErrors = ignoreTLS == 1
@@ -389,6 +390,10 @@ func scanMonitorSummary(rows *sql.Rows) (MonitorSummary, error) {
 	if lastStatus.Valid {
 		val := int(lastStatus.Int64)
 		m.LastStatusCode = &val
+	}
+	if incidentScore.Valid {
+		val := incidentScore.Float64
+		m.IncidentScore = &val
 	}
 	return m, nil
 }

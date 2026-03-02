@@ -60,6 +60,13 @@ type IncidentMeta struct {
 	Tags                  []string `json:"tags,omitempty"`
 	ClosureOutcome        string   `json:"closure_outcome,omitempty"`
 	Postmortem            string   `json:"postmortem,omitempty"`
+
+	AutoIncidentPolicy              string   `json:"auto_incident_policy,omitempty"`
+	AutoIncidentScore               *float64 `json:"auto_incident_score,omitempty"`
+	AutoIncidentScoreOpenThreshold  *float64 `json:"auto_incident_score_open_threshold,omitempty"`
+	AutoIncidentScoreCloseThreshold *float64 `json:"auto_incident_score_close_threshold,omitempty"`
+	AutoIncidentScoreConfirmations  *int     `json:"auto_incident_score_confirmations,omitempty"`
+	AutoIncidentScoreReasons        []string `json:"auto_incident_score_reasons,omitempty"`
 }
 
 type IncidentStage struct {

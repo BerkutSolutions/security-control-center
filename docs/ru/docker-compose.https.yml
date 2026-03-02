@@ -1,4 +1,55 @@
 services:
+  certgen:
+    image: alpine:3.20
+    container_name: berkut-certgen
+    restart: "no"
+    environment:
+      # Optional overrides (if not set, defaults are used in the script)
+      - CERT_DAYS
+      - CERT_CN
+      - CERT_DNS
+      - CERT_IP
+    volumes:
+      # Host path for TLS certs. certgen will create `fullchain.pem` + `privkey.pem` if missing.
+      - ${TLS_CERTS_PATH:-./docker/certs}:/certs
+    command:
+      - /bin/sh
+      - -lc
+      - |
+        set -e
+        apk add --no-cache openssl >/dev/null
+        mkdir -p /certs
+        if [ -s /certs/fullchain.pem ] && [ -s /certs/privkey.pem ]; then
+          echo "certgen: certs already exist"
+          exit 0
+        fi
+        CERT_DAYS="${CERT_DAYS:-365}"
+        CERT_CN="${CERT_CN:-localhost}"
+        CERT_DNS="${CERT_DNS:-localhost}"
+        CERT_IP="${CERT_IP:-127.0.0.1}"
+        echo "certgen: generating self-signed certs into /certs"
+        cat >/tmp/openssl.cnf <<EOF
+        [ req ]
+        default_bits       = 2048
+        prompt             = no
+        default_md         = sha256
+        req_extensions     = req_ext
+        distinguished_name = dn
+
+        [ dn ]
+        CN = $${CERT_CN}
+
+        [ req_ext ]
+        subjectAltName = @alt_names
+
+        [ alt_names ]
+        DNS.1 = $${CERT_DNS}
+        IP.1  = $${CERT_IP}
+        EOF
+        openssl req -x509 -nodes -newkey rsa:2048 -days "$${CERT_DAYS}" \
+          -keyout /certs/privkey.pem -out /certs/fullchain.pem \
+          -config /tmp/openssl.cnf
+
   postgres:
     image: postgres:16-alpine
     container_name: berkut-postgres
@@ -133,12 +184,16 @@ services:
     image: nginx:1.27-alpine
     container_name: berkut-nginx
     depends_on:
+      certgen:
+        condition: service_completed_successfully
       berkut:
         condition: service_healthy
       onlyoffice:
         condition: service_started
     environment:
       TZ: ${TZ:-Europe/Moscow}
+    volumes:
+      - ${TLS_CERTS_PATH:-./docker/certs}:/etc/nginx/certs:ro
     command:
       - /bin/sh
       - -c
@@ -147,6 +202,21 @@ services:
         server {
           listen 80;
           server_name _;
+          return 301 https://$$host$$request_uri;
+        }
+
+        server {
+          listen 443 ssl;
+          http2 on;
+          server_name _;
+
+          ssl_certificate     /etc/nginx/certs/fullchain.pem;
+          ssl_certificate_key /etc/nginx/certs/privkey.pem;
+          ssl_session_timeout 1d;
+          ssl_session_cache shared:SSL:10m;
+          ssl_protocols TLSv1.2 TLSv1.3;
+          ssl_prefer_server_ciphers off;
+
           client_max_body_size 50m;
 
           location / {
@@ -202,6 +272,7 @@ services:
         nginx -g 'daemon off;'
     ports:
       - "${PROXY_HTTP_PORT:-80}:80"
+      - "${PROXY_HTTPS_PORT:-443}:443"
     restart: unless-stopped
     networks:
       - internal

@@ -48,6 +48,7 @@ type MonitorSummary struct {
 	LastLatencyMs  *int       `json:"last_latency_ms,omitempty"`
 	LastStatusCode *int       `json:"last_status_code,omitempty"`
 	LastError      string     `json:"last_error,omitempty"`
+	IncidentScore  *float64   `json:"incident_score,omitempty"`
 }
 
 type MonitorState struct {
@@ -70,6 +71,13 @@ type MonitorState struct {
 	AvgLatency24h     float64    `json:"avg_latency_24h"`
 	TLSDaysLeft       *int       `json:"tls_days_left,omitempty"`
 	TLSNotAfter       *time.Time `json:"tls_not_after,omitempty"`
+
+	IncidentScore          *float64   `json:"incident_score,omitempty"`
+	IncidentScoreUpdatedAt *time.Time `json:"incident_score_updated_at,omitempty"`
+	IncidentScoreReasons   []string   `json:"incident_score_reasons,omitempty"`
+	IncidentScorePosterior []float64  `json:"incident_score_posterior,omitempty"`
+	IncidentScoreState     string     `json:"incident_score_state,omitempty"`
+	IncidentScoreObs       string     `json:"incident_score_observation,omitempty"`
 }
 
 type MonitorMetric struct {
@@ -159,27 +167,34 @@ type MaintenanceWindow struct {
 }
 
 type MonitorSettings struct {
-	ID                      int64     `json:"id"`
-	RetentionDays           int       `json:"retention_days"`
-	MaxConcurrentChecks     int       `json:"max_concurrent_checks"`
-	DefaultTimeoutSec       int       `json:"default_timeout_sec"`
-	DefaultIntervalSec      int       `json:"default_interval_sec"`
-	EngineEnabled           bool      `json:"engine_enabled"`
-	AllowPrivateNetworks    bool      `json:"allow_private_networks"`
-	TLSRefreshHours         int       `json:"tls_refresh_hours"`
-	TLSExpiringDays         int       `json:"tls_expiring_days"`
-	NotifySuppressMinutes   int       `json:"notify_suppress_minutes"`
-	NotifyRepeatDownMinutes int       `json:"notify_repeat_down_minutes"`
-	NotifyMaintenance       bool      `json:"notify_maintenance"`
-	LogDNSEvents            bool      `json:"log_dns_events"`
-	AutoTaskOnDown          bool      `json:"auto_task_on_down"`
-	AutoTLSIncident         bool      `json:"auto_tls_incident"`
-	AutoTLSIncidentDays     int       `json:"auto_tls_incident_days"`
-	AutoIncidentCloseOnUp   bool      `json:"auto_incident_close_on_up"`
-	DefaultRetries          int       `json:"default_retries"`
-	DefaultRetryIntervalSec int       `json:"default_retry_interval_sec"`
-	DefaultSLATargetPct     float64   `json:"default_sla_target_pct"`
-	UpdatedAt               time.Time `json:"updated_at"`
+	ID                      int64   `json:"id"`
+	RetentionDays           int     `json:"retention_days"`
+	MaxConcurrentChecks     int     `json:"max_concurrent_checks"`
+	DefaultTimeoutSec       int     `json:"default_timeout_sec"`
+	DefaultIntervalSec      int     `json:"default_interval_sec"`
+	EngineEnabled           bool    `json:"engine_enabled"`
+	AllowPrivateNetworks    bool    `json:"allow_private_networks"`
+	TLSRefreshHours         int     `json:"tls_refresh_hours"`
+	TLSExpiringDays         int     `json:"tls_expiring_days"`
+	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
+	NotifyRepeatDownMinutes int     `json:"notify_repeat_down_minutes"`
+	NotifyMaintenance       bool    `json:"notify_maintenance"`
+	LogDNSEvents            bool    `json:"log_dns_events"`
+	AutoTaskOnDown          bool    `json:"auto_task_on_down"`
+	AutoTLSIncident         bool    `json:"auto_tls_incident"`
+	AutoTLSIncidentDays     int     `json:"auto_tls_incident_days"`
+	AutoIncidentCloseOnUp   bool    `json:"auto_incident_close_on_up"`
+	DefaultRetries          int     `json:"default_retries"`
+	DefaultRetryIntervalSec int     `json:"default_retry_interval_sec"`
+	DefaultSLATargetPct     float64 `json:"default_sla_target_pct"`
+
+	IncidentScoringEnabled         bool    `json:"incident_scoring_enabled"`
+	IncidentScoringModel           string  `json:"incident_scoring_model"`
+	IncidentScoreOpenThreshold     float64 `json:"incident_score_open_threshold"`
+	IncidentScoreCloseThreshold    float64 `json:"incident_score_close_threshold"`
+	IncidentScoreOpenConfirmations int     `json:"incident_score_open_confirmations"`
+
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 type MonitorFilter struct {

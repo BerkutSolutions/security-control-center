@@ -124,8 +124,8 @@ func (e *Engine) handleAutomation(ctx context.Context, m store.Monitor, prev, ne
 	if st == nil {
 		st = &store.MonitorNotificationState{MonitorID: m.ID}
 	}
-	if rawStatus == "down" {
-		if prev == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) != "down" {
+	if rawStatus != "up" {
+		if prev == nil || strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) == "up" {
 			st.DownStartedAt = &now
 			st.DownSequence = 1
 		} else {
@@ -138,7 +138,7 @@ func (e *Engine) handleAutomation(ctx context.Context, m store.Monitor, prev, ne
 	e.handleNotifications(ctx, m, prev, next, rawStatus, now, st, tlsRecord, result, settings)
 	e.handleAutoTaskOnDown(ctx, m, prev, next, now)
 	e.handleAutoTLSIncident(ctx, m, prev, next, tlsRecord, now, settings)
-	e.handleAutoIncident(ctx, m, prev, next, rawStatus, now, settings)
+	e.handleAutoIncident(ctx, m, prev, next, rawStatus, now, st, settings)
 	_ = e.store.UpsertNotificationState(ctx, st)
 }
 

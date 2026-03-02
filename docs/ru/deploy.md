@@ -40,6 +40,13 @@ Upgrade:
 - Preflight: `GET /api/app/preflight` (право `app.preflight.view`)
 - Backup-before-migrate (опционально): `BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE=true`
 
+## HTTPS (reverse-proxy) + OnlyOffice
+В `docker-compose.yaml` есть профиль `proxy` (сервисы `nginx` + `onlyoffice` + `certgen`):
+```bash
+docker compose --profile proxy up -d --build
+```
+Сертификаты берутся из `TLS_CERTS_PATH` (по умолчанию `./docker/certs`). Если `fullchain.pem`/`privkey.pem` отсутствуют, `certgen` сгенерирует self-signed сертификат при первом запуске (можно заменить своими файлами).
+
 ## Типовой деплой
 ```bash
 cp .env.example .env

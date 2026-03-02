@@ -3,13 +3,14 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"time"
 )
 
 func (s *monitoringStore) GetMonitorState(ctx context.Context, id int64) (*MonitorState, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
+		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after, incident_score, incident_score_updated_at, incident_score_reasons, incident_score_posterior, incident_score_state, incident_score_observation
 		FROM monitor_state WHERE monitor_id=?`, id)
 	return scanMonitorState(row)
 }
@@ -23,7 +24,7 @@ func (s *monitoringStore) ListMonitorStates(ctx context.Context, ids []int64) ([
 		args = append(args, id)
 	}
 	query := `
-		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after
+		SELECT monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after, incident_score, incident_score_updated_at, incident_score_reasons, incident_score_posterior, incident_score_state, incident_score_observation
 		FROM monitor_state WHERE monitor_id IN (` + placeholders(len(ids)) + `)`
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
@@ -44,9 +45,21 @@ func (s *monitoringStore) ListMonitorStates(ctx context.Context, ids []int64) ([
 }
 
 func (s *monitoringStore) UpsertMonitorState(ctx context.Context, st *MonitorState) error {
+	reasonsJSON := "[]"
+	if st != nil && len(st.IncidentScoreReasons) > 0 {
+		if b, err := json.Marshal(st.IncidentScoreReasons); err == nil {
+			reasonsJSON = string(b)
+		}
+	}
+	posteriorJSON := "[]"
+	if st != nil && len(st.IncidentScorePosterior) > 0 {
+		if b, err := json.Marshal(st.IncidentScorePosterior); err == nil {
+			posteriorJSON = string(b)
+		}
+	}
 	_, err := s.db.ExecContext(ctx, `
-		INSERT INTO monitor_state(monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+		INSERT INTO monitor_state(monitor_id, status, last_result_status, maintenance_active, retry_at, retry_attempt, last_attempt_at, last_error_kind, last_checked_at, last_up_at, last_down_at, last_latency_ms, last_status_code, last_error, uptime_24h, uptime_30d, avg_latency_24h, tls_days_left, tls_not_after, incident_score, incident_score_updated_at, incident_score_reasons, incident_score_posterior, incident_score_state, incident_score_observation)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 		ON CONFLICT (monitor_id)
 		DO UPDATE SET
 			status=excluded.status,
@@ -66,8 +79,17 @@ func (s *monitoringStore) UpsertMonitorState(ctx context.Context, st *MonitorSta
 			uptime_30d=excluded.uptime_30d,
 			avg_latency_24h=excluded.avg_latency_24h,
 			tls_days_left=excluded.tls_days_left,
-			tls_not_after=excluded.tls_not_after`,
-		st.MonitorID, st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.RetryAt, st.RetryAttempt, st.LastAttemptAt, st.LastErrorKind, st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError, st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter)
+			tls_not_after=excluded.tls_not_after,
+			incident_score=excluded.incident_score,
+			incident_score_updated_at=excluded.incident_score_updated_at,
+			incident_score_reasons=excluded.incident_score_reasons,
+			incident_score_posterior=excluded.incident_score_posterior,
+			incident_score_state=excluded.incident_score_state,
+			incident_score_observation=excluded.incident_score_observation`,
+		st.MonitorID, st.Status, st.LastResultStatus, boolToInt(st.MaintenanceActive), st.RetryAt, st.RetryAttempt, st.LastAttemptAt, st.LastErrorKind,
+		st.LastCheckedAt, st.LastUpAt, st.LastDownAt, st.LastLatencyMs, st.LastStatusCode, st.LastError,
+		st.Uptime24h, st.Uptime30d, st.AvgLatency24h, st.TLSDaysLeft, st.TLSNotAfter,
+		st.IncidentScore, st.IncidentScoreUpdatedAt, reasonsJSON, posteriorJSON, st.IncidentScoreState, st.IncidentScoreObs)
 	return err
 }
 
@@ -240,10 +262,18 @@ func scanMonitorState(row interface {
 	var maintenanceInt sql.NullInt64
 	var tlsDays sql.NullInt64
 	var tlsNotAfter sql.NullTime
+	var incidentScore sql.NullFloat64
+	var incidentScoreUpdatedAt sql.NullTime
+	var incidentScoreReasons sql.NullString
+	var incidentScorePosterior sql.NullString
+	var incidentScoreState sql.NullString
+	var incidentScoreObs sql.NullString
 	if err := row.Scan(
 		&st.MonitorID, &st.Status, &st.LastResultStatus, &maintenanceInt, &retryAt, &retryAttempt, &lastAttemptAt, &lastErrorKind,
 		&lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &st.LastError,
-		&st.Uptime24h, &st.Uptime30d, &st.AvgLatency24h, &tlsDays, &tlsNotAfter); err != nil {
+		&st.Uptime24h, &st.Uptime30d, &st.AvgLatency24h, &tlsDays, &tlsNotAfter,
+		&incidentScore, &incidentScoreUpdatedAt, &incidentScoreReasons, &incidentScorePosterior, &incidentScoreState, &incidentScoreObs,
+	); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
@@ -289,6 +319,32 @@ func scanMonitorState(row interface {
 	}
 	if tlsNotAfter.Valid {
 		st.TLSNotAfter = &tlsNotAfter.Time
+	}
+	if incidentScore.Valid {
+		val := incidentScore.Float64
+		st.IncidentScore = &val
+	}
+	if incidentScoreUpdatedAt.Valid {
+		t := incidentScoreUpdatedAt.Time.UTC()
+		st.IncidentScoreUpdatedAt = &t
+	}
+	if incidentScoreReasons.Valid {
+		var reasons []string
+		if err := json.Unmarshal([]byte(incidentScoreReasons.String), &reasons); err == nil {
+			st.IncidentScoreReasons = reasons
+		}
+	}
+	if incidentScorePosterior.Valid && incidentScorePosterior.String != "" {
+		var post []float64
+		if err := json.Unmarshal([]byte(incidentScorePosterior.String), &post); err == nil {
+			st.IncidentScorePosterior = post
+		}
+	}
+	if incidentScoreState.Valid {
+		st.IncidentScoreState = incidentScoreState.String
+	}
+	if incidentScoreObs.Valid {
+		st.IncidentScoreObs = incidentScoreObs.String
 	}
 	return &st, nil
 }

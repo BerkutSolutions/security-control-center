@@ -23,6 +23,9 @@
     els.dot = document.getElementById('monitor-status-dot');
     els.strip = document.getElementById('monitor-status-strip');
     els.stats = document.getElementById('monitor-stats');
+    els.scoreBlock = document.getElementById('monitor-score-block');
+    els.scoreReasons = document.getElementById('monitor-score-reasons');
+    els.scoreReasonsEmpty = document.getElementById('monitor-score-reasons-empty');
     els.chart = document.getElementById('monitor-latency-chart');
     els.latencyRange = document.getElementById('monitor-latency-range');
     els.events = document.getElementById('monitor-events-list');
@@ -290,6 +293,41 @@
         ? MonitoringPage.t('monitoring.sla.ok')
         : MonitoringPage.t('monitoring.sla.violated');
       els.stats.appendChild(statCard(label, value));
+    }
+
+    if (typeof MonitoringPage !== 'undefined' && MonitoringPage.incidentScoring) {
+      const score = state?.incident_score;
+      if (score !== null && score !== undefined) {
+        els.stats.appendChild(statCard(MonitoringPage.t('monitoring.scoring.score'), MonitoringPage.incidentScoring.formatScore(score)));
+      }
+      const hmmState = `${state?.incident_score_state || ''}`.trim();
+      if (hmmState) {
+        const key = `monitoring.scoring.state.${hmmState}`;
+        const label = MonitoringPage.t(key);
+        els.stats.appendChild(statCard(
+          MonitoringPage.t('monitoring.scoring.state'),
+          (label && label !== key) ? label : hmmState,
+        ));
+      }
+      const post = state?.incident_score_posterior;
+      if (Array.isArray(post) && post.length >= 3) {
+        const n = Number(post[0]);
+        const d = Number(post[1]);
+        const o = Number(post[2]);
+        const parts = [
+          Number.isFinite(n) ? `N:${n.toFixed(2)}` : 'N:-',
+          Number.isFinite(d) ? `D:${d.toFixed(2)}` : 'D:-',
+          Number.isFinite(o) ? `O:${o.toFixed(2)}` : 'O:-',
+        ];
+        els.stats.appendChild(statCard(MonitoringPage.t('monitoring.scoring.posterior'), parts.join(' ')));
+      }
+      const reasons = state?.incident_score_reasons || [];
+      if (els.scoreBlock) {
+        const hasReasons = Array.isArray(reasons) && reasons.length > 0;
+        const hasScore = score !== null && score !== undefined;
+        els.scoreBlock.hidden = !(hasScore || hasReasons);
+      }
+      MonitoringPage.incidentScoring.renderReasonChips(els.scoreReasons, els.scoreReasonsEmpty, reasons);
     }
   }
 

@@ -36,6 +36,8 @@ Security notes:
 
 ### 2. Generate certs
 
+If `docker/certs/fullchain.pem` and `docker/certs/privkey.pem` are missing, the `certgen` service (enabled by `--profile proxy`) generates self-signed certs automatically into `TLS_CERTS_PATH`. The manual commands below are optional (useful if you want to control CN/SAN).
+
 From project root:
 
 ```powershell
@@ -83,6 +85,8 @@ Use the same values as in the Windows section:
 - `TLS_CERTS_PATH=./docker/certs`
 
 ### 2. Generate certs
+
+If `docker/certs/fullchain.pem` and `docker/certs/privkey.pem` are missing, the `certgen` service (enabled by `--profile proxy`) generates self-signed certs automatically into `TLS_CERTS_PATH`. The manual commands below are optional (useful if you want to control CN/SAN).
 
 From project root:
 

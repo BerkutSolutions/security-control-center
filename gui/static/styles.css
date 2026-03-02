@@ -3696,6 +3696,21 @@
   color: #ffb454;
 }
 
+.status-badge.score-low {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.status-badge.score-medium {
+  background: rgba(120, 200, 255, 0.16);
+  color: rgba(170, 220, 255, 0.92);
+}
+
+.status-badge.score-high {
+  background: rgba(140, 255, 170, 0.16);
+  color: rgba(190, 255, 210, 0.92);
+}
+
 .tag-input-row {
   display: flex;
   gap: 8px;

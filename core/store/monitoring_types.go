@@ -66,6 +66,8 @@ type MonitorState struct {
 	RetryAttempt      int        `json:"retry_attempt,omitempty"`
 	LastAttemptAt     *time.Time `json:"last_attempt_at,omitempty"`
 	LastErrorKind     string     `json:"last_error_kind,omitempty"`
+	// Derived (not stored in monitor_state): used by UI to consistently render ISSUE→DOWN escalation timelines.
+	IssueEscalateMinutes int `json:"issue_escalate_minutes,omitempty"`
 	Uptime24h         float64    `json:"uptime_24h"`
 	Uptime30d         float64    `json:"uptime_30d"`
 	AvgLatency24h     float64    `json:"avg_latency_24h"`

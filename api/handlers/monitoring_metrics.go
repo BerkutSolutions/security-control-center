@@ -24,6 +24,13 @@ func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
 	if state == nil {
 		state = &store.MonitorState{MonitorID: id, Status: "down", LastResultStatus: "down"}
 	}
+	if settings, err := h.store.GetSettings(r.Context()); err == nil {
+		val := settings.IssueEscalateMinutes
+		if val <= 0 {
+			val = 10
+		}
+		state.IssueEscalateMinutes = val
+	}
 	now := time.Now().UTC()
 	ok24, total24, avg24, _ := h.store.MetricsSummary(r.Context(), id, now.Add(-24*time.Hour))
 	ok30, total30, _, _ := h.store.MetricsSummary(r.Context(), id, now.Add(-30*24*time.Hour))

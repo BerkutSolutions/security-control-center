@@ -603,37 +603,17 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		}
 		shouldLog := false
 		logDNSEvents := settings.LogDNSEvents
+		// Events should reflect state transitions (UP/DOWN/DNS/ISSUE), not every repeated failed attempt.
+		// This keeps the event feed stable: one event per state change.
 		if prev.LastCheckedAt == nil || prev.LastResultStatus == "" {
-			shouldLog = rawStatus == "down" || (rawStatus == "dns" && logDNSEvents)
+			shouldLog = rawStatus == "down" || rawStatus == "issue" || (rawStatus == "dns" && logDNSEvents)
 		} else if prev.LastResultStatus != rawStatus {
 			shouldLog = rawStatus != "dns" || logDNSEvents
-		} else if rawStatus == "down" {
-			prevCode := prev.LastStatusCode
-			currCode := result.StatusCode
-			codeChanged := (prevCode == nil) != (currCode == nil)
-			if prevCode != nil && currCode != nil && *prevCode != *currCode {
-				codeChanged = true
-			}
-			if result.Error != "" && (prev.LastError != result.Error || codeChanged) {
-				shouldLog = true
-			}
 		}
 		// Do not log transient retryable failures as outages. If a retry is scheduled, defer logging until
 		// the retry budget is exhausted and the failure becomes confirmed (retry_at is cleared).
 		if rawStatus != "up" && next.RetryAt != nil {
 			shouldLog = false
-		}
-		// If the previous attempt was a retrying failure and the current one is a confirmed failure,
-		// log the event even though last_result_status might already be "down"/"dns".
-		prevRetrying := prev.RetryAt != nil
-		nowConfirmed := next.RetryAt == nil
-		if prevRetrying && nowConfirmed {
-			if rawStatus == "down" {
-				shouldLog = true
-			}
-			if rawStatus == "dns" && logDNSEvents {
-				shouldLog = true
-			}
 		}
 		if shouldLog {
 			msg := result.Error

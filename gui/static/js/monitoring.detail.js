@@ -8,6 +8,7 @@
     pollInFlight: false,
     chartMetrics: [],
     chartMeta: null,
+    chartState: null,
     chartResizeObserver: null,
     chartResizeRaf: 0,
   };
@@ -164,11 +165,12 @@
       MonitoringPage.renderMonitorList?.();
     }
     renderMaintenanceInfo(mon, state, maintenance);
-    renderStatusStrip(metrics);
+    renderStatusStrip(metrics, state);
     renderStats(mon, state);
     detailState.chartMetrics = Array.isArray(metrics) ? metrics.slice() : [];
     detailState.chartMeta = metricsMeta || null;
-    renderLatencyChart(metrics, metricsMeta || null);
+    detailState.chartState = state || null;
+    renderLatencyChart(metrics, metricsMeta || null, state || null);
     renderEvents(events);
     MonitoringPage.loadMonitorAssets?.(mon.id);
     updateActionLabels(mon);
@@ -241,15 +243,35 @@
     els.tags.hidden = false;
   }
 
-  function renderStatusStrip(metrics) {
+  function renderStatusStrip(metrics, state) {
     if (!els.strip) return;
     els.strip.innerHTML = '';
     const slice = metrics.slice(-50);
+    const issueEscalateMin = state?.issue_escalate_minutes || 10;
+    const issueEscalateMs = Math.max(0, issueEscalateMin) * 60 * 1000;
+    const forceDown = `${state?.last_result_status || state?.status || ''}`.toLowerCase() === 'down';
+    let lastOkMs = 0;
+    const stateLastUp = state?.last_up_at || null;
+    const stateLastUpMs = stateLastUp ? Date.parse(stateLastUp) : 0;
+    if (Number.isFinite(stateLastUpMs) && stateLastUpMs > 0) lastOkMs = stateLastUpMs;
     slice.forEach(m => {
       const bar = document.createElement('span');
+      const tsRaw = m.timestamp || m.ts;
+      const tsMs = Number.isFinite(Date.parse(tsRaw)) ? Date.parse(tsRaw) : 0;
       const dns = !m.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(m.error);
       const issue = !m.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(m.error);
-      bar.className = m.ok ? 'up' : (dns ? 'dns' : (issue ? 'issue' : 'down'));
+      let cls = 'down';
+      if (m.ok) {
+        cls = 'up';
+        if (Number.isFinite(tsMs) && tsMs > 0) lastOkMs = tsMs;
+      } else if (dns) {
+        cls = 'dns';
+      } else if (issue) {
+        const sinceOk = (lastOkMs > 0 && tsMs > 0) ? (tsMs - lastOkMs) : 0;
+        const escalated = (forceDown && lastOkMs <= 0) || (issueEscalateMs > 0 && sinceOk >= issueEscalateMs);
+        cls = escalated ? 'down' : 'issue';
+      }
+      bar.className = cls;
       els.strip.appendChild(bar);
     });
     if (!slice.length) {
@@ -333,18 +355,42 @@
     }
   }
 
-  function pointsFromMetrics(metrics, scaleX) {
+  function pointsFromMetrics(metrics, scaleX, state) {
+    const issueEscalateMin = state?.issue_escalate_minutes || 10;
+    const issueEscalateMs = Math.max(0, issueEscalateMin) * 60 * 1000;
+    const forceDown = `${state?.last_result_status || state?.status || ''}`.toLowerCase() === 'down';
+    let lastOkMs = 0;
+    const stateLastUp = state?.last_up_at || null;
+    const stateLastUpMs = stateLastUp ? Date.parse(stateLastUp) : 0;
+    if (Number.isFinite(stateLastUpMs) && stateLastUpMs > 0) lastOkMs = stateLastUpMs;
+
     return metrics.map((m, idx) => {
       const tsRaw = m.timestamp || m.ts;
       const tsMs = Number.isFinite(Date.parse(tsRaw)) ? Date.parse(tsRaw) : Date.now();
+      const ok = !!m.ok;
+      const error = m.error || '';
+      const dns = !ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(error);
+      const issue = !ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(error);
+      let kind = 'down';
+      if (ok) {
+        kind = 'up';
+        lastOkMs = tsMs;
+      } else if (dns) {
+        kind = 'dns';
+      } else if (issue) {
+        const sinceOk = lastOkMs > 0 ? (tsMs - lastOkMs) : 0;
+        const escalated = (forceDown && lastOkMs <= 0) || (issueEscalateMs > 0 && sinceOk >= issueEscalateMs);
+        kind = escalated ? 'down' : 'issue';
+      }
       return {
         x: scaleX(tsMs, idx),
-        ok: !!m.ok,
+        ok,
         ts: tsRaw,
         tsMs,
         latency: m.latency_ms || 0,
         statusCode: m.status_code ?? m.statusCode ?? null,
-        error: m.error || '',
+        error,
+        kind,
       };
     });
   }
@@ -413,7 +459,7 @@
     if (!els.chart) return;
     if (els.detail && els.detail.hidden) return;
     if (!Array.isArray(detailState.chartMetrics) || !detailState.chartMetrics.length) return;
-    renderLatencyChart(detailState.chartMetrics, detailState.chartMeta || null);
+    renderLatencyChart(detailState.chartMetrics, detailState.chartMeta || null, detailState.chartState || null);
   }
 
   function renderChartLoading() {
@@ -446,7 +492,7 @@
     els.chartTip.hidden = true;
   }
 
-  function renderLatencyChart(metrics, metricsMeta) {
+  function renderLatencyChart(metrics, metricsMeta, state) {
     if (!els.chart) return;
     els.chart.innerHTML = '';
     ensureChartTooltip();
@@ -506,11 +552,11 @@
       label.textContent = `${val}`;
       svg.appendChild(label);
     });
-    const hoverPoints = pointsFromMetrics(metrics, scaleX).map(pt => ({
+    const hoverPoints = pointsFromMetrics(metrics, scaleX, state).map(pt => ({
       ...pt,
       y: scaleY(Math.max(0, Math.min(maxTick, pt.latency))),
     }));
-    const points = pointsFromMetrics(plottedMetrics, scaleX).map(pt => ({
+    const points = pointsFromMetrics(plottedMetrics, scaleX, state).map(pt => ({
       ...pt,
       y: scaleY(Math.max(0, Math.min(maxTick, pt.latency))),
     }));
@@ -647,8 +693,6 @@
     const bottom = height - pad.bottom;
     points.forEach((pt, idx) => {
       if (pt.ok) return;
-      const dns = MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
-      const issue = !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
       const prevX = idx > 0 ? points[idx - 1].x : pt.x;
       const nextX = idx < points.length - 1 ? points[idx + 1].x : pt.x;
       const startX = idx > 0 ? (prevX + pt.x) / 2 : Math.max(pad.left, pt.x - Math.max(6, (nextX - pt.x) / 2));
@@ -659,19 +703,17 @@
       rect.setAttribute('y', `${top}`);
       rect.setAttribute('width', `${width}`);
       rect.setAttribute('height', `${bottom - top}`);
-      rect.setAttribute('fill', (dns || issue) ? 'rgba(242, 153, 74, 0.22)' : 'rgba(255, 77, 79, 0.20)');
+      rect.setAttribute('fill', (pt.kind === 'dns' || pt.kind === 'issue') ? 'rgba(242, 153, 74, 0.22)' : 'rgba(255, 77, 79, 0.20)');
       svg.appendChild(rect);
     });
   }
 
   function renderPoint(svg, pt, idx, total) {
-    const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
-    const issue = !pt.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
     const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
     circle.setAttribute('cx', pt.x.toFixed(2));
     circle.setAttribute('cy', pt.y.toFixed(2));
     circle.setAttribute('r', (idx === 0 || idx === total - 1) ? '4' : '2.5');
-    circle.setAttribute('fill', pt.ok ? '#2dd27b' : ((dns || issue) ? '#f2994a' : '#ff6b6b'));
+    circle.setAttribute('fill', pt.ok ? '#2dd27b' : ((pt.kind === 'dns' || pt.kind === 'issue') ? '#f2994a' : '#ff6b6b'));
     svg.appendChild(circle);
   }
 
@@ -710,11 +752,11 @@
   }
 
   function pointTooltipText(pt) {
-    const dns = !pt.ok && MonitoringPage.isDnsErrorMessage && MonitoringPage.isDnsErrorMessage(pt.error);
-    const issue = !pt.ok && !dns && MonitoringPage.isIssueErrorMessage && MonitoringPage.isIssueErrorMessage(pt.error);
-    const statusText = pt.ok
+    const statusText = pt.kind === 'up'
       ? MonitoringPage.t('monitoring.status.up')
-      : (dns ? MonitoringPage.t('monitoring.status.dns') : (issue ? MonitoringPage.t('monitoring.status.issue') : MonitoringPage.t('monitoring.status.down')));
+      : (pt.kind === 'dns'
+        ? MonitoringPage.t('monitoring.status.dns')
+        : (pt.kind === 'issue' ? MonitoringPage.t('monitoring.status.issue') : MonitoringPage.t('monitoring.status.down')));
     const codeText = pt.statusCode ? `HTTP ${pt.statusCode}` : '-';
     const errText = pt.error ? MonitoringPage.sanitizeErrorMessage(pt.error) : '-';
     return [

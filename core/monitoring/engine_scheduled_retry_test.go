@@ -137,6 +137,7 @@ func TestRetryableFailureDoesNotFlipStatusUntilExhausted(t *testing.T) {
 		MaxConcurrentChecks:     1,
 		AllowPrivateNetworks:    true,
 		DefaultRetryIntervalSec: 1,
+		IssueEscalateMinutes:    10,
 	}
 
 	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)
@@ -221,5 +222,73 @@ func TestRetryableFailureDoesNotFlipStatusUntilExhausted(t *testing.T) {
 	}
 	if got := strings.ToLower(strings.TrimSpace(st2.LastResultStatus)); got != "issue" {
 		t.Fatalf("expected confirmed issue after retries exhausted, got %q", got)
+	}
+}
+
+func TestLongTimeoutEscalatesIssueToDown(t *testing.T) {
+	db := mustMonitoringTestDB(t)
+	monStore := store.NewMonitoringStore(db)
+	engine := NewEngine(monStore, nil)
+
+	settings := store.MonitorSettings{
+		EngineEnabled:           true,
+		MaxConcurrentChecks:     1,
+		AllowPrivateNetworks:    true,
+		DefaultRetryIntervalSec: 1,
+	}
+
+	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)
+	id, err := monStore.CreateMonitor(context.Background(), &store.Monitor{
+		Name:             "timeout-long",
+		Type:             "http",
+		URL:              "http://example.invalid",
+		Method:           "GET",
+		IntervalSec:      60,
+		TimeoutSec:       1,
+		Retries:          2,
+		RetryIntervalSec: 1,
+		AllowedStatus:    []string{"200-299"},
+		IsActive:         true,
+		IsPaused:         false,
+		CreatedBy:        1,
+		CreatedAt:        base.Add(-time.Hour),
+		UpdatedAt:        base.Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("create monitor: %v", err)
+	}
+
+	// Simulate a monitor that hasn't been UP for >10 minutes but still sits in ISSUE state.
+	lastUp := base.Add(-12 * time.Minute)
+	lastChecked := base.Add(-time.Minute)
+	if err := monStore.UpsertMonitorState(context.Background(), &store.MonitorState{
+		MonitorID:        id,
+		Status:           "issue",
+		LastResultStatus: "issue",
+		LastCheckedAt:    &lastChecked,
+		LastUpAt:         &lastUp,
+	}); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	engine.attemptFn = func(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
+		return CheckResult{CheckedAt: base, OK: false}, context.DeadlineExceeded
+	}
+
+	mon, err := monStore.GetMonitor(context.Background(), id)
+	if err != nil || mon == nil {
+		t.Fatalf("get monitor: %v", err)
+	}
+	_, _, _ = engine.runCheck(context.Background(), *mon, settings)
+
+	st, err := monStore.GetMonitorState(context.Background(), id)
+	if err != nil || st == nil {
+		t.Fatalf("get state: %v", err)
+	}
+	if got := strings.ToLower(strings.TrimSpace(st.LastResultStatus)); got != "down" {
+		t.Fatalf("expected escalation to down, got %q", got)
+	}
+	if st.RetryAt != nil || st.RetryAttempt != 0 {
+		t.Fatalf("expected retries cleared on escalation, got retry_at=%v retry_attempt=%d", st.RetryAt, st.RetryAttempt)
 	}
 }

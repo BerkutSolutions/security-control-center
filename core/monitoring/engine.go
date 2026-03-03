@@ -458,6 +458,7 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		rawStatus = "dns"
 	} else if decision.ErrorKind == ErrorKindTimeout ||
 		decision.ErrorKind == ErrorKindConnect ||
+		decision.ErrorKind == ErrorKindConnectionRefused ||
 		decision.ErrorKind == ErrorKindNetworkUnreachable ||
 		decision.ErrorKind == ErrorKindTLS ||
 		decision.ErrorKind == ErrorKindRequestFailed {
@@ -481,6 +482,30 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		rawStatus = carry
 	}
 	now := result.CheckedAt
+	// Escalation policy: if we have been failing with transient network errors for a long time, treat it as a confirmed DOWN.
+	// This prevents "perma-orange" state when the service is effectively dead for a long time.
+	issueEscalateMin := settings.IssueEscalateMinutes
+	if issueEscalateMin <= 0 {
+		issueEscalateMin = 10
+	}
+	if rawStatus == "issue" &&
+		(decision.ErrorKind == ErrorKindTimeout ||
+			decision.ErrorKind == ErrorKindConnect ||
+			decision.ErrorKind == ErrorKindConnectionRefused ||
+			decision.ErrorKind == ErrorKindNetworkUnreachable ||
+			decision.ErrorKind == ErrorKindTLS ||
+			decision.ErrorKind == ErrorKindRequestFailed) &&
+		prev != nil &&
+		prev.LastUpAt != nil {
+		if now.Sub(prev.LastUpAt.UTC()) >= time.Duration(issueEscalateMin)*time.Minute {
+			rawStatus = "down"
+			// Confirm the outage: clear scheduled retry flags so DOWN automation/notifications can fire normally.
+			decision.Scheduled = false
+			decision.RetryAt = nil
+			decision.RetryAttempt = 0
+			deferFailure = false
+		}
+	}
 	maintenanceActive := false
 	if list, err := e.store.ActiveMaintenanceFor(ctx, m.ID, m.Tags, now); err == nil && len(list) > 0 {
 		maintenanceActive = true

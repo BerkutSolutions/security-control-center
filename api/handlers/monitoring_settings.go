@@ -19,6 +19,7 @@ type monitoringSettingsPayload struct {
 	DefaultSLATargetPct     float64 `json:"default_sla_target_pct"`
 	EngineEnabled           *bool   `json:"engine_enabled"`
 	AllowPrivateNetworks    *bool   `json:"allow_private_networks"`
+	IssueEscalateMinutes    int     `json:"issue_escalate_minutes"`
 	TLSRefreshHours         int     `json:"tls_refresh_hours"`
 	TLSExpiringDays         int     `json:"tls_expiring_days"`
 	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
@@ -92,6 +93,9 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.AllowPrivateNetworks != nil {
 		current.AllowPrivateNetworks = *payload.AllowPrivateNetworks
 	}
+	if payload.IssueEscalateMinutes > 0 {
+		current.IssueEscalateMinutes = payload.IssueEscalateMinutes
+	}
 	if payload.TLSRefreshHours > 0 {
 		current.TLSRefreshHours = payload.TLSRefreshHours
 	}
@@ -150,6 +154,10 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if current.TLSRefreshHours <= 0 || current.TLSExpiringDays <= 0 {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
+	if current.IssueEscalateMinutes < 1 || current.IssueEscalateMinutes > 24*60 {
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
 	}
@@ -213,6 +221,7 @@ func settingsDetails(s *store.MonitorSettings) string {
 		"default_sla=" + strconv.FormatFloat(s.DefaultSLATargetPct, 'f', 1, 64),
 		"engine=" + strconv.FormatBool(s.EngineEnabled),
 		"allow_private=" + strconv.FormatBool(s.AllowPrivateNetworks),
+		"issue_escalate_minutes=" + strconv.Itoa(s.IssueEscalateMinutes),
 		"tls_refresh=" + strconv.Itoa(s.TLSRefreshHours),
 		"tls_expiring=" + strconv.Itoa(s.TLSExpiringDays),
 		"notify_suppress=" + strconv.Itoa(s.NotifySuppressMinutes),

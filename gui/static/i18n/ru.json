@@ -2148,6 +2148,7 @@
   "monitoring.settings.defaultInterval": "Интервал по умолчанию (сек)",
   "monitoring.settings.engineEnabled": "Движок мониторинга включен",
   "monitoring.settings.allowPrivate": "Разрешить приватные сети",
+  "monitoring.settings.issueEscalateMinutes": "Переводить ПРОБЛЕМУ → DOWN через (минут)",
   "monitoring.settings.tlsRefresh": "Обновление TLS (часы)",
   "monitoring.settings.tlsExpiring": "Порог истечения TLS (дни)",
   "monitoring.settings.notifySuppress": "Подавление уведомлений (минуты)",

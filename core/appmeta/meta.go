@@ -1,6 +1,6 @@
 package appmeta
 
-var AppVersion = "1.0.15"
+var AppVersion = "1.0.16"
 
 const (
 	RepositoryURL     = "https://github.com/BerkutSolutions/security-control-center"

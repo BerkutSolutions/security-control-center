@@ -19,6 +19,7 @@
     els.defaultSla = document.getElementById('monitoring-default-sla');
     els.engineEnabled = document.getElementById('monitoring-engine-enabled');
     els.allowPrivate = document.getElementById('monitoring-allow-private');
+    els.issueEscalateMinutes = document.getElementById('monitoring-issue-escalate-minutes');
     els.tlsRefresh = document.getElementById('monitoring-tls-refresh');
     els.tlsExpiring = document.getElementById('monitoring-tls-expiring');
     els.notifySuppress = document.getElementById('monitoring-notify-suppress');
@@ -88,6 +89,7 @@
     if (els.defaultSla) els.defaultSla.value = settings.default_sla_target_pct || 90;
     if (els.engineEnabled) els.engineEnabled.checked = !!settings.engine_enabled;
     if (els.allowPrivate) els.allowPrivate.checked = !!settings.allow_private_networks;
+    if (els.issueEscalateMinutes) els.issueEscalateMinutes.value = settings.issue_escalate_minutes || 10;
     if (els.tlsRefresh) els.tlsRefresh.value = settings.tls_refresh_hours || 24;
     if (els.tlsExpiring) els.tlsExpiring.value = settings.tls_expiring_days || 30;
     if (els.notifySuppress) els.notifySuppress.value = settings.notify_suppress_minutes || 5;
@@ -170,6 +172,7 @@
       default_sla_target_pct: parseFloat(els.defaultSla?.value) || 0,
       engine_enabled: !!els.engineEnabled.checked,
       allow_private_networks: !!els.allowPrivate.checked,
+      issue_escalate_minutes: parseInt(els.issueEscalateMinutes?.value, 10) || 0,
       tls_refresh_hours: parseInt(els.tlsRefresh.value, 10) || 0,
       tls_expiring_days: parseInt(els.tlsExpiring.value, 10) || 0,
       notify_suppress_minutes: parseInt(els.notifySuppress.value, 10) || 0,

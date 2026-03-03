@@ -2323,6 +2323,7 @@
   "monitoring.settings.defaultInterval": "Default interval (sec)",
   "monitoring.settings.engineEnabled": "Monitoring engine enabled",
   "monitoring.settings.allowPrivate": "Allow private networks",
+  "monitoring.settings.issueEscalateMinutes": "Escalate ISSUE → DOWN after (minutes)",
   "monitoring.settings.tlsRefresh": "TLS refresh (hours)",
   "monitoring.settings.tlsExpiring": "TLS expiring threshold (days)",
   "monitoring.settings.notifySuppress": "Notify suppression (minutes)",

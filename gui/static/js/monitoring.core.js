@@ -236,7 +236,17 @@ const MonitoringPage = (() => {
     const val = String(msg).trim().toLowerCase();
     if (!val) return false;
     if (val.startsWith('status_')) return false;
-    if (val.startsWith('monitoring.error.')) return false;
+    if (val.startsWith('monitoring.error.')) {
+      // Treat common network-related i18n keys as "issue" (orange) in charts/strips.
+      switch (val) {
+        case 'monitoring.error.timeout':
+        case 'monitoring.error.tlsHandshakeFailed':
+        case 'monitoring.error.requestFailed':
+          return true;
+        default:
+          return false;
+      }
+    }
     // DNS errors have their own class.
     if (isDnsErrorMessage(val)) return false;
 

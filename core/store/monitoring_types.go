@@ -175,6 +175,7 @@ type MonitorSettings struct {
 	EngineEnabled           bool    `json:"engine_enabled"`
 	AllowPrivateNetworks    bool    `json:"allow_private_networks"`
 	IssueEscalateMinutes    int     `json:"issue_escalate_minutes"`
+	NotifyUpConfirmations   int     `json:"notify_up_confirmations"`
 	TLSRefreshHours         int     `json:"tls_refresh_hours"`
 	TLSExpiringDays         int     `json:"tls_expiring_days"`
 	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`

@@ -138,6 +138,7 @@ func TestRetryableFailureDoesNotFlipStatusUntilExhausted(t *testing.T) {
 		AllowPrivateNetworks:    true,
 		DefaultRetryIntervalSec: 1,
 		IssueEscalateMinutes:    10,
+		NotifyUpConfirmations:   2,
 	}
 
 	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)

@@ -1373,6 +1373,7 @@ func ensureMonitoringColumns(ctx context.Context, db *sql.DB) error {
 		{Table: "monitoring_settings", Name: "tls_refresh_hours", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_refresh_hours INTEGER NOT NULL DEFAULT 24"},
 		{Table: "monitoring_settings", Name: "tls_expiring_days", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_expiring_days INTEGER NOT NULL DEFAULT 30"},
 		{Table: "monitoring_settings", Name: "issue_escalate_minutes", SQL: "ALTER TABLE monitoring_settings ADD COLUMN issue_escalate_minutes INTEGER NOT NULL DEFAULT 10"},
+		{Table: "monitoring_settings", Name: "notify_up_confirmations", SQL: "ALTER TABLE monitoring_settings ADD COLUMN notify_up_confirmations INTEGER NOT NULL DEFAULT 2"},
 		{Table: "monitoring_settings", Name: "notify_suppress_minutes", SQL: "ALTER TABLE monitoring_settings ADD COLUMN notify_suppress_minutes INTEGER NOT NULL DEFAULT 5"},
 		{Table: "monitoring_settings", Name: "notify_repeat_down_minutes", SQL: "ALTER TABLE monitoring_settings ADD COLUMN notify_repeat_down_minutes INTEGER NOT NULL DEFAULT 30"},
 		{Table: "monitoring_settings", Name: "notify_maintenance", SQL: "ALTER TABLE monitoring_settings ADD COLUMN notify_maintenance INTEGER NOT NULL DEFAULT 0"},

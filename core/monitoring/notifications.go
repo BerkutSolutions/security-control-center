@@ -240,11 +240,14 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 		}
 		return
 	}
+	// Important: during a scheduled-retry window we may keep last_result_status as "up" to avoid flapping.
+	// Never emit a recovery notification unless the *current attempt* is actually OK.
 	if rawStatus == "up" &&
-		prev != nil &&
-		strings.ToLower(strings.TrimSpace(prev.LastResultStatus)) == "down" &&
+		result.OK &&
+		next.RetryAt == nil &&
 		canNotifyUpRecover() &&
-		canSend(st.LastUpNotifiedAt) {
+		canSend(st.LastUpNotifiedAt) &&
+		e.recoveryConfirmed(ctx, m, now, settings) {
 		if e.dispatchNotification(ctx, channels, buildNotificationMessage("up", "ru", m, result, tlsRecord, now, false), "up", &m.ID) {
 			st.LastNotifiedAt = &now
 			st.LastUpNotifiedAt = &now
@@ -267,6 +270,42 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 			}
 		}
 	}
+}
+
+func (e *Engine) recoveryConfirmed(ctx context.Context, m store.Monitor, now time.Time, settings store.MonitorSettings) bool {
+	if e == nil || e.store == nil {
+		return true
+	}
+	n := settings.NotifyUpConfirmations
+	if n <= 1 {
+		return true
+	}
+	intervalSec := m.IntervalSec
+	if intervalSec <= 0 {
+		intervalSec = settings.DefaultIntervalSec
+	}
+	if intervalSec <= 0 {
+		intervalSec = 60
+	}
+	lookback := time.Duration(intervalSec*(n*3)) * time.Second
+	if lookback < 5*time.Minute {
+		lookback = 5 * time.Minute
+	}
+	metrics, err := e.store.ListMetrics(ctx, m.ID, now.Add(-lookback))
+	if err != nil || len(metrics) == 0 {
+		return false
+	}
+	okSeq := 0
+	for i := len(metrics) - 1; i >= 0; i-- {
+		if !metrics[i].OK {
+			break
+		}
+		okSeq++
+		if okSeq >= n {
+			return true
+		}
+	}
+	return false
 }
 
 func (e *Engine) dispatchNotification(ctx context.Context, channels []store.NotificationChannel, msg TelegramMessage, eventType string, monitorID *int64) bool {

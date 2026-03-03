@@ -20,6 +20,7 @@ type monitoringSettingsPayload struct {
 	EngineEnabled           *bool   `json:"engine_enabled"`
 	AllowPrivateNetworks    *bool   `json:"allow_private_networks"`
 	IssueEscalateMinutes    int     `json:"issue_escalate_minutes"`
+	NotifyUpConfirmations   int     `json:"notify_up_confirmations"`
 	TLSRefreshHours         int     `json:"tls_refresh_hours"`
 	TLSExpiringDays         int     `json:"tls_expiring_days"`
 	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
@@ -96,6 +97,9 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.IssueEscalateMinutes > 0 {
 		current.IssueEscalateMinutes = payload.IssueEscalateMinutes
 	}
+	if payload.NotifyUpConfirmations > 0 {
+		current.NotifyUpConfirmations = payload.NotifyUpConfirmations
+	}
 	if payload.TLSRefreshHours > 0 {
 		current.TLSRefreshHours = payload.TLSRefreshHours
 	}
@@ -161,6 +165,10 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
 	}
+	if current.NotifyUpConfirmations < 1 || current.NotifyUpConfirmations > 10 {
+		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
+		return
+	}
 	if current.NotifySuppressMinutes < 0 || current.NotifyRepeatDownMinutes < 0 {
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
@@ -222,6 +230,7 @@ func settingsDetails(s *store.MonitorSettings) string {
 		"engine=" + strconv.FormatBool(s.EngineEnabled),
 		"allow_private=" + strconv.FormatBool(s.AllowPrivateNetworks),
 		"issue_escalate_minutes=" + strconv.Itoa(s.IssueEscalateMinutes),
+		"notify_up_confirmations=" + strconv.Itoa(s.NotifyUpConfirmations),
 		"tls_refresh=" + strconv.Itoa(s.TLSRefreshHours),
 		"tls_expiring=" + strconv.Itoa(s.TLSExpiringDays),
 		"notify_suppress=" + strconv.Itoa(s.NotifySuppressMinutes),

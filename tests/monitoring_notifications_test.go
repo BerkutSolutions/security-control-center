@@ -117,6 +117,7 @@ func TestMonitoringTelegramDownUp(t *testing.T) {
 	settings.EngineEnabled = true
 	settings.NotifySuppressMinutes = 0
 	settings.NotifyRepeatDownMinutes = 10
+	settings.NotifyUpConfirmations = 1
 	if err := ms.UpdateSettings(context.Background(), settings); err != nil {
 		t.Fatalf("settings update: %v", err)
 	}
@@ -172,6 +173,7 @@ func TestMonitoringSuppression(t *testing.T) {
 	settings.EngineEnabled = true
 	settings.NotifySuppressMinutes = 10
 	settings.NotifyRepeatDownMinutes = 30
+	settings.NotifyUpConfirmations = 1
 	if err := ms.UpdateSettings(context.Background(), settings); err != nil {
 		t.Fatalf("settings update: %v", err)
 	}

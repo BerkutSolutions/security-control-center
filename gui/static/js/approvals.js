@@ -4,6 +4,7 @@
   let versionsCache = {};
   let current = null;
   let me = null;
+  let exportDecisionCtx = null;
 
   function getUserDirectory() {
     if (typeof window !== 'undefined' && window.UserDirectory) return window.UserDirectory;
@@ -40,17 +41,35 @@
       };
     });
     const modal = document.getElementById('approval-detail-modal');
+    const exportModal = document.getElementById('export-decision-modal');
     modal?.addEventListener('click', (e) => {
       if (e.target.classList.contains('modal-backdrop')) {
         resetApprovalPath();
       }
     });
+    exportModal?.addEventListener('click', (e) => {
+      if (e.target.classList.contains('modal-backdrop')) {
+        closeExportDecisionModal();
+      }
+    });
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
+      if (exportModal && !exportModal.hidden) {
+        closeExportDecisionModal();
+        return;
+      }
       if (modal && !modal.hidden) resetApprovalPath();
     });
     const commentBtn = document.getElementById('comment-submit');
     if (commentBtn) commentBtn.onclick = () => submitComment();
+    const exportClose = document.getElementById('export-decision-close');
+    const exportCancel = document.getElementById('export-decision-cancel');
+    const exportApprove = document.getElementById('export-decision-approve');
+    const exportReject = document.getElementById('export-decision-reject');
+    if (exportClose) exportClose.onclick = closeExportDecisionModal;
+    if (exportCancel) exportCancel.onclick = closeExportDecisionModal;
+    if (exportApprove) exportApprove.onclick = () => submitExportDecision('approve');
+    if (exportReject) exportReject.onclick = () => submitExportDecision('reject');
   }
 
   async function loadApprovals() {
@@ -58,7 +77,13 @@
     const qs = statusSel && statusSel.value ? `?status=${statusSel.value}` : '';
     try {
       const res = await Api.get(`/api/approvals${qs}`);
-      approvals = res.items || [];
+      const workflowItems = (res.items || []).map(item => ({ ...item, approval_type: item.approval_type || 'workflow' }));
+      const exportItems = (res.export_items || []).map(item => ({ ...item, approval_type: 'export' }));
+      approvals = workflowItems.concat(exportItems).sort((a, b) => {
+        const lb = new Date(b.updated_at || b.created_at || 0).getTime();
+        const la = new Date(a.updated_at || a.created_at || 0).getTime();
+        return lb - la;
+      });
       await preloadDocs(approvals);
       renderTable();
     } catch (err) {
@@ -81,22 +106,103 @@
     tbody.innerHTML = '';
     if (!approvals.length) {
       const tr = document.createElement('tr');
-      tr.innerHTML = `<td colspan="4">${BerkutI18n.t('approvals.empty')}</td>`;
+      tr.innerHTML = `<td colspan="3">${BerkutI18n.t('approvals.empty')}</td>`;
       tbody.appendChild(tr);
       return;
     }
     approvals.forEach(ap => {
       const doc = docsCache[ap.doc_id] || {};
+      const isExport = ap.approval_type === 'export';
+      const statusLabel = DocUI.statusLabel(ap.status);
+      const dateValue = isExport ? (ap.expires_at || ap.updated_at || ap.created_at) : (ap.updated_at || ap.created_at);
       const tr = document.createElement('tr');
       tr.innerHTML = `
         <td>${escapeHtml(doc.title || `#${ap.doc_id}`)}</td>
-        <td><span class="badge status-${ap.status}">${DocUI.statusLabel(ap.status)}</span></td>
-        <td>${escapeHtml(ap.message || '')}</td>
-        <td>${formatDate(ap.updated_at || ap.created_at)}</td>
+        <td><span class="badge status-${ap.status}">${statusLabel}</span></td>
+        <td>${formatDate(dateValue)}</td>
       `;
-      tr.onclick = () => openApproval(ap.id);
+      if (!isExport) {
+        tr.onclick = () => openApproval(ap.id);
+      } else {
+        tr.onclick = () => openExportDecisionModal(ap);
+      }
       tbody.appendChild(tr);
     });
+  }
+
+  function openExportDecisionModal(item) {
+    exportDecisionCtx = item || null;
+    const modal = document.getElementById('export-decision-modal');
+    const title = document.getElementById('export-approval-title');
+    const meta = document.getElementById('export-approval-meta');
+    const status = document.getElementById('export-approval-status');
+    const level = document.getElementById('export-approval-level');
+    const requester = document.getElementById('export-approval-requester');
+    const approver = document.getElementById('export-approval-approver');
+    const reason = document.getElementById('export-approval-reason');
+    const updated = document.getElementById('export-approval-updated');
+    const readonly = document.getElementById('export-decision-readonly');
+    const form = document.getElementById('export-decision-form');
+    const comment = document.getElementById('export-decision-comment');
+    const alertBox = document.getElementById('export-decision-alert');
+    const doc = docsCache[item?.doc_id] || {};
+    const levelName = DocUI.levelName(doc.classification_level);
+    const canDecide = !!(item && me && item.status === 'review' && Number(item.approved_by || 0) === Number(me.id || 0));
+    const statusLabel = DocUI.statusLabel(item?.status || 'review');
+    if (title) title.textContent = `${doc.title || `#${item?.doc_id || ''}`}${doc.reg_number ? ` (${doc.reg_number})` : ''}`;
+    if (meta) meta.textContent = `${levelName} • ${formatDate(item?.updated_at || item?.created_at)}`;
+    if (status) status.innerHTML = `<span class="badge status-${item?.status || 'review'}">${statusLabel}</span>`;
+    if (level) level.textContent = levelName || '-';
+    if (requester) requester.textContent = getUserDirectory().name(item?.requested_by || item?.created_by) || '-';
+    if (approver) approver.textContent = getUserDirectory().name(item?.approved_by) || '-';
+    if (reason) reason.textContent = item?.message || '-';
+    if (updated) updated.textContent = formatDate(item?.updated_at || item?.created_at);
+    if (comment) comment.value = '';
+    if (form) form.hidden = !canDecide;
+    if (readonly) {
+      if (canDecide) {
+        readonly.hidden = true;
+        readonly.textContent = '';
+      } else {
+        readonly.hidden = false;
+        const decisionKey = item?.status === 'approved'
+          ? 'approvals.decision.approve'
+          : item?.status === 'returned'
+            ? 'approvals.decision.reject'
+            : 'approvals.pending';
+        const decision = BerkutI18n.t(decisionKey);
+        readonly.textContent = item?.decision_comment ? `${decision}: ${item.decision_comment}` : decision;
+      }
+    }
+    hideAlert(alertBox);
+    if (modal) modal.hidden = false;
+  }
+
+  function closeExportDecisionModal() {
+    exportDecisionCtx = null;
+    const modal = document.getElementById('export-decision-modal');
+    const comment = document.getElementById('export-decision-comment');
+    const alertBox = document.getElementById('export-decision-alert');
+    if (comment) comment.value = '';
+    hideAlert(alertBox);
+    if (modal) modal.hidden = true;
+  }
+
+  async function submitExportDecision(decision) {
+    if (!exportDecisionCtx || !exportDecisionCtx.id) return;
+    const comment = (document.getElementById('export-decision-comment')?.value || '').trim();
+    if (!comment) {
+      showAlert(document.getElementById('export-decision-alert'), BerkutI18n.t('docs.export.reasonRequired'));
+      return;
+    }
+    try {
+      await Api.post(`/api/docs/export-approvals/${exportDecisionCtx.id}/decision`, { decision, comment });
+      closeExportDecisionModal();
+      await loadApprovals();
+    } catch (err) {
+      const alertBox = document.getElementById('export-decision-alert');
+      showAlert(alertBox, err.message || (BerkutI18n.t('common.error') || 'Error'));
+    }
   }
 
   async function openApproval(id) {

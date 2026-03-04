@@ -18,6 +18,13 @@ type RuntimeSettingsHandler struct {
 	audits       store.AuditStore
 }
 
+func (h *RuntimeSettingsHandler) auditLog(r *http.Request, action, details string) {
+	if h == nil || h.audits == nil {
+		return
+	}
+	_ = h.audits.Log(r.Context(), currentUsername(r), action, details)
+}
+
 func NewRuntimeSettingsHandler(cfg *config.AppConfig, runtimeStore store.AppRuntimeStore, updateCheck *appmeta.UpdateChecker, audits store.AuditStore) *RuntimeSettingsHandler {
 	return &RuntimeSettingsHandler{
 		cfg:          cfg,
@@ -33,7 +40,7 @@ func (h *RuntimeSettingsHandler) Get(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, h.responsePayload(settings, h.lastUpdateResult()))
+	writeJSON(w, http.StatusOK, h.responsePayload(r, settings, h.lastUpdateResult()))
 }
 
 func (h *RuntimeSettingsHandler) Update(w http.ResponseWriter, r *http.Request) {
@@ -44,10 +51,12 @@ func (h *RuntimeSettingsHandler) Update(w http.ResponseWriter, r *http.Request) 
 	}
 	beforeMode := settings.DeploymentMode
 	beforeUpdates := settings.UpdateChecksEnabled
+	beforeBehavior := settings.BehaviorModelEnabled
 
 	var payload struct {
-		DeploymentMode      string `json:"deployment_mode"`
-		UpdateChecksEnabled *bool  `json:"update_checks_enabled"`
+		DeploymentMode       string `json:"deployment_mode"`
+		UpdateChecksEnabled  *bool  `json:"update_checks_enabled"`
+		BehaviorModelEnabled *bool  `json:"behavior_model_enabled"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -61,6 +70,9 @@ func (h *RuntimeSettingsHandler) Update(w http.ResponseWriter, r *http.Request) 
 	if payload.UpdateChecksEnabled != nil {
 		settings.UpdateChecksEnabled = *payload.UpdateChecksEnabled
 	}
+	if payload.BehaviorModelEnabled != nil {
+		settings.BehaviorModelEnabled = *payload.BehaviorModelEnabled
+	}
 	if err := h.runtimeStore.SaveRuntimeSettings(r.Context(), settings); err != nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
@@ -72,12 +84,15 @@ func (h *RuntimeSettingsHandler) Update(w http.ResponseWriter, r *http.Request) 
 		}
 	}
 	if beforeMode != settings.DeploymentMode {
-		_ = h.audits.Log(r.Context(), currentUsername(r), "settings.deployment_mode.update", "mode="+settings.DeploymentMode)
+		h.auditLog(r, "settings.deployment_mode.update", "mode="+settings.DeploymentMode)
 	}
 	if beforeUpdates != settings.UpdateChecksEnabled {
-		_ = h.audits.Log(r.Context(), currentUsername(r), "settings.updates.toggle", "enabled="+strconv.FormatBool(settings.UpdateChecksEnabled))
+		h.auditLog(r, "settings.updates.toggle", "enabled="+strconv.FormatBool(settings.UpdateChecksEnabled))
 	}
-	writeJSON(w, http.StatusOK, h.responsePayload(settings, h.lastUpdateResult()))
+	if beforeBehavior != settings.BehaviorModelEnabled {
+		h.auditLog(r, "settings.behavior_model.toggle", "enabled="+strconv.FormatBool(settings.BehaviorModelEnabled))
+	}
+	writeJSON(w, http.StatusOK, h.responsePayload(r, settings, h.lastUpdateResult()))
 }
 
 func (h *RuntimeSettingsHandler) CheckUpdates(w http.ResponseWriter, r *http.Request) {
@@ -103,7 +118,7 @@ func (h *RuntimeSettingsHandler) CheckUpdates(w http.ResponseWriter, r *http.Req
 		"latest=" + result.LatestVersion,
 		"has_update=" + strconv.FormatBool(result.HasUpdate),
 	}, "|")
-	_ = h.audits.Log(r.Context(), currentUsername(r), "settings.updates.check", details)
+	h.auditLog(r, "settings.updates.check", details)
 	writeJSON(w, http.StatusOK, map[string]any{
 		"enabled": true,
 		"result":  result,
@@ -128,11 +143,11 @@ func (h *RuntimeSettingsHandler) Meta(w http.ResponseWriter, r *http.Request) {
 					"has_update=" + strconv.FormatBool(checked.HasUpdate),
 					"source=meta",
 				}, "|")
-				_ = h.audits.Log(r.Context(), currentUsername(r), "settings.updates.check", details)
+				h.auditLog(r, "settings.updates.check", details)
 			}
 		}
 	}
-	writeJSON(w, http.StatusOK, h.responsePayload(settings, result))
+	writeJSON(w, http.StatusOK, h.responsePayload(r, settings, result))
 }
 
 func (h *RuntimeSettingsHandler) loadSettings(r *http.Request) (*store.AppRuntimeSettings, error) {
@@ -142,23 +157,26 @@ func (h *RuntimeSettingsHandler) loadSettings(r *http.Request) (*store.AppRuntim
 	}
 	if settings == nil {
 		settings = &store.AppRuntimeSettings{
-			DeploymentMode:      effectiveMode(h.cfg, nil),
-			UpdateChecksEnabled: false,
+			DeploymentMode:       effectiveMode(h.cfg, nil),
+			UpdateChecksEnabled:  false,
+			BehaviorModelEnabled: false,
 		}
 	}
 	settings.DeploymentMode = effectiveMode(h.cfg, settings)
 	return settings, nil
 }
 
-func (h *RuntimeSettingsHandler) responsePayload(settings *store.AppRuntimeSettings, result *appmeta.UpdateCheckResult) map[string]any {
+func (h *RuntimeSettingsHandler) responsePayload(r *http.Request, settings *store.AppRuntimeSettings, result *appmeta.UpdateCheckResult) map[string]any {
 	mode := effectiveMode(h.cfg, settings)
 	return map[string]any{
-		"app_version":           appmeta.AppVersion,
-		"repository_url":        appmeta.RepositoryURL,
-		"deployment_mode":       mode,
-		"is_home_mode":          mode == "home",
-		"update_checks_enabled": settings.UpdateChecksEnabled,
-		"update":                result,
+		"app_version":            appmeta.AppVersion,
+		"repository_url":         appmeta.RepositoryURL,
+		"deployment_mode":        mode,
+		"is_home_mode":           mode == "home",
+		"effective_https":        isSecureRequest(r, h.cfg),
+		"update_checks_enabled":  settings.UpdateChecksEnabled,
+		"behavior_model_enabled": settings.BehaviorModelEnabled,
+		"update":                 result,
 	}
 }
 

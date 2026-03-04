@@ -155,18 +155,18 @@
       acl.push({ subject_type: subjectType, subject_id: subjectId, permission });
     };
     rolesSel.forEach(r => {
-      ['view', 'edit'].forEach(p => pushRule('role', r, p));
+      ['view', 'edit', 'export'].forEach(p => pushRule('role', r, p));
     });
     usersSel.forEach(uid => {
       const u = UserDirectory.get(uid);
       if (u) {
-        ['view', 'edit'].forEach(p => pushRule('user', u.username, p));
+        ['view', 'edit', 'export'].forEach(p => pushRule('user', u.username, p));
       }
     });
     if (data.owner) {
       const u = UserDirectory.get(parseInt(data.owner, 10));
       if (u) {
-        ['view', 'edit', 'manage'].forEach(p => pushRule('user', u.username, p));
+        ['view', 'edit', 'manage', 'export'].forEach(p => pushRule('user', u.username, p));
       }
     }
     try {

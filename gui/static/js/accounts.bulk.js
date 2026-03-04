@@ -112,7 +112,7 @@
     } else if (action === 'lock') {
       const reason = document.createElement('div');
       reason.className = 'form-field required';
-      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason'}</label><input id="bulk-lock-reason" required>`;
+      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonLabel') || 'Reason'}</label><input id="bulk-lock-reason" required>`;
       const minutes = document.createElement('div');
       minutes.className = 'form-field';
       minutes.innerHTML = `<label>${BerkutI18n.t('accounts.lockDuration') || 'Duration (minutes)'}</label><input id="bulk-lock-minutes" type="number" min="1" value="60">`;
@@ -121,12 +121,12 @@
     } else if (action === 'unlock') {
       const reason = document.createElement('div');
       reason.className = 'form-field';
-      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason'}</label><input id="bulk-unlock-reason">`;
+      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonLabel') || 'Reason'}</label><input id="bulk-unlock-reason">`;
       fields.appendChild(reason);
     } else if (action === 'disable' || action === 'enable') {
       const reason = document.createElement('div');
       reason.className = 'form-field';
-      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason'}</label><input id="bulk-status-reason">`;
+      reason.innerHTML = `<label>${BerkutI18n.t('accounts.lockReasonLabel') || 'Reason'}</label><input id="bulk-status-reason">`;
       fields.appendChild(reason);
     }
   }

@@ -141,7 +141,9 @@ func (h *DocsHandler) List(w http.ResponseWriter, r *http.Request) {
 			result = append(result, docListItem{Document: d, Format: format})
 		}
 	}
-	h.svc.Log(r.Context(), user.Username, "doc.list", "")
+	if !isBackgroundRequest(r) {
+		h.svc.Log(r.Context(), user.Username, "doc.list", "")
+	}
 	writeJSON(w, http.StatusOK, map[string]any{
 		"items":      result,
 		"converters": h.svc.ConvertersStatus(),
@@ -964,7 +966,59 @@ func (h *DocsHandler) ListApprovals(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	writeJSON(w, http.StatusOK, map[string]any{"items": items})
+	exportItems := make([]map[string]any, 0)
+	status := strings.ToLower(strings.TrimSpace(r.URL.Query().Get("status")))
+	records, err := h.store.ListDocExportApprovalsForActor(r.Context(), user.ID)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	for _, item := range records {
+		decision, err := h.store.GetDocExportApprovalDecision(r.Context(), item.ID)
+		if err != nil {
+			http.Error(w, "server error", http.StatusInternalServerError)
+			return
+		}
+		exportStatus := docs.StatusReview
+		updatedAt := item.CreatedAt
+		decidedBy := int64(0)
+		decisionComment := ""
+		decidedAt := time.Time{}
+		if decision != nil {
+			decisionComment = strings.TrimSpace(decision.Comment)
+			decidedBy = decision.DecidedBy
+			decidedAt = decision.DecidedAt
+			updatedAt = decision.DecidedAt
+			if strings.EqualFold(strings.TrimSpace(decision.Decision), "approve") {
+				exportStatus = docs.StatusApproved
+			} else if strings.EqualFold(strings.TrimSpace(decision.Decision), "reject") {
+				exportStatus = docs.StatusReturned
+			}
+		}
+		if status != "" && status != exportStatus {
+			continue
+		}
+		exportItems = append(exportItems, map[string]any{
+			"id":               item.ID,
+			"approval_type":    "export",
+			"status":           exportStatus,
+			"doc_id":           item.DocID,
+			"message":          item.Reason,
+			"created_by":       item.RequestedBy,
+			"created_at":       item.CreatedAt,
+			"updated_at":       updatedAt,
+			"expires_at":       item.ExpiresAt,
+			"approved_by":      item.ApprovedBy,
+			"requested_by":     item.RequestedBy,
+			"decided_by":       decidedBy,
+			"decision_comment": decisionComment,
+			"decided_at":       decidedAt,
+		})
+	}
+	writeJSON(w, http.StatusOK, map[string]any{
+		"items":        items,
+		"export_items": exportItems,
+	})
 }
 
 func (h *DocsHandler) GetApproval(w http.ResponseWriter, r *http.Request) {
@@ -1778,7 +1832,7 @@ func buildACL(roleIDs []string, userIDs []int64) []store.ACLRule {
 		if r == "" {
 			continue
 		}
-		for _, p := range []string{"view", "edit"} {
+		for _, p := range []string{"view", "edit", "export"} {
 			acl = append(acl, store.ACLRule{SubjectType: "role", SubjectID: r, Permission: p})
 		}
 	}
@@ -1787,7 +1841,7 @@ func buildACL(roleIDs []string, userIDs []int64) []store.ACLRule {
 			continue
 		}
 		idStr := fmt.Sprintf("%d", uid)
-		for _, p := range []string{"view", "edit"} {
+		for _, p := range []string{"view", "edit", "export"} {
 			acl = append(acl, store.ACLRule{SubjectType: "user", SubjectID: idStr, Permission: p})
 		}
 	}

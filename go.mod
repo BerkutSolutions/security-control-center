@@ -5,6 +5,7 @@ go 1.24.0
 require (
 	github.com/casbin/casbin/v2 v2.96.0
 	github.com/go-chi/chi/v5 v5.2.0
+	github.com/go-webauthn/webauthn v0.14.0
 	github.com/gofrs/uuid/v5 v5.1.0
 	github.com/ilyakaznacheev/cleanenv v1.5.0
 	github.com/jackc/pgx/v5 v5.7.2
@@ -23,7 +24,6 @@ require (
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/dustin/go-humanize v1.0.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
-	github.com/go-webauthn/webauthn v0.14.0 // indirect
 	github.com/go-webauthn/x v0.1.25 // indirect
 	github.com/golang-jwt/jwt/v5 v5.3.0 // indirect
 	github.com/google/go-tpm v0.9.5 // indirect

@@ -14,10 +14,11 @@ type AppRuntimeStore interface {
 }
 
 type AppRuntimeSettings struct {
-	ID                  int64     `json:"id"`
-	DeploymentMode      string    `json:"deployment_mode"`
-	UpdateChecksEnabled bool      `json:"update_checks_enabled"`
-	UpdatedAt           time.Time `json:"updated_at"`
+	ID                   int64     `json:"id"`
+	DeploymentMode       string    `json:"deployment_mode"`
+	UpdateChecksEnabled  bool      `json:"update_checks_enabled"`
+	BehaviorModelEnabled bool      `json:"behavior_model_enabled"`
+	UpdatedAt            time.Time `json:"updated_at"`
 }
 
 type appRuntimeStore struct {
@@ -30,17 +31,24 @@ func NewAppRuntimeStore(db *sql.DB) AppRuntimeStore {
 
 func (s *appRuntimeStore) GetRuntimeSettings(ctx context.Context) (*AppRuntimeSettings, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, deployment_mode, update_checks_enabled, updated_at
+		SELECT id, deployment_mode, update_checks_enabled, CAST(behavior_model_enabled AS TEXT), updated_at
 		FROM app_runtime_settings ORDER BY id LIMIT 1`)
 	var out AppRuntimeSettings
 	var enabled int
-	if err := row.Scan(&out.ID, &out.DeploymentMode, &enabled, &out.UpdatedAt); err != nil {
+	var behaviorEnabledRaw string
+	if err := row.Scan(&out.ID, &out.DeploymentMode, &enabled, &behaviorEnabledRaw, &out.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
 	}
 	out.UpdateChecksEnabled = enabled == 1
+	switch strings.ToLower(strings.TrimSpace(behaviorEnabledRaw)) {
+	case "1", "t", "true", "y", "yes", "on":
+		out.BehaviorModelEnabled = true
+	default:
+		out.BehaviorModelEnabled = false
+	}
 	out.DeploymentMode = normalizeDeploymentMode(out.DeploymentMode)
 	return &out, nil
 }
@@ -55,13 +63,15 @@ func (s *appRuntimeStore) SaveRuntimeSettings(ctx context.Context, settings *App
 	if settings.UpdateChecksEnabled {
 		enabled = 1
 	}
+	behaviorEnabled := settings.BehaviorModelEnabled
 	if settings.ID > 0 {
 		_, err := s.db.ExecContext(ctx, `
 			UPDATE app_runtime_settings
-			SET deployment_mode=?, update_checks_enabled=?, updated_at=?
+			SET deployment_mode=?, update_checks_enabled=?, behavior_model_enabled=?, updated_at=?
 			WHERE id=?`,
 			settings.DeploymentMode,
 			enabled,
+			behaviorEnabled,
 			now,
 			settings.ID,
 		)
@@ -72,10 +82,11 @@ func (s *appRuntimeStore) SaveRuntimeSettings(ctx context.Context, settings *App
 		return nil
 	}
 	res, err := s.db.ExecContext(ctx, `
-		INSERT INTO app_runtime_settings(deployment_mode, update_checks_enabled, updated_at)
-		VALUES(?,?,?)`,
+		INSERT INTO app_runtime_settings(deployment_mode, update_checks_enabled, behavior_model_enabled, updated_at)
+		VALUES(?,?,?,?)`,
 		settings.DeploymentMode,
 		enabled,
+		behaviorEnabled,
 		now,
 	)
 	if err != nil {

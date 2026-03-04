@@ -1,4 +1,4 @@
-﻿(async () => {
+(async () => {
   let prefs = Preferences.load();
   let inactivityTimer;
   let autoLogoutHandler;
@@ -7,6 +7,9 @@
   const lang = prefs.language || localStorage.getItem('berkut_lang') || 'ru';
   await BerkutI18n.load(lang);
   BerkutI18n.apply();
+  if (typeof AppToast !== 'undefined' && AppToast.init) {
+    AppToast.init();
+  }
 
   let me;
   let pendingDocsTab = null;
@@ -22,8 +25,10 @@
     window.location.href = '/password-change';
     return;
   }
-  document.getElementById('user-info').textContent = user.username;
   await loadAppMeta();
+  bindProfileShortcut();
+  bindNotificationsUI();
+  bindStepupUI();
 
   document.getElementById('logout-btn').addEventListener('click', async () => {
     if (typeof IncidentsPage !== 'undefined' && IncidentsPage.clearState) {
@@ -41,6 +46,9 @@
   migrateLegacyHash(menuResp.menu);
   let currentPage = pickInitialPage(menuResp.menu);
   renderMenu(menuResp.menu, currentPage);
+  if (typeof AppNotifications !== 'undefined' && AppNotifications.init) {
+    AppNotifications.init((menuResp.menu || []).map(i => i.path));
+  }
   await navigateTo(currentPage, false);
   if (window.location.pathname === '/' || window.location.pathname === '/app') {
     window.history.replaceState({}, '', `/${currentPage}`);
@@ -73,11 +81,13 @@
   });
 
   const switcher = document.getElementById('language-switcher');
-  switcher.value = lang;
-  switcher.addEventListener('change', async (e) => {
-    const nextPrefs = Preferences.save({ ...prefs, language: e.target.value });
-    await handlePreferencesChange(nextPrefs, menuResp.menu, currentPage);
-  });
+  if (switcher) {
+    switcher.value = lang;
+    switcher.addEventListener('change', async (e) => {
+      const nextPrefs = Preferences.save({ ...prefs, language: e.target.value });
+      await handlePreferencesChange(nextPrefs, menuResp.menu, currentPage);
+    });
+  }
 
   function pickInitialPage(items) {
     const url = new URL(window.location.href);
@@ -96,6 +106,7 @@
     const parts = path.split('/').filter(Boolean);
     const base = parts[0] || '';
     if (!base || base === 'app') return null;
+    if (base === 'profile') return 'profile';
     if (base === 'approvals') return 'approvals';
     if (base === 'docs') return 'docs';
     if (base === 'tasks') return 'tasks';
@@ -220,7 +231,10 @@
       const link = document.createElement('a');
       link.className = 'sidebar-link';
       link.href = `/${item.path}`;
-      link.textContent = BerkutI18n.t(`nav.${item.name}`) || item.name;
+      const label = document.createElement('span');
+      label.className = 'sidebar-link-label';
+      label.textContent = BerkutI18n.t(`nav.${item.name}`) || item.name;
+      link.appendChild(label);
       link.dataset.path = item.path;
       if (item.path === activeKey) {
         link.classList.add('active');
@@ -231,6 +245,9 @@
       });
       nav.appendChild(link);
     });
+    if (typeof AppNotifications !== 'undefined' && AppNotifications.onMenuRendered) {
+      AppNotifications.onMenuRendered();
+    }
   }
 
   function setActiveLink(path) {
@@ -262,7 +279,7 @@
       if (titleEl) titleEl.textContent = '';
       if (descEl) descEl.textContent = '';
     } else {
-      const titleKey = path === 'registry' ? 'nav.controls' : `nav.${path}`;
+      const titleKey = path === 'registry' ? 'nav.controls' : (path === 'profile' ? 'profile.title' : `nav.${path}`);
       if (titleEl) titleEl.textContent = BerkutI18n.t(titleKey) || path;
       if (descEl) descEl.textContent = descriptionFor(path);
     }
@@ -285,6 +302,12 @@
     }
     if (path === 'settings' && typeof SettingsPage !== 'undefined') {
       SettingsPage.init(async (next) => {
+        const saved = Preferences.save(next);
+        await handlePreferencesChange(saved, menuResp.menu, path);
+      });
+    }
+    if (path === 'profile' && typeof ProfilePage !== 'undefined') {
+      ProfilePage.init(async (next) => {
         const saved = Preferences.save(next);
         await handlePreferencesChange(saved, menuResp.menu, path);
       });
@@ -334,6 +357,9 @@
     await BerkutI18n.load(prefs.language || 'ru');
     BerkutI18n.apply();
     renderMenu(menu, currentPath);
+    if (typeof AppNotifications !== 'undefined' && AppNotifications.onMenuRendered) {
+      AppNotifications.onMenuRendered();
+    }
     setActiveLink(currentPath);
     const switcher = document.getElementById('language-switcher');
     if (switcher) switcher.value = prefs.language || 'ru';
@@ -474,6 +500,8 @@
 
   function descriptionFor(path) {
     switch (path) {
+      case 'profile':
+        return BerkutI18n.t('profile.subtitle');
       case 'dashboard':
         return BerkutI18n.t('dashboard.subtitle');
       case 'accounts':
@@ -509,5 +537,316 @@
       default:
         return BerkutI18n.t('placeholder.subtitle');
     }
+  }
+
+  function bindProfileShortcut() {
+    const btn = document.getElementById('profile-btn');
+    if (!btn) return;
+    btn.onclick = async (e) => {
+      e.preventDefault();
+      await navigateTo('profile');
+      if (window.location.pathname !== '/profile') {
+        window.history.pushState({}, '', '/profile');
+      }
+    };
+    bindProfileHoverCard(btn);
+  }
+
+  function bindProfileHoverCard(btn) {
+    if (!btn) return;
+    const card = ensureProfileHoverCard();
+    const render = () => {
+      const lines = [
+        `${safe(user.username)}`,
+        safe(user.full_name),
+        safe(user.department),
+        safe(user.position),
+        user.session_created_at ? `${BerkutI18n.t('profile.sessionStarted')}: ${formatDateTime(user.session_created_at)}` : '',
+        user.session_expires_at ? `${BerkutI18n.t('profile.sessionExpires')}: ${formatDateTime(user.session_expires_at)}` : '',
+      ].filter(Boolean);
+      card.textContent = '';
+      lines.forEach((line) => {
+        const row = document.createElement('div');
+        row.textContent = line;
+        card.appendChild(row);
+      });
+    };
+    const show = () => {
+      render();
+      const rect = btn.getBoundingClientRect();
+      card.hidden = false;
+      const margin = 8;
+      const cardWidth = card.offsetWidth || 240;
+      const cardHeight = card.offsetHeight || 120;
+      const maxLeft = Math.max(margin, window.innerWidth - cardWidth - margin);
+      const maxTop = Math.max(margin, window.innerHeight - cardHeight - margin);
+      const left = Math.min(Math.max(margin, Math.round(rect.right + 10)), maxLeft);
+      const top = Math.min(Math.max(margin, Math.round(rect.top)), maxTop);
+      card.style.left = `${left}px`;
+      card.style.top = `${top}px`;
+    };
+    const hide = () => { card.hidden = true; };
+    btn.addEventListener('mouseenter', show);
+    btn.addEventListener('mouseleave', hide);
+    btn.addEventListener('focus', show);
+    btn.addEventListener('blur', hide);
+    window.addEventListener('scroll', hide, { passive: true });
+  }
+
+  function ensureProfileHoverCard() {
+    let card = document.getElementById('profile-hover-card');
+    if (card) return card;
+    card = document.createElement('div');
+    card.id = 'profile-hover-card';
+    card.className = 'profile-hover-card';
+    card.hidden = true;
+    document.body.appendChild(card);
+    return card;
+  }
+
+  function formatDateTime(value) {
+    if (!value) return '-';
+    if (window.AppTime?.formatDateTime) return AppTime.formatDateTime(value);
+    return String(value);
+  }
+
+  function safe(v) {
+    return String(v || '').trim();
+  }
+
+  function bindNotificationsUI() {
+    const btn = document.getElementById('notifications-btn');
+    const drop = document.getElementById('notifications-dropdown');
+    const list = document.getElementById('notifications-list');
+    const clearBtn = document.getElementById('notifications-clear-all');
+    const badge = document.getElementById('notifications-btn-badge');
+    if (!btn || !drop || !list || !clearBtn || !badge) return;
+
+    const render = () => {
+      const total = (window.AppNotifications && AppNotifications.getTotal) ? AppNotifications.getTotal() : 0;
+      if (total > 0) {
+        badge.hidden = false;
+        badge.textContent = total > 99 ? '99+' : String(total);
+      } else {
+        badge.hidden = true;
+        badge.textContent = '';
+      }
+      const items = (window.AppNotifications && AppNotifications.getItems) ? AppNotifications.getItems() : [];
+      list.innerHTML = '';
+      if (!items.length) {
+        const empty = document.createElement('div');
+        empty.className = 'notifications-empty muted';
+        empty.textContent = BerkutI18n.t('app.notifications.empty');
+        list.appendChild(empty);
+        return;
+      }
+      items.forEach((item) => {
+        const row = document.createElement('div');
+        row.className = 'notification-row';
+        const head = document.createElement('div');
+        head.className = 'notification-head';
+        const title = document.createElement('strong');
+        title.textContent = item.title || '-';
+        const del = document.createElement('button');
+        del.type = 'button';
+        del.className = 'btn ghost btn-sm';
+        del.textContent = BerkutI18n.t('common.delete');
+        del.onclick = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          if (window.AppNotifications?.dismissItem) {
+            AppNotifications.dismissItem(item.key);
+          }
+          render();
+        };
+        head.appendChild(title);
+        head.appendChild(del);
+        const message = document.createElement('div');
+        message.className = 'notification-message muted';
+        message.textContent = item.message || '';
+        row.appendChild(head);
+        row.appendChild(message);
+        row.onclick = async () => {
+          await openNotificationTarget(item);
+          drop.hidden = true;
+        };
+        list.appendChild(row);
+      });
+    };
+
+    btn.onclick = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      drop.hidden = !drop.hidden;
+      if (!drop.hidden) render();
+    };
+    clearBtn.onclick = (e) => {
+      e.preventDefault();
+      if (window.AppNotifications?.clearAll) {
+        AppNotifications.clearAll();
+      }
+      render();
+    };
+    document.addEventListener('click', (e) => {
+      if (drop.hidden) return;
+      if (e.target === btn || btn.contains(e.target)) return;
+      if (drop.contains(e.target)) return;
+      drop.hidden = true;
+    });
+    window.addEventListener('app:notifications-changed', () => render());
+    render();
+  }
+
+  async function openNotificationTarget(item) {
+    const raw = String((item && (item.target || item.path)) || '').trim();
+    if (!raw) return;
+    const absolute = raw.startsWith('/') ? raw : `/${raw}`;
+    const url = new URL(absolute, window.location.origin);
+    const base = pathFromLocation([]) || url.pathname.replace(/^\/+/, '').split('/')[0] || '';
+    if (!base) return;
+    if (`/${url.pathname.replace(/^\/+/, '')}` !== window.location.pathname || url.search !== window.location.search) {
+      window.history.pushState({}, '', `${url.pathname}${url.search}`);
+    }
+    await navigateTo(base, false);
+  }
+
+  function bindStepupUI() {
+    const modal = document.getElementById('stepup-modal');
+    const alertEl = document.getElementById('stepup-alert');
+    const subtitleEl = document.getElementById('stepup-subtitle');
+    const passwordEl = document.getElementById('stepup-password');
+    const codeEl = document.getElementById('stepup-code');
+    const codeRow = document.getElementById('stepup-code-row');
+    const passwordBtn = document.getElementById('stepup-password-btn');
+    const totpBtn = document.getElementById('stepup-totp-btn');
+    const passkeyBtn = document.getElementById('stepup-passkey-btn');
+    const logoutBtn = document.getElementById('stepup-logout-btn');
+    if (!modal || !passwordBtn || !totpBtn || !passkeyBtn || !logoutBtn) return;
+
+    const setAlert = (message, ok = false) => {
+      if (!alertEl) return;
+      const text = String(message || '').trim();
+      if (!text) {
+        alertEl.hidden = true;
+        alertEl.classList.remove('success');
+        alertEl.textContent = '';
+        return;
+      }
+      alertEl.hidden = false;
+      alertEl.textContent = BerkutI18n.t(text) || text;
+      alertEl.classList.toggle('success', !!ok);
+    };
+
+    const updateView = (payload) => {
+      const methods = payload && payload.methods ? payload.methods : {};
+      const passwordVerified = !!payload?.password_verified;
+      const locked = !!payload?.locked;
+      const lockSec = Number(payload?.lock_seconds || 0);
+      const requireSecond = !!methods.totp || !!methods.passkey;
+
+      if (subtitleEl) {
+        if (locked) {
+          subtitleEl.textContent = (BerkutI18n.t('auth.stepup.lockedFor') || 'Повторите через {sec} сек.').replace('{sec}', `${Math.max(0, lockSec)}`);
+        } else if (passwordVerified && requireSecond) {
+          subtitleEl.textContent = BerkutI18n.t('auth.stepup.secondFactor');
+        } else {
+          subtitleEl.textContent = BerkutI18n.t('auth.stepup.subtitle');
+        }
+      }
+      if (codeRow) codeRow.hidden = !(passwordVerified && !!methods.totp);
+      if (passwordEl) passwordEl.disabled = locked || passwordVerified;
+      if (codeEl) codeEl.disabled = locked || !(passwordVerified && !!methods.totp);
+      passwordBtn.disabled = locked || passwordVerified;
+      totpBtn.hidden = !(passwordVerified && !!methods.totp);
+      passkeyBtn.hidden = !(passwordVerified && !!methods.passkey);
+      totpBtn.disabled = locked || !(passwordVerified && !!methods.totp);
+      passkeyBtn.disabled = locked || !(passwordVerified && !!methods.passkey);
+    };
+
+    const showModal = async () => {
+      modal.hidden = false;
+      setAlert('');
+      try {
+        const status = await Api.get('/api/auth/stepup/status');
+        updateView(status || {});
+      } catch (err) {
+        setAlert((err && err.message) || 'common.error');
+      }
+    };
+
+    const hideModal = () => {
+      modal.hidden = true;
+      setAlert('');
+      if (passwordEl) passwordEl.value = '';
+      if (codeEl) codeEl.value = '';
+    };
+
+    window.addEventListener('app:auth-challenge', async () => {
+      await showModal();
+    });
+
+    passwordBtn.addEventListener('click', async () => {
+      try {
+        const data = await Api.post('/api/auth/stepup/password', { password: passwordEl ? passwordEl.value : '' });
+        updateView(data || {});
+        setAlert('');
+      } catch (err) {
+        setAlert((err && err.message) || 'auth.stepup.passwordInvalid');
+      }
+    });
+
+    totpBtn.addEventListener('click', async () => {
+      try {
+        const data = await Api.post('/api/auth/stepup/totp', { code: codeEl ? codeEl.value : '' });
+        if (data && data.required === false) {
+          hideModal();
+          if (window.AppToast?.show) {
+            AppToast.show(BerkutI18n.t('auth.stepup.success') || 'OK', 'success');
+          }
+          return;
+        }
+        updateView(data || {});
+      } catch (err) {
+        setAlert((err && err.message) || 'auth.2fa.invalidCode');
+      }
+    });
+
+    passkeyBtn.addEventListener('click', async () => {
+      try {
+        if (!window.BerkutWebAuthn || !BerkutWebAuthn.supported()) {
+          setAlert('auth.passkeys.notSupported');
+          return;
+        }
+        const begin = await Api.post('/api/auth/stepup/passkey/begin', {});
+        const options = BerkutWebAuthn.toPublicKeyRequestOptions(begin?.options);
+        const cred = await navigator.credentials.get({ publicKey: options });
+        const raw = BerkutWebAuthn.credentialToJSON(cred);
+        const done = await Api.post('/api/auth/stepup/passkey/finish', {
+          challenge_id: begin?.challenge_id || '',
+          credential: raw,
+        });
+        if (done && done.required === false) {
+          hideModal();
+          if (window.AppToast?.show) {
+            AppToast.show(BerkutI18n.t('auth.stepup.success') || 'OK', 'success');
+          }
+          return;
+        }
+        updateView(done || {});
+      } catch (err) {
+        const key = (window.BerkutWebAuthn && BerkutWebAuthn.errorKey) ? BerkutWebAuthn.errorKey(err) : '';
+        setAlert(key || (err && err.message) || 'auth.passkeys.failed');
+      }
+    });
+
+    logoutBtn.addEventListener('click', async () => {
+      try {
+        await Api.post('/api/auth/logout');
+      } catch (_) {
+        // ignore
+      } finally {
+        window.location.href = '/login';
+      }
+    });
   }
 })();

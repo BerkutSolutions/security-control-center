@@ -3,15 +3,15 @@
     <div class="card-header">
       <div class="inline-actions">
         <label>
-          <span data-i18n="approvals.filter.status">Статус</span>
+          <span data-i18n="approvals.filter.status">Status</span>
           <select id="approvals-status" class="select">
-            <option value="" data-i18n="common.all">Все</option>
-            <option value="review" data-i18n="docs.status.review">На согласовании</option>
-            <option value="approved" data-i18n="docs.status.approved">Утвержден</option>
-            <option value="returned" data-i18n="docs.status.returned">Возвращен</option>
+            <option value="" data-i18n="common.all">All</option>
+            <option value="review" data-i18n="docs.status.review">On approval</option>
+            <option value="approved" data-i18n="docs.status.approved">Approved</option>
+            <option value="returned" data-i18n="docs.status.returned">Returned</option>
           </select>
         </label>
-        <button class="btn ghost" id="approvals-refresh" data-i18n="common.refresh">Обновить</button>
+        <button class="btn ghost" id="approvals-refresh" data-i18n="common.refresh">Refresh</button>
       </div>
     </div>
     <div class="card-body">
@@ -19,10 +19,9 @@
         <table class="data-table" id="approvals-table">
           <thead>
             <tr>
-              <th data-i18n="approvals.table.document">Документ</th>
-              <th data-i18n="approvals.table.status">Статус</th>
-              <th data-i18n="approvals.table.message">Сообщение</th>
-              <th data-i18n="approvals.table.updated">Обновлен</th>
+              <th data-i18n="approvals.table.document">Document</th>
+              <th data-i18n="approvals.table.status">Status</th>
+              <th data-i18n="approvals.table.updated">Updated</th>
             </tr>
           </thead>
           <tbody></tbody>
@@ -39,7 +38,7 @@
           <h3 id="approval-doc-title"></h3>
           <p class="muted" id="approval-doc-meta"></p>
         </div>
-        <button class="btn ghost" data-close="#approval-detail-modal" data-i18n="common.close">Закрыть</button>
+        <button class="btn ghost" data-close="#approval-detail-modal" data-i18n="common.close">Close</button>
       </div>
       <div class="modal-content approval-content">
         <div class="alert" id="approval-detail-alert" hidden></div>
@@ -47,46 +46,109 @@
           <div class="approval-info">
             <div class="info-card">
               <div class="info-row">
-                <span data-i18n="approvals.meta.status">Статус</span>
+                <span data-i18n="approvals.meta.status">Status</span>
                 <span id="approval-status"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.level">Гриф</span>
+                <span data-i18n="approvals.meta.level">Classification</span>
                 <span id="approval-classification"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.version">Версия</span>
+                <span data-i18n="approvals.meta.version">Version</span>
                 <span id="approval-version"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.initiator">Инициатор</span>
+                <span data-i18n="approvals.meta.initiator">Initiator</span>
                 <span id="approval-initiator"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.reason">Причина изменения</span>
+                <span data-i18n="approvals.meta.reason">Reason</span>
                 <span id="approval-reason"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.request">Сообщение</span>
+                <span data-i18n="approvals.meta.request">Message</span>
                 <span id="approval-request"></span>
               </div>
               <div class="info-row">
-                <span data-i18n="approvals.meta.updated">Обновлен</span>
+                <span data-i18n="approvals.meta.updated">Updated</span>
                 <span id="approval-updated"></span>
               </div>
             </div>
             <div class="info-card">
-              <h4 data-i18n="approvals.participants">Участники</h4>
+              <h4 data-i18n="approvals.participants">Participants</h4>
               <ul id="participants-list"></ul>
             </div>
           </div>
           <div class="approval-stages" id="approval-stages-container"></div>
           <div class="approval-comments info-card">
-            <h4 data-i18n="approvals.comments">Комментарии</h4>
+            <h4 data-i18n="approvals.comments">Comments</h4>
             <div id="comments-list" class="comments-list"></div>
             <div class="comment-form">
-              <textarea id="comment-text" class="textarea" rows="2" placeholder="Комментарий" data-i18n-placeholder="approvals.commentPlaceholder"></textarea>
-              <button class="btn secondary" id="comment-submit" data-i18n="approvals.commentSend">Отправить</button>
+              <textarea id="comment-text" class="textarea" rows="2" placeholder="Comment" data-i18n-placeholder="approvals.commentPlaceholder"></textarea>
+              <button class="btn secondary" id="comment-submit" data-i18n="approvals.commentSend">Send</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="export-decision-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <div>
+          <h3 id="export-approval-title" data-i18n="docs.exportApproveTitle">Approve export</h3>
+          <p class="muted" id="export-approval-meta"></p>
+        </div>
+        <button class="btn ghost" id="export-decision-close" data-i18n="common.close">Close</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="export-decision-alert" hidden></div>
+        <div class="approval-detail-grid">
+          <div class="approval-info">
+            <div class="info-card">
+              <div class="info-row">
+                <span data-i18n="approvals.meta.status">Status</span>
+                <span id="export-approval-status"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.level">Classification</span>
+                <span id="export-approval-level"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.initiator">Initiator</span>
+                <span id="export-approval-requester"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="docs.exportApproveUser">User</span>
+                <span id="export-approval-approver"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="docs.exportApproveReason">Reason</span>
+                <span id="export-approval-reason"></span>
+              </div>
+              <div class="info-row">
+                <span data-i18n="approvals.meta.updated">Updated</span>
+                <span id="export-approval-updated"></span>
+              </div>
+            </div>
+          </div>
+          <div class="approval-stages">
+            <div class="info-card">
+              <h4 data-i18n="approvals.decisionTitle">Decision</h4>
+              <div id="export-decision-readonly" class="muted" hidden></div>
+              <div id="export-decision-form">
+                <div class="form-field required">
+                  <label data-i18n="docs.exportApproveReasonPrompt">Approval reason</label>
+                  <textarea id="export-decision-comment" class="textarea" rows="4" data-i18n-placeholder="approvals.decisionPlaceholder" placeholder="Comment"></textarea>
+                </div>
+                <div class="form-actions">
+                  <button class="btn success" id="export-decision-approve" data-i18n="approvals.approve">Approve</button>
+                  <button class="btn danger" id="export-decision-reject" data-i18n="approvals.reject">Reject</button>
+                  <button class="btn ghost" id="export-decision-cancel" data-i18n="common.cancel">Cancel</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -94,4 +156,3 @@
     </div>
   </div>
 </div>
-

@@ -85,6 +85,8 @@ const DocEditor = (() => {
     els.links = document.getElementById('editor-links');
     els.aclRoles = document.getElementById('editor-acl-roles');
     els.aclUsers = document.getElementById('editor-acl-users');
+    els.aclRolesHint = document.getElementById('editor-acl-roles-hint');
+    els.aclUsersHint = document.getElementById('editor-acl-users-hint');
     els.aclSave = document.getElementById('editor-acl-save');
     els.aclRefresh = document.getElementById('editor-acl-refresh');
     DocUI.populateClassificationSelect(els.classification);
@@ -149,6 +151,30 @@ const DocEditor = (() => {
     }
     if (els.aclSave) els.aclSave.onclick = () => saveAcl();
     if (els.aclRefresh) els.aclRefresh.onclick = () => loadAcl();
+    if (els.aclRoles) {
+      els.aclRoles.addEventListener('change', () => renderSelectedHint(els.aclRoles, els.aclRolesHint));
+      els.aclRoles.addEventListener('selectionrefresh', () => renderSelectedHint(els.aclRoles, els.aclRolesHint));
+    }
+    if (els.aclUsers) {
+      els.aclUsers.addEventListener('change', () => renderSelectedHint(els.aclUsers, els.aclUsersHint));
+      els.aclUsers.addEventListener('selectionrefresh', () => renderSelectedHint(els.aclUsers, els.aclUsersHint));
+    }
+  }
+
+  function renderSelectedHint(selectEl, hintEl) {
+    if (!selectEl || !hintEl) return;
+    const selected = Array.from(selectEl.selectedOptions || []);
+    hintEl.innerHTML = '';
+    if (!selected.length) {
+      hintEl.textContent = BerkutI18n.t('docs.stageEmptySelection') || '';
+      return;
+    }
+    selected.forEach((opt) => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = opt.dataset.label || opt.textContent || '';
+      hintEl.appendChild(tag);
+    });
   }
 
   async function open(docId, opts = {}) {
@@ -481,7 +507,7 @@ const DocEditor = (() => {
           <span>${escapeHtml(linkLabel(type))} #${escapeHtml(id)}</span>
           <div class="table-actions">
             ${openHref ? `<a class="btn ghost btn-xs" href="${openHref}">${escapeHtml(linkOpenLabel(type))}</a>` : ''}
-            <button class="btn ghost" data-id="${l.id}">×</button>
+            <button class="btn ghost" data-id="${l.id}">${escapeHtml(BerkutI18n.t('common.delete'))}</button>
           </div>
         `;
         row.querySelector('button')?.addEventListener('click', () => removeLink(l.id));
@@ -621,16 +647,17 @@ const DocEditor = (() => {
   function enhanceSelectWithTicks(sel) {
     if (!sel || sel.dataset.enhanced) return;
     sel.dataset.enhanced = '1';
-    Array.from(sel.options).forEach(opt => {
+    Array.from(sel.options).forEach((opt) => {
       opt.dataset.label = opt.textContent;
-      if (opt.selected) opt.textContent = `${opt.dataset.label} ✓`;
+      if (opt.selected) opt.textContent = `${opt.dataset.label} [x]`;
     });
     const refresh = () => {
-      Array.from(sel.options).forEach(opt => {
-        const base = opt.dataset.label || opt.textContent.replace(/ ✓$/, '');
+      Array.from(sel.options).forEach((opt) => {
+        const base = opt.dataset.label || opt.textContent.replace(/ \[x\]$/, '');
         opt.dataset.label = base;
-        opt.textContent = opt.selected ? `${base} ✓` : base;
+        opt.textContent = opt.selected ? `${base} [x]` : base;
       });
+      renderSelectedHint(sel, sel.id === 'editor-acl-roles' ? els.aclRolesHint : (sel.id === 'editor-acl-users' ? els.aclUsersHint : null));
     };
     sel.addEventListener('mousedown', (e) => {
       const opt = e.target.closest('option');
@@ -646,6 +673,7 @@ const DocEditor = (() => {
       opt.selected = !opt.selected;
       refresh();
     });
+    refresh();
   }
 
   async function loadAclOptions() {
@@ -668,6 +696,8 @@ const DocEditor = (() => {
     });
     enhanceSelectWithTicks(els.aclRoles);
     enhanceSelectWithTicks(els.aclUsers);
+    renderSelectedHint(els.aclRoles, els.aclRolesHint);
+    renderSelectedHint(els.aclUsers, els.aclUsersHint);
   }
 
   async function loadAcl() {
@@ -684,6 +714,8 @@ const DocEditor = (() => {
       });
       enhanceSelectWithTicks(els.aclRoles);
       enhanceSelectWithTicks(els.aclUsers);
+      renderSelectedHint(els.aclRoles, els.aclRolesHint);
+      renderSelectedHint(els.aclUsers, els.aclUsersHint);
     } catch (err) {
       console.warn('load acl', err);
     }
@@ -695,12 +727,12 @@ const DocEditor = (() => {
     const usersSel = Array.from(els.aclUsers.selectedOptions).map(o => parseInt(o.value, 10)).filter(Boolean);
     const acl = [];
     rolesSel.forEach(r => {
-      ['view', 'edit', 'manage'].forEach(p => acl.push({ subject_type: 'role', subject_id: r, permission: p }));
+      ['view', 'edit', 'manage', 'export'].forEach(p => acl.push({ subject_type: 'role', subject_id: r, permission: p }));
     });
     usersSel.forEach(uid => {
       const u = UserDirectory.get(uid);
       if (u) {
-        ['view', 'edit', 'manage'].forEach(p => acl.push({ subject_type: 'user', subject_id: u.username, permission: p }));
+        ['view', 'edit', 'manage', 'export'].forEach(p => acl.push({ subject_type: 'user', subject_id: u.username, permission: p }));
       }
     });
     try {
@@ -967,3 +999,4 @@ const DocEditor = (() => {
 if (typeof window !== 'undefined') {
   window.DocEditor = DocEditor;
 }
+

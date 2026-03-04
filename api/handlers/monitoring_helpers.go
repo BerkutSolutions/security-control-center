@@ -65,6 +65,19 @@ func hasPermission(r *http.Request, policy *rbac.Policy, perm rbac.Permission) b
 	return false
 }
 
+func isBackgroundRequest(r *http.Request) bool {
+	if r == nil {
+		return false
+	}
+	if strings.TrimSpace(r.Header.Get("X-Berkut-Background")) == "1" {
+		return true
+	}
+	if strings.TrimSpace(r.URL.Query().Get("_bg")) == "1" {
+		return true
+	}
+	return false
+}
+
 func initialStatus(paused bool) string {
 	if paused {
 		return "paused"

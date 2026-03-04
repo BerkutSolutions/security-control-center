@@ -123,6 +123,15 @@ type DocExportApproval struct {
 	ConsumedAt  *time.Time `json:"consumed_at,omitempty"`
 }
 
+type DocExportApprovalDecision struct {
+	ID         int64     `json:"id"`
+	ApprovalID int64     `json:"approval_id"`
+	Decision   string    `json:"decision"` // approve|reject
+	Comment    string    `json:"comment"`
+	DecidedBy  int64     `json:"decided_by"`
+	DecidedAt  time.Time `json:"decided_at"`
+}
+
 type DocumentFilter struct {
 	FolderID       *int64
 	Status         string
@@ -197,6 +206,11 @@ type DocsStore interface {
 	GetActiveApproval(ctx context.Context, docID int64) (*Approval, []ApprovalParticipant, error)
 	CreateDocExportApproval(ctx context.Context, item *DocExportApproval) (int64, error)
 	ConsumeDocExportApproval(ctx context.Context, docID, requestedBy int64) (*DocExportApproval, error)
+	ListActiveDocExportApprovalsForUser(ctx context.Context, requestedBy int64) ([]DocExportApproval, error)
+	ListDocExportApprovalsForActor(ctx context.Context, actorID int64) ([]DocExportApproval, error)
+	GetDocExportApproval(ctx context.Context, id int64) (*DocExportApproval, error)
+	GetDocExportApprovalDecision(ctx context.Context, approvalID int64) (*DocExportApprovalDecision, error)
+	SaveDocExportApprovalDecision(ctx context.Context, item *DocExportApprovalDecision) error
 }
 
 type docsStore struct {

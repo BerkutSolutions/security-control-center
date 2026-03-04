@@ -33,6 +33,9 @@ func (m *safeguardsMockSessions) ListByUser(ctx context.Context, userID int64) (
 func (m *safeguardsMockSessions) ListAll(ctx context.Context) ([]store.SessionRecord, error) {
 	return nil, nil
 }
+func (m *safeguardsMockSessions) UserIPStats(ctx context.Context, userID int64) (lastIP, frequentIP string, err error) {
+	return "", "", nil
+}
 func (m *safeguardsMockSessions) DeleteSession(ctx context.Context, id string, by string) error {
 	return nil
 }

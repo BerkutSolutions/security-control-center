@@ -86,7 +86,7 @@
       const status = userStatus(u);
       const statusLines = [status];
       if (u.lock_reason) {
-        statusLines.push(`${BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason'}: ${u.lock_reason}`);
+        statusLines.push(`${BerkutI18n.t('accounts.lockReasonLabel') || 'Reason'}: ${u.lock_reason}`);
       }
       if (u.password_set === false) {
         statusLines.push(BerkutI18n.t('accounts.passwordNotSetIndicator') || 'Password not set');
@@ -107,11 +107,13 @@
           <button class="btn ghost" data-action="edit">${BerkutI18n.t('accounts.edit')}</button>
           <button class="btn ghost" data-action="lock">${BerkutI18n.t('accounts.lock') || 'Lock'}</button>
           <button class="btn ghost" data-action="reset">${BerkutI18n.t('accounts.reset')}</button>
+          <button class="btn ghost danger" data-action="delete">${BerkutI18n.t('accounts.delete') || 'Delete'}</button>
           ${canReset2FA ? `<button class="btn ghost danger" data-action="reset2fa">${BerkutI18n.t('accounts.reset2fa') || 'Reset 2FA'}</button>` : ''}
         </td>`;
       tr.querySelector('[data-action="edit"]').onclick = () => openUserModal(u);
       tr.querySelector('[data-action="lock"]').onclick = () => toggleLock(u);
       tr.querySelector('[data-action="reset"]').onclick = () => resetPassword(u);
+      tr.querySelector('[data-action="delete"]').onclick = () => deleteUser(u);
       const reset2faBtn = tr.querySelector('[data-action="reset2fa"]');
       if (reset2faBtn) reset2faBtn.onclick = () => reset2FA(u);
       const checkbox = tr.querySelector('.user-select');
@@ -227,9 +229,85 @@
     if (modal) {
       const rolesSel = document.getElementById('user-roles');
       const groupsSel = document.getElementById('user-groups');
-      renderSelectedOptions(rolesSel, document.getElementById('user-roles-hint'));
-      renderSelectedOptions(groupsSel, document.getElementById('user-groups-hint'));
+      const rolesHint = document.getElementById('user-roles-hint');
+      const groupsHint = document.getElementById('user-groups-hint');
+      if (rolesSel) {
+        rolesSel.multiple = false;
+        rolesSel.removeAttribute('multiple');
+        if (!rolesSel.dataset.hintBound) {
+          rolesSel.dataset.hintBound = '1';
+          rolesSel.addEventListener('change', () => renderSelectedOptions(rolesSel, rolesHint));
+          rolesSel.addEventListener('selectionrefresh', () => renderSelectedOptions(rolesSel, rolesHint));
+        }
+      }
+      if (groupsSel && !groupsSel.dataset.hintBound) {
+        groupsSel.dataset.hintBound = '1';
+        groupsSel.addEventListener('change', () => renderSelectedOptions(groupsSel, groupsHint));
+        groupsSel.addEventListener('selectionrefresh', () => renderSelectedOptions(groupsSel, groupsHint));
+      }
+      renderSelectedOptions(rolesSel, rolesHint);
+      renderSelectedOptions(groupsSel, groupsHint);
     }
+    bindLockModal();
+  }
+
+  function bindLockModal() {
+    const modal = document.getElementById('lock-modal');
+    const form = document.getElementById('lock-form');
+    if (!modal || !form || form.dataset.bound === '1') return;
+    form.dataset.bound = '1';
+    const closeBtn = document.getElementById('close-lock-modal');
+    const cancelBtn = document.getElementById('cancel-lock-modal');
+    if (closeBtn) closeBtn.onclick = closeLockModal;
+    if (cancelBtn) cancelBtn.onclick = closeLockModal;
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const userId = Number(form.dataset.userId || 0);
+      if (!userId) return;
+      const minutes = Number(document.getElementById('lock-minutes')?.value || 60);
+      const reason = (document.getElementById('lock-reason')?.value || '').trim();
+      if (!reason) {
+        showAlert('lock-modal-alert', BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason required');
+        return;
+      }
+      if (!Number.isFinite(minutes) || minutes <= 0) {
+        showAlert('lock-modal-alert', BerkutI18n.t('accounts.lockDuration') || 'Duration required');
+        return;
+      }
+      try {
+        await Api.post(`/api/accounts/users/${userId}/lock`, { reason, minutes });
+        closeLockModal();
+        await loadUsers();
+      } catch (err) {
+        showAlert('lock-modal-alert', err.message || (BerkutI18n.t('common.error') || 'Error'));
+      }
+    });
+  }
+
+  function openLockModal(user) {
+    const modal = document.getElementById('lock-modal');
+    const form = document.getElementById('lock-form');
+    if (!modal || !form || !user) return;
+    form.dataset.userId = `${user.id}`;
+    const userEl = document.getElementById('lock-user-name');
+    if (userEl) userEl.textContent = user.full_name || user.username || `#${user.id}`;
+    const minutesEl = document.getElementById('lock-minutes');
+    if (minutesEl) minutesEl.value = '60';
+    const reasonEl = document.getElementById('lock-reason');
+    if (reasonEl) reasonEl.value = '';
+    showAlert('lock-modal-alert', '');
+    modal.hidden = false;
+  }
+
+  function closeLockModal() {
+    const modal = document.getElementById('lock-modal');
+    const form = document.getElementById('lock-form');
+    if (form) {
+      form.dataset.userId = '';
+      form.reset();
+    }
+    showAlert('lock-modal-alert', '');
+    if (modal) modal.hidden = true;
   }
 
   function openUserModal(user) {
@@ -248,7 +326,7 @@
       form.clearance_level.value = user.clearance_level != null ? user.clearance_level : '';
       form.status.value = user.active ? 'active' : 'disabled';
       renderClearanceTags('user-clearance-tags', user.clearance_tags || []);
-      setMultiSelect(form.roles, user.roles || []);
+      setMultiSelect(form.roles, (user.roles || []).slice(0, 1));
       setMultiSelect(form.groups, (user.groups || []).map(g => g.id));
     } else {
       form.username.removeAttribute('disabled');
@@ -256,6 +334,8 @@
       setMultiSelect(form.roles, []);
       setMultiSelect(form.groups, []);
     }
+    renderSelectedOptions(form.roles, document.getElementById('user-roles-hint'));
+    renderSelectedOptions(form.groups, document.getElementById('user-groups-hint'));
     state.sessions = [];
     const sessionsPanel = document.getElementById('user-sessions');
     if (sessionsPanel) {
@@ -349,7 +429,7 @@
       clearance_level: Number(data.clearance_level || 0),
       clearance_tags: getCheckedValues(document.getElementById('user-clearance-tags')),
       require_password_change: form.require_password_change.checked,
-      roles: AccountsPage.getSelectedValues(form.roles),
+      roles: AccountsPage.getSelectedValues(form.roles).slice(0, 1),
       groups: AccountsPage.getSelectedValues(form.groups).map(Number)
     };
     if (data.password) {
@@ -361,12 +441,20 @@
 
   async function toggleLock(user) {
     const locked = (user.lock_stage >= 6) || (user.locked_until && new Date(user.locked_until) > new Date());
-    const reason = prompt(BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason?') || '';
     if (locked) {
+      const reason = prompt(BerkutI18n.t('accounts.lockReasonPrompt') || 'Reason?') || '';
       await Api.post(`/api/accounts/users/${user.id}/unlock`, { reason });
+      await loadUsers();
     } else {
-      await Api.post(`/api/accounts/users/${user.id}/lock`, { reason, minutes: 60 });
+      openLockModal(user);
     }
+  }
+
+  async function deleteUser(user) {
+    if (!user || !user.id) return;
+    const msg = BerkutI18n.t('accounts.deleteConfirm') || 'Delete this user?';
+    if (!confirm(msg)) return;
+    await Api.del(`/api/accounts/users/${user.id}`);
     await loadUsers();
   }
 
@@ -442,7 +530,7 @@
       const parts = [];
       if (direct.length) parts.push(`${BerkutI18n.t('accounts.roles') || 'Roles'}: ${direct.join(', ')}`);
       if (groupRoles.length) parts.push(`${BerkutI18n.t('accounts.groups.title') || 'Groups'}: ${groupRoles.join(', ')}${groupNames.length ? ` (${groupNames.join(', ')})` : ''}`);
-      sources.textContent = parts.join(' • ');
+      sources.textContent = parts.join(' | ');
     }
     const groupsList = document.getElementById('effective-groups');
     if (groupsList) {
@@ -450,7 +538,7 @@
       (user.groups || []).forEach(g => {
         const div = document.createElement('div');
         div.className = 'pill';
-        div.textContent = `${g.name} • ${(g.roles || []).join(', ') || '-' } • ${BerkutI18n.t('accounts.groups.clearance') || 'Clearance'} ${g.clearance_level || 0}`;
+        div.textContent = `${g.name} | ${(g.roles || []).join(', ') || '-' } | ${BerkutI18n.t('accounts.groups.clearance') || 'Clearance'} ${g.clearance_level || 0}`;
         groupsList.appendChild(div);
       });
     }
@@ -473,6 +561,8 @@
   AccountsPage.closeUserModal = closeUserModal;
   AccountsPage.collectUserForm = collectUserForm;
   AccountsPage.toggleLock = toggleLock;
+  AccountsPage.deleteUser = deleteUser;
   AccountsPage.resetPassword = resetPassword;
   AccountsPage.renderEffective = renderEffective;
 })();
+

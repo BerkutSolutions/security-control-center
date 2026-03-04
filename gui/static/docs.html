@@ -273,7 +273,18 @@
           </div>
           <div>
             <span class="muted" data-i18n="docs.field.aclUsers">Права</span>
-            <div id="doc-view-acl" class="meta-value"></div>
+            <div class="meta-value acl-view-block">
+              <div class="form-field">
+                <label data-i18n="docs.field.aclRoles">ACL (роли)</label>
+                <select id="doc-view-acl-roles" multiple disabled></select>
+                <div class="selected-hint" id="doc-view-acl-roles-hint"></div>
+              </div>
+              <div class="form-field">
+                <label data-i18n="docs.field.aclUsers">ACL (пользователи)</label>
+                <select id="doc-view-acl-users" multiple disabled></select>
+                <div class="selected-hint" id="doc-view-acl-users-hint"></div>
+              </div>
+            </div>
           </div>
           <div>
             <span class="muted" data-i18n="docs.links">Связи</span>
@@ -433,6 +444,33 @@
     </div>
   </div>
 
+  <div class="modal" id="export-approve-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="docs.exportApproveTitle">Согласовать экспорт</h3>
+        <button class="btn ghost" data-close="#export-approve-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="export-approve-alert" hidden></div>
+        <form id="export-approve-form" class="form-grid two-column">
+          <div class="form-field required">
+            <label data-i18n="docs.exportApproveUser">Пользователь</label>
+            <select id="export-approve-user" name="requested_user_id" required></select>
+          </div>
+          <div class="form-field full">
+            <label data-i18n="docs.exportApproveReason">Причина</label>
+            <textarea id="export-approve-reason" name="reason" rows="3" maxlength="500" data-i18n-placeholder="docs.exportApproveReasonPlaceholder" placeholder="Укажите причину согласования"></textarea>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" form="export-approve-form" data-i18n="docs.exportApproveSubmit">Отправить</button>
+          <button class="btn ghost" type="button" data-close="#export-approve-modal" data-i18n="common.cancel">Отмена</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal" id="approval-detail-modal" hidden>
     <div class="modal-backdrop"></div>
     <div class="modal-body wide">
@@ -583,10 +621,12 @@
           <div class="form-field acl-field">
             <label data-i18n="docs.field.aclRoles">ACL (роли)</label>
             <select id="editor-acl-roles" multiple></select>
+            <div class="selected-hint" id="editor-acl-roles-hint"></div>
           </div>
           <div class="form-field acl-field">
             <label data-i18n="docs.field.aclUsers">ACL (пользователи)</label>
             <select id="editor-acl-users" multiple></select>
+            <div class="selected-hint" id="editor-acl-users-hint"></div>
           </div>
           <div class="form-actions acl-actions">
             <button class="btn ghost" type="button" id="editor-acl-refresh" data-i18n="common.refresh">Refresh</button>

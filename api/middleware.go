@@ -294,6 +294,11 @@ func (s *Server) withSession(next http.HandlerFunc) http.HandlerFunc {
 			}
 		}
 		ctx := context.WithValue(r.Context(), auth.SessionContextKey, sr)
+		reqWithCtx := r.WithContext(ctx)
+		if blocked, code := s.enforceBehaviorBefore(w, reqWithCtx, sr); blocked {
+			s.observeBehaviorAfter(reqWithCtx, sr, code)
+			return
+		}
 		now := time.Now().UTC()
 		interval := sessionActivityInterval
 		if s.cfg != nil && s.cfg.Security.OnlineWindowSec > 0 {
@@ -309,7 +314,9 @@ func (s *Server) withSession(next http.HandlerFunc) http.HandlerFunc {
 		if s.activityTracker == nil || s.activityTracker.shouldUpdate(sr.ID, now, interval) {
 			_ = s.sessions.UpdateActivity(r.Context(), sr.ID, now, s.cfg.EffectiveSessionTTL())
 		}
-		next.ServeHTTP(w, r.WithContext(ctx))
+		rec := &statusRecorder{ResponseWriter: w, status: http.StatusOK}
+		next.ServeHTTP(rec, reqWithCtx)
+		s.observeBehaviorAfter(reqWithCtx, sr, rec.status)
 	}
 }
 

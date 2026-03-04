@@ -32,7 +32,8 @@ func (s *monitoringStore) GetSettings(ctx context.Context) (*MonitorSettings, er
 	settings.AutoTaskOnDown = autoTaskOnDown == 1
 	settings.AutoTLSIncident = autoTLSIncident == 1
 	settings.AutoIncidentCloseOnUp = autoIncidentCloseOnUp == 1
-	settings.IncidentScoringEnabled = scoringEnabled == 1
+	// Incident scoring for monitoring is mandatory by product policy.
+	settings.IncidentScoringEnabled = true
 	if settings.IncidentScoringModel == "" {
 		settings.IncidentScoringModel = "heuristic"
 	}
@@ -113,7 +114,7 @@ func defaultMonitoringSettings() MonitorSettings {
 		DefaultRetryIntervalSec: 5,
 		DefaultSLATargetPct:     90,
 
-		IncidentScoringEnabled:         false,
+		IncidentScoringEnabled:         true,
 		IncidentScoringModel:           "heuristic",
 		IncidentScoreOpenThreshold:     0.85,
 		IncidentScoreCloseThreshold:    0.25,

@@ -32,6 +32,9 @@ func (m *bulkSessionsMock) ListByUser(ctx context.Context, userID int64) ([]stor
 func (m *bulkSessionsMock) ListAll(ctx context.Context) ([]store.SessionRecord, error) {
 	return nil, nil
 }
+func (m *bulkSessionsMock) UserIPStats(ctx context.Context, userID int64) (lastIP, frequentIP string, err error) {
+	return "", "", nil
+}
 func (m *bulkSessionsMock) DeleteSession(ctx context.Context, id string, by string) error { return nil }
 func (m *bulkSessionsMock) DeleteAllForUser(ctx context.Context, userID int64, by string) error {
 	if m.killed == nil {

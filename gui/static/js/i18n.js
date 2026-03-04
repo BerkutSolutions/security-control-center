@@ -33,6 +33,10 @@
       const key = el.getAttribute('data-i18n-placeholder');
       el.setAttribute('placeholder', t(key));
     });
+    document.querySelectorAll('[data-i18n-title]').forEach(el => {
+      const key = el.getAttribute('data-i18n-title');
+      el.setAttribute('title', t(key));
+    });
   }
 
   window.BerkutI18n = { load, t, apply, currentLang: () => currentLang };

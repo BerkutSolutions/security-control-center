@@ -244,6 +244,15 @@ var migrations = []string{
 		consumed_at TIMESTAMP,
 		FOREIGN KEY(doc_id) REFERENCES docs(id) ON DELETE CASCADE
 	);`,
+	`CREATE TABLE IF NOT EXISTS doc_export_approval_decisions (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		approval_id INTEGER NOT NULL UNIQUE,
+		decision TEXT NOT NULL,
+		comment TEXT NOT NULL DEFAULT '',
+		decided_by INTEGER NOT NULL,
+		decided_at TIMESTAMP NOT NULL,
+		FOREIGN KEY(approval_id) REFERENCES doc_export_approvals(id) ON DELETE CASCADE
+	);`,
 	`CREATE TABLE IF NOT EXISTS approval_participants (
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		approval_id INTEGER NOT NULL,
@@ -416,6 +425,7 @@ var migrations = []string{
 	`CREATE INDEX IF NOT EXISTS idx_doc_versions_doc ON doc_versions(doc_id);`,
 	`CREATE INDEX IF NOT EXISTS idx_approvals_doc ON approvals(doc_id);`,
 	`CREATE INDEX IF NOT EXISTS idx_doc_export_approvals_doc ON doc_export_approvals(doc_id, requested_by, expires_at);`,
+	`CREATE INDEX IF NOT EXISTS idx_doc_export_approval_decisions_approval ON doc_export_approval_decisions(approval_id);`,
 	`CREATE INDEX IF NOT EXISTS idx_entity_links_doc ON entity_links(doc_id);`,
 	`CREATE INDEX IF NOT EXISTS idx_incidents_status ON incidents(status);`,
 	`CREATE INDEX IF NOT EXISTS idx_incidents_severity ON incidents(severity);`,
@@ -876,6 +886,30 @@ var migrations = []string{
 		id INTEGER PRIMARY KEY AUTOINCREMENT,
 		deployment_mode TEXT NOT NULL DEFAULT 'enterprise',
 		update_checks_enabled INTEGER NOT NULL DEFAULT 0,
+		behavior_model_enabled INTEGER NOT NULL DEFAULT 0,
+		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);`,
+	`CREATE TABLE IF NOT EXISTS user_behavior_events (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		user_id INTEGER NOT NULL,
+		event_type TEXT NOT NULL,
+		path TEXT NOT NULL DEFAULT '',
+		method TEXT NOT NULL DEFAULT '',
+		status_code INTEGER NOT NULL DEFAULT 0,
+		ip TEXT NOT NULL DEFAULT '',
+		created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+	);`,
+	`CREATE INDEX IF NOT EXISTS idx_user_behavior_events_user_ts ON user_behavior_events(user_id, created_at);`,
+	`CREATE INDEX IF NOT EXISTS idx_user_behavior_events_type_ts ON user_behavior_events(event_type, created_at);`,
+	`CREATE TABLE IF NOT EXISTS user_behavior_risk_state (
+		user_id INTEGER PRIMARY KEY,
+		stepup_required INTEGER NOT NULL DEFAULT 0,
+		password_verified INTEGER NOT NULL DEFAULT 0,
+		failed_stepups INTEGER NOT NULL DEFAULT 0,
+		locked_until TIMESTAMP,
+		last_triggered_at TIMESTAMP,
+		last_verified_at TIMESTAMP,
+		last_risk_score REAL NOT NULL DEFAULT 0,
 		updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 	);`,
 	`CREATE TABLE IF NOT EXISTS app_module_state (
@@ -965,6 +999,7 @@ func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Lo
 		ensureControlViolationColumns,
 		ensureEntityLinksSchema,
 		ensureControlTypes,
+		ensureRuntimeSettingsColumns,
 	}
 	for _, fn := range post {
 		if err := fn(ctx, db); err != nil {
@@ -1974,6 +2009,31 @@ func ensureControlViolationColumns(ctx context.Context, db *sql.DB) error {
 		WHERE is_active IS NULL OR is_active=0
 	`); err != nil {
 		return fmt.Errorf("backfill control_violations.is_active: %w", err)
+	}
+	return nil
+}
+
+func ensureRuntimeSettingsColumns(ctx context.Context, db *sql.DB) error {
+	type col struct {
+		Name string
+		SQL  string
+	}
+	cols := []col{
+		{
+			Name: "behavior_model_enabled",
+			SQL:  "ALTER TABLE app_runtime_settings ADD COLUMN behavior_model_enabled INTEGER NOT NULL DEFAULT 0",
+		},
+	}
+	for _, c := range cols {
+		exists, err := columnExists(ctx, db, "app_runtime_settings", c.Name)
+		if err != nil {
+			return err
+		}
+		if !exists {
+			if _, err := db.ExecContext(ctx, c.SQL); err != nil {
+				return fmt.Errorf("add column app_runtime_settings.%s: %w", c.Name, err)
+			}
+		}
 	}
 	return nil
 }

@@ -221,6 +221,33 @@
           return { status: 'done', desc: t('healthcheck.desc.menuLoaded').replace('{count}', String(state.menuKeys.size)) };
         },
       },
+      {
+        id: 'security.behavior_model',
+        labelKey: 'healthcheck.step.security.behaviorModel',
+        run: async () => {
+          const res = await probeJSON('/api/auth/stepup/status');
+          if (!res.ok) return normalizeProbeResult(res);
+          const enabled = !!(res.json && res.json.behavior_model_enabled);
+          if (!enabled) {
+            return { status: 'skipped', desc: t('healthcheck.desc.behaviorModelDisabled') };
+          }
+          return { status: 'done', desc: t('healthcheck.desc.behaviorModelEnabled') };
+        },
+      },
+      {
+        id: 'monitoring.model',
+        labelKey: 'healthcheck.step.monitoring.model',
+        menuKey: 'monitoring',
+        run: async () => {
+          const res = await probeJSON('/api/monitoring/settings');
+          if (!res.ok) return normalizeProbeResult(res);
+          const enabled = !!(res.json && res.json.incident_scoring_enabled);
+          if (!enabled) {
+            return { status: 'failed', desc: t('healthcheck.desc.monitoringModelMustBeEnabled') };
+          }
+          return { status: 'done', desc: t('healthcheck.desc.monitoringModelEnabled') };
+        },
+      },
 
       { id: 'tab.dashboard', labelKey: 'healthcheck.step.tab.dashboard', menuKey: 'dashboard', run: page('dashboard') },
       { id: 'tab.tasks', labelKey: 'healthcheck.step.tab.tasks', menuKey: 'tasks', run: page('tasks') },

@@ -130,9 +130,8 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.AutoIncidentCloseOnUp != nil {
 		current.AutoIncidentCloseOnUp = *payload.AutoIncidentCloseOnUp
 	}
-	if payload.IncidentScoringEnabled != nil {
-		current.IncidentScoringEnabled = *payload.IncidentScoringEnabled
-	}
+	// Monitoring incident scoring is always on and cannot be disabled.
+	current.IncidentScoringEnabled = true
 	if strings.TrimSpace(payload.IncidentScoringModel) != "" {
 		current.IncidentScoringModel = strings.ToLower(strings.TrimSpace(payload.IncidentScoringModel))
 	}

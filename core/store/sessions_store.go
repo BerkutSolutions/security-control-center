@@ -12,6 +12,7 @@ type SessionStore interface {
 	GetSession(ctx context.Context, id string) (*SessionRecord, error)
 	ListByUser(ctx context.Context, userID int64) ([]SessionRecord, error)
 	ListAll(ctx context.Context) ([]SessionRecord, error)
+	UserIPStats(ctx context.Context, userID int64) (lastIP, frequentIP string, err error)
 	DeleteSession(ctx context.Context, id string, by string) error
 	DeleteAllForUser(ctx context.Context, userID int64, by string) error
 	DeleteAll(ctx context.Context, by string) error
@@ -167,4 +168,35 @@ func (s *sessionsStore) ListAll(ctx context.Context) ([]SessionRecord, error) {
 		res = append(res, sr)
 	}
 	return res, rows.Err()
+}
+
+func (s *sessionsStore) UserIPStats(ctx context.Context, userID int64) (lastIP, frequentIP string, err error) {
+	var last sql.NullString
+	if err = s.db.QueryRowContext(ctx, `
+		SELECT ip
+		FROM sessions
+		WHERE user_id=? AND TRIM(COALESCE(ip,''))<>''
+		ORDER BY COALESCE(last_seen_at, created_at) DESC
+		LIMIT 1
+	`, userID).Scan(&last); err != nil && err != sql.ErrNoRows {
+		return "", "", err
+	}
+	if last.Valid {
+		lastIP = last.String
+	}
+	var frequent sql.NullString
+	if err = s.db.QueryRowContext(ctx, `
+		SELECT ip
+		FROM sessions
+		WHERE user_id=? AND TRIM(COALESCE(ip,''))<>''
+		GROUP BY ip
+		ORDER BY COUNT(*) DESC, MAX(COALESCE(last_seen_at, created_at)) DESC
+		LIMIT 1
+	`, userID).Scan(&frequent); err != nil && err != sql.ErrNoRows {
+		return "", "", err
+	}
+	if frequent.Valid {
+		frequentIP = frequent.String
+	}
+	return lastIP, frequentIP, nil
 }

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"net"
 	"net/http"
@@ -217,15 +218,24 @@ func (h *AuthHandler) finishLogin(w http.ResponseWriter, r *http.Request, user *
 	setHealthcheckCookie(w, r, h.cfg, true)
 	groups, _ := h.users.UserGroups(r.Context(), user.ID)
 	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
+	lastIP, frequentIP := h.readUserIPStats(r.Context(), user.ID, sess.IP)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"user": auth.UserDTO{
 			ID:                    user.ID,
 			Username:              user.Username,
+			FullName:              user.FullName,
+			Department:            user.Department,
+			Position:              user.Position,
 			Roles:                 roles,
 			Active:                user.Active,
 			PasswordSet:           user.PasswordSet,
 			RequirePasswordChange: user.RequirePasswordChange,
 			PasswordChangedAt:     user.PasswordChangedAt,
+			SessionCreatedAt:      &sess.CreatedAt,
+			SessionLastSeenAt:     &sess.LastSeenAt,
+			SessionExpiresAt:      &sess.ExpiresAt,
+			LastLoginIP:           lastIP,
+			FrequentLoginIP:       frequentIP,
 			Permissions:           eff.Permissions,
 			MenuPermissions:       eff.MenuPermissions,
 		},
@@ -285,20 +295,47 @@ func (h *AuthHandler) Me(w http.ResponseWriter, r *http.Request) {
 	}
 	groups, _ := h.users.UserGroups(r.Context(), user.ID)
 	eff := auth.CalculateEffectiveAccess(user, roles, groups, h.policy)
+	lastIP, frequentIP := h.readUserIPStats(r.Context(), user.ID, sr.IP)
 	writeJSON(w, http.StatusOK, map[string]interface{}{
 		"user": auth.UserDTO{
 			ID:                    user.ID,
 			Username:              user.Username,
+			FullName:              user.FullName,
+			Department:            user.Department,
+			Position:              user.Position,
 			Roles:                 roles,
 			Active:                user.Active,
 			PasswordSet:           user.PasswordSet,
 			RequirePasswordChange: user.RequirePasswordChange,
 			PasswordChangedAt:     user.PasswordChangedAt,
+			SessionCreatedAt:      &sr.CreatedAt,
+			SessionLastSeenAt:     &sr.LastSeenAt,
+			SessionExpiresAt:      &sr.ExpiresAt,
+			LastLoginIP:           lastIP,
+			FrequentLoginIP:       frequentIP,
 			Permissions:           eff.Permissions,
 			MenuPermissions:       eff.MenuPermissions,
 		},
 		"csrf_token": sr.CSRFToken,
 	})
+}
+
+func (h *AuthHandler) readUserIPStats(ctx context.Context, userID int64, fallback string) (lastIP, frequentIP string) {
+	if h.sessions == nil || userID <= 0 {
+		return strings.TrimSpace(fallback), strings.TrimSpace(fallback)
+	}
+	last, frequent, err := h.sessions.UserIPStats(ctx, userID)
+	if err != nil {
+		last = strings.TrimSpace(fallback)
+		frequent = strings.TrimSpace(fallback)
+	}
+	if strings.TrimSpace(last) == "" {
+		last = strings.TrimSpace(fallback)
+	}
+	if strings.TrimSpace(frequent) == "" {
+		frequent = strings.TrimSpace(last)
+	}
+	return strings.TrimSpace(last), strings.TrimSpace(frequent)
 }
 
 func (h *AuthHandler) Menu(w http.ResponseWriter, r *http.Request) {
@@ -533,6 +570,7 @@ func localized(lang, key string) string {
 		"accounts.passwordReuseDenied":     "\u041f\u0430\u0440\u043e\u043b\u044c \u0443\u0436\u0435 \u0438\u0441\u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u043b\u0441\u044f. \u0412\u044b\u0431\u0435\u0440\u0438\u0442\u0435 \u0434\u0440\u0443\u0433\u043e\u0439.",
 		"accounts.currentPasswordInvalid":  "\u0422\u0435\u043a\u0443\u0449\u0438\u0439 \u043f\u0430\u0440\u043e\u043b\u044c \u043d\u0435\u0432\u0435\u0440\u0435\u043d",
 		"accounts.roleRequired":            "\u0420\u043e\u043b\u044c \u043e\u0431\u044f\u0437\u0430\u0442\u0435\u043b\u044c\u043d\u0430",
+		"accounts.singleRoleOnly":          "\u0414\u043b\u044f \u043f\u043e\u043b\u044c\u0437\u043e\u0432\u0430\u0442\u0435\u043b\u044f \u0434\u043e\u043f\u0443\u0441\u0442\u0438\u043c\u0430 \u0442\u043e\u043b\u044c\u043a\u043e \u043e\u0434\u043d\u0430 \u0440\u043e\u043b\u044c",
 		"accounts.clearanceTooHigh":        "\u041d\u0435\u043b\u044c\u0437\u044f \u0432\u044b\u0434\u0430\u0442\u044c \u0434\u043e\u043f\u0443\u0441\u043a \u0432\u044b\u0448\u0435 \u0441\u0432\u043e\u0435\u0433\u043e",
 		"accounts.clearanceTagsNotAllowed": "\u041d\u0435\u043b\u044c\u0437\u044f \u043d\u0430\u0437\u043d\u0430\u0447\u0438\u0442\u044c \u044d\u0442\u0438 \u0442\u0435\u0433\u0438 \u0434\u043e\u043f\u0443\u0441\u043a\u0430",
 		"accounts.lastSuperadminProtected": "\u041d\u0435\u043b\u044c\u0437\u044f \u0438\u0437\u043c\u0435\u043d\u0438\u0442\u044c \u043f\u043e\u0441\u043b\u0435\u0434\u043d\u0435\u0433\u043e \u0441\u0443\u043f\u0435\u0440-\u0430\u0434\u043c\u0438\u043d\u0430",
@@ -546,6 +584,7 @@ func localized(lang, key string) string {
 		"accounts.passwordReuseDenied":     "Password was used recently. Choose a new one.",
 		"accounts.currentPasswordInvalid":  "Current password is invalid",
 		"accounts.roleRequired":            "Role is required",
+		"accounts.singleRoleOnly":          "Only one role can be assigned to a user",
 		"accounts.clearanceTooHigh":        "Clearance level exceeds your own",
 		"accounts.clearanceTagsNotAllowed": "Clearance tags are not allowed",
 		"accounts.lastSuperadminProtected": "Cannot modify the last superadmin",

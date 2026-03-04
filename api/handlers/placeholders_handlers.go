@@ -11,6 +11,7 @@ import (
 )
 
 var pageFiles = map[string]string{
+	"profile":    "profile.html",
 	"docs":       "docs.html",
 	"approvals":  "approvals.html",
 	"logs":       "logs.html",
@@ -49,6 +50,8 @@ func (h *PlaceholderHandler) Page(w http.ResponseWriter, r *http.Request) {
 
 func RequiredPermission(name string) rbac.Permission {
 	switch name {
+	case "profile":
+		return "app.view"
 	case "docs":
 		return "docs.view"
 	case "approvals":

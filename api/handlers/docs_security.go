@@ -25,8 +25,8 @@ func (h *DocsHandler) requiresDualExportApproval(doc *store.Document) bool {
 }
 
 func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
-	approver, roles, err := h.currentUser(r)
-	if err != nil || approver == nil {
+	requester, requesterRoles, err := h.currentUser(r)
+	if err != nil || requester == nil {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
@@ -41,7 +41,7 @@ func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
 	if doc.FolderID != nil {
 		folderACL, _ = h.store.GetFolderACL(r.Context(), *doc.FolderID)
 	}
-	if !h.svc.CheckACL(approver, roles, doc, docACL, folderACL, "export") {
+	if !h.svc.CheckACL(requester, requesterRoles, doc, docACL, folderACL, "export") {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
@@ -54,18 +54,28 @@ func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "bad request", http.StatusBadRequest)
 		return
 	}
-	var requester *store.User
-	if payload.RequestedUserID != nil && *payload.RequestedUserID > 0 {
-		requester, _, _ = h.users.Get(r.Context(), *payload.RequestedUserID)
-	} else if strings.TrimSpace(payload.RequestedUsername) != "" {
-		requester, _, _ = h.users.FindByUsername(r.Context(), strings.ToLower(strings.TrimSpace(payload.RequestedUsername)))
-	}
-	if requester == nil || !requester.Active {
-		http.Error(w, "docs.export.requesterRequired", http.StatusBadRequest)
+	reason := strings.TrimSpace(payload.Reason)
+	if reason == "" {
+		http.Error(w, "docs.export.reasonRequired", http.StatusBadRequest)
 		return
 	}
-	if requester.ID == approver.ID {
-		http.Error(w, "docs.export.selfApprovalForbidden", http.StatusBadRequest)
+	var approverUser *store.User
+	var approverRoles []string
+	if payload.RequestedUserID != nil && *payload.RequestedUserID > 0 {
+		approverUser, approverRoles, _ = h.users.Get(r.Context(), *payload.RequestedUserID)
+	} else if strings.TrimSpace(payload.RequestedUsername) != "" {
+		approverUser, approverRoles, _ = h.users.FindByUsername(r.Context(), strings.ToLower(strings.TrimSpace(payload.RequestedUsername)))
+	}
+	if approverUser == nil || !approverUser.Active {
+		http.Error(w, "docs.export.approverRequired", http.StatusBadRequest)
+		return
+	}
+	if !h.canUserParticipateInExportApproval(approverUser, approverRoles, doc, docACL, folderACL) {
+		http.Error(w, "docs.export.approverRequired", http.StatusBadRequest)
+		return
+	}
+	if key, code := h.validateExportApprovalPair(approverUser, approverRoles, requester, requesterRoles); key != "" {
+		http.Error(w, key, code)
 		return
 	}
 	expireMin := h.cfg.Docs.DLP.DualApprovalMinutes
@@ -75,8 +85,8 @@ func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
 	item := &store.DocExportApproval{
 		DocID:       doc.ID,
 		RequestedBy: requester.ID,
-		ApprovedBy:  approver.ID,
-		Reason:      strings.TrimSpace(payload.Reason),
+		ApprovedBy:  approverUser.ID,
+		Reason:      reason,
 		CreatedAt:   time.Now().UTC(),
 		ExpiresAt:   time.Now().UTC().Add(time.Duration(expireMin) * time.Minute),
 	}
@@ -85,14 +95,90 @@ func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
-	h.svc.Log(r.Context(), approver.Username, "doc.export.approval.granted", fmt.Sprintf("%s|requester=%s|approval=%d", doc.RegNumber, requester.Username, idCreated))
+	h.svc.Log(r.Context(), requester.Username, "doc.export.approval.requested", fmt.Sprintf("%s|approver=%s|approval=%d", doc.RegNumber, approverUser.Username, idCreated))
 	writeJSON(w, http.StatusCreated, map[string]any{
 		"id":              idCreated,
 		"doc_id":          doc.ID,
 		"requested_by":    requester.Username,
-		"approved_by":     approver.Username,
+		"approved_by":     approverUser.Username,
 		"expires_at":      item.ExpiresAt,
 		"approval_needed": h.requiresDualExportApproval(doc),
+	})
+}
+
+func (h *DocsHandler) DecideExportApproval(w http.ResponseWriter, r *http.Request) {
+	user, _, err := h.currentUser(r)
+	if err != nil || user == nil {
+		http.Error(w, "unauthorized", http.StatusUnauthorized)
+		return
+	}
+	id, _ := strconv.ParseInt(pathParams(r)["approval_id"], 10, 64)
+	item, err := h.store.GetDocExportApproval(r.Context(), id)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	if item == nil {
+		http.Error(w, "not found", http.StatusNotFound)
+		return
+	}
+	if item.ApprovedBy != user.ID {
+		http.Error(w, "forbidden", http.StatusForbidden)
+		return
+	}
+	if item.ConsumedAt != nil {
+		http.Error(w, "docs.export.alreadyUsed", http.StatusConflict)
+		return
+	}
+	var payload struct {
+		Decision string `json:"decision"`
+		Comment  string `json:"comment"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "bad request", http.StatusBadRequest)
+		return
+	}
+	decision := strings.ToLower(strings.TrimSpace(payload.Decision))
+	comment := strings.TrimSpace(payload.Comment)
+	if decision != "approve" && decision != "reject" {
+		http.Error(w, "docs.export.invalidDecision", http.StatusBadRequest)
+		return
+	}
+	if comment == "" {
+		http.Error(w, "docs.export.reasonRequired", http.StatusBadRequest)
+		return
+	}
+	existing, err := h.store.GetDocExportApprovalDecision(r.Context(), item.ID)
+	if err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	if existing != nil {
+		http.Error(w, "docs.export.alreadyDecided", http.StatusConflict)
+		return
+	}
+	rec := &store.DocExportApprovalDecision{
+		ApprovalID: item.ID,
+		Decision:   decision,
+		Comment:    comment,
+		DecidedBy:  user.ID,
+		DecidedAt:  time.Now().UTC(),
+	}
+	if err := h.store.SaveDocExportApprovalDecision(r.Context(), rec); err != nil {
+		http.Error(w, "server error", http.StatusInternalServerError)
+		return
+	}
+	action := "doc.export.approval.approved"
+	if decision == "reject" {
+		action = "doc.export.approval.rejected"
+	}
+	h.svc.Log(r.Context(), user.Username, action, fmt.Sprintf("%d|%s", item.ID, comment))
+	writeJSON(w, http.StatusOK, map[string]any{
+		"id":         item.ID,
+		"decision":   decision,
+		"comment":    comment,
+		"decided_by": user.ID,
+		"decided_at": rec.DecidedAt,
 	})
 }
 

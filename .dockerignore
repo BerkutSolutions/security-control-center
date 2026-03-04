@@ -1,0 +1,22 @@
+.git
+.gitignore
+.vscode
+
+# Local runtime data
+data/
+docker/certs/
+
+# Build/test artifacts
+*.log
+*.tmp
+*.out
+coverage.*
+test_out.json
+.tmp_test_results.json
+$null
+
+# Dependency cache (if present)
+node_modules/
+
+# Documentation is not required for runtime image
+docs/

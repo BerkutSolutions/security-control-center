@@ -13,6 +13,7 @@ var (
 	reManyQuestionMarks = regexp.MustCompile(`\?{3,}`)
 	reHasCyrillic       = regexp.MustCompile(`[\p{Cyrillic}]`)
 	reHasLatin          = regexp.MustCompile(`[A-Za-z]`)
+	reMojibakeMarkers   = regexp.MustCompile(`(?:Ð|Ñ|â€”|â€“|â€|â„|вЂ|Р[A-Za-z]|С[A-Za-z])`)
 )
 
 // TestI18N_NoArtifacts checks for obvious i18n text corruption artifacts:
@@ -40,6 +41,9 @@ func TestI18N_NoArtifacts(t *testing.T) {
 		// For RU locale these are almost always a bug (e.g. "РџСЂРё..." instead of "При...").
 		if lang == "ru" && containsForbiddenRuCyrillic(value) {
 			issues = append(issues, lang+":"+key+": contains suspicious Cyrillic letters (likely mojibake)")
+		}
+		if reMojibakeMarkers.MatchString(value) {
+			issues = append(issues, lang+":"+key+": contains mojibake marker sequence")
 		}
 
 		// EN strings should not contain Cyrillic at all.

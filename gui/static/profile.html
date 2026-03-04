@@ -1,0 +1,157 @@
+﻿<div class="page" id="profile-page">
+  <div class="card">
+    <div class="card-body">
+      <div class="alert" id="profile-alert" hidden></div>
+
+      <div class="profile-overview card nested-card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="profile.title">Профиль</h3>
+            <p class="muted" data-i18n="profile.subtitle">Текущая сессия и персональные настройки</p>
+          </div>
+        </div>
+        <div class="card-body profile-overview-grid">
+          <div><span class="muted" data-i18n="profile.username">Пользователь</span><strong id="profile-username">-</strong></div>
+          <div><span class="muted" data-i18n="profile.fullName">ФИО</span><strong id="profile-fullname">-</strong></div>
+          <div><span class="muted" data-i18n="profile.department">Отдел</span><strong id="profile-department">-</strong></div>
+          <div><span class="muted" data-i18n="profile.position">Должность</span><strong id="profile-position">-</strong></div>
+          <div><span class="muted" data-i18n="profile.sessionStarted">Сессия с</span><strong id="profile-session-start">-</strong></div>
+          <div><span class="muted" data-i18n="profile.sessionExpires">Сессия до</span><strong id="profile-session-expire">-</strong></div>
+          <div><span class="muted" data-i18n="profile.lastLoginIp">IP последнего входа</span><strong id="profile-last-login-ip">-</strong></div>
+          <div><span class="muted" data-i18n="profile.trustedIp">Наиболее частый IP</span><strong id="profile-trusted-ip">-</strong></div>
+        </div>
+      </div>
+
+      <div class="card nested-card" id="password-change-card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="accounts.passwordChange">Change password</h3>
+            <p class="muted" id="password-last-changed"></p>
+          </div>
+        </div>
+        <div class="card-body">
+          <form id="password-change-form" class="form-grid two-column profile-password-grid">
+            <div class="form-field required">
+              <label data-i18n="accounts.currentPassword">Current password</label>
+              <input type="password" name="current_password" autocomplete="current-password" required>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="accounts.newPassword">New password</label>
+              <input type="password" name="password" autocomplete="new-password" required>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="accounts.passwordConfirm">Confirm password</label>
+              <input type="password" name="password_confirm" autocomplete="new-password" required>
+            </div>
+            <div class="form-actions profile-password-actions">
+              <button type="submit" class="btn primary btn-sm" data-i18n="accounts.passwordChange">Change password</button>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <div class="profile-security-row">
+        <div class="card nested-card" id="twofa-card">
+          <div class="card-header">
+            <div>
+              <h3 data-i18n="auth.2fa.title">2FA (TOTP)</h3>
+              <p class="muted" data-i18n="auth.2fa.subtitle">Приложение-аутентификатор + recovery codes</p>
+            </div>
+            <div class="icon-actions">
+              <button class="btn primary" id="twofa-enable-btn" data-i18n="auth.2fa.enable">Включить</button>
+              <button class="btn ghost danger" id="twofa-disable-btn" data-i18n="auth.2fa.disable" hidden>Выключить</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="muted" id="twofa-status-text" data-i18n="auth.2fa.status.unknown">Статус: неизвестно</div>
+            <div class="muted small" id="twofa-recovery-remaining" hidden></div>
+          </div>
+        </div>
+
+        <div class="card nested-card" id="passkeys-card">
+          <div class="card-header">
+            <div>
+              <h3 data-i18n="auth.passkeys.title">Ключи доступа (passkeys)</h3>
+              <p class="muted" data-i18n="auth.passkeys.subtitle">WebAuthn: вход и второй фактор без паролей/кодов</p>
+            </div>
+            <div class="icon-actions">
+              <button class="btn primary" id="passkeys-add-btn" data-i18n="auth.passkeys.add">Добавить</button>
+            </div>
+          </div>
+          <div class="card-body">
+            <div class="muted" id="passkeys-status-text" data-i18n="auth.passkeys.status.loading">Загрузка…</div>
+            <div class="muted small" id="passkeys-unsupported" data-i18n="auth.passkeys.unsupported" hidden>Ваш браузер не поддерживает passkeys.</div>
+            <div class="table-wrap" id="passkeys-table-wrap" hidden>
+              <table class="table">
+                <thead>
+                  <tr>
+                    <th data-i18n="auth.passkeys.table.name">Название</th>
+                    <th data-i18n="auth.passkeys.table.created">Создан</th>
+                    <th data-i18n="auth.passkeys.table.lastUsed">Последнее использование</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="passkeys-table-body"></tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <form id="settings-form" class="settings-form card nested-card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="settings.language">Interface language</h3>
+            <p class="muted" data-i18n="settings.languageHint">Choose language</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="form-grid two-column">
+            <div class="form-field">
+              <label for="settings-language" data-i18n="settings.language">Interface language</label>
+              <select id="settings-language" name="language">
+                <option value="ru">RU</option>
+                <option value="en">EN</option>
+              </select>
+            </div>
+            <div class="form-field">
+              <label for="settings-timezone" data-i18n="settings.timezone.label">Time zone</label>
+              <select id="settings-timezone" class="select"></select>
+            </div>
+          </div>
+          <div class="settings-section">
+            <h3 data-i18n="settings.general">General settings</h3>
+            <div class="checkbox-list">
+              <label class="checkbox">
+                <input type="checkbox" id="settings-auto-logout">
+                <span data-i18n="settings.autoLogout">Auto-logout on inactivity</span>
+              </label>
+            </div>
+            <div class="autosave-controls">
+              <label class="checkbox">
+                <input type="checkbox" id="settings-autosave-enabled">
+                <span data-i18n="settings.autosave.enable">Incident autosave</span>
+              </label>
+              <label class="autosave-period">
+                <span class="muted" data-i18n="settings.autosave.periodLabel">Period</span>
+                <select id="settings-autosave-period" class="select select-compact">
+                  <option value="1" data-i18n="settings.autosave.period.1">1 min</option>
+                  <option value="3" data-i18n="settings.autosave.period.3">3 min</option>
+                  <option value="5" data-i18n="settings.autosave.period.5">5 min</option>
+                  <option value="10" data-i18n="settings.autosave.period.10">10 min</option>
+                  <option value="15" data-i18n="settings.autosave.period.15">15 min</option>
+                </select>
+              </label>
+            </div>
+            <p class="muted" data-i18n="settings.autosave.hint">Autosave hint</p>
+          </div>
+        </div>
+        <div class="form-actions">
+          <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+

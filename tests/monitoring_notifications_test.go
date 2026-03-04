@@ -219,6 +219,7 @@ func TestMonitoringAutoIncidentCreateAndClose(t *testing.T) {
 	settings.AllowPrivateNetworks = true
 	settings.EngineEnabled = true
 	settings.AutoIncidentCloseOnUp = true
+	settings.IncidentScoreOpenConfirmations = 1
 	if err := ms.UpdateSettings(context.Background(), settings); err != nil {
 		t.Fatalf("settings update: %v", err)
 	}
@@ -280,6 +281,10 @@ func TestMonitoringAutoIncidentNotClosedWhenFlagDisabled(t *testing.T) {
 	settings.AllowPrivateNetworks = true
 	settings.EngineEnabled = true
 	settings.AutoIncidentCloseOnUp = false
+	settings.IncidentScoreOpenConfirmations = 1
+	// Keep score-based close from closing immediately on recovery in this test;
+	// we validate only the legacy auto-close flag behavior here.
+	settings.IncidentScoreCloseThreshold = 0.01
 	if err := ms.UpdateSettings(context.Background(), settings); err != nil {
 		t.Fatalf("settings update: %v", err)
 	}

@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="ru">
 <head>
   <meta charset="UTF-8">
@@ -19,21 +19,40 @@
           <div class="brand-title">Berkut Solutions</div>
           <div class="brand-subtitle">Security Control Center</div>
         </div>
-      </div>
-      <div class="sidebar-content">
+        <div class="sidebar-header-actions">
+          <button id="notifications-btn" class="icon-btn" type="button" data-i18n-title="app.notifications" title="Notifications">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v2.2c0 .7-.2 1.4-.6 2L4.7 14a1 1 0 0 0 .8 1.5h13a1 1 0 0 0 .8-1.5l-1.7-2.8c-.4-.6-.6-1.3-.6-2V7a5 5 0 0 0-5-5Zm0 20a3 3 0 0 0 2.8-2H9.2A3 3 0 0 0 12 22Z"/>
+            </svg>
+            <span id="notifications-btn-badge" class="sidebar-notify sidebar-notify-inline" hidden></span>
+          </button>
+          <div id="notifications-dropdown" class="notifications-dropdown" hidden>
+            <div class="notifications-head">
+              <strong data-i18n="app.notifications">Notifications</strong>
+              <button id="notifications-clear-all" class="btn ghost btn-sm" type="button" data-i18n="app.notifications.clearAll">Clear all</button>
+            </div>
+            <div id="notifications-list" class="notifications-list"></div>
+          </div>
+        </div>
+      </div>      <div class="sidebar-content">
         <nav id="menu" class="sidebar-nav"></nav>
       </div>
       <div class="sidebar-footer">
-        <select id="language-switcher">
-          <option value="ru">RU</option>
-          <option value="en">EN</option>
-        </select>
-        <div id="app-version" class="muted app-version"></div>
+        <div class="sidebar-tools">
+          <button id="profile-btn" class="icon-btn" type="button" data-i18n-title="profile.open" title="Profile">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M12 12a5 5 0 1 0-5-5 5 5 0 0 0 5 5Zm0 2c-4.4 0-8 2.2-8 5v1h16v-1c0-2.8-3.6-5-8-5Z"/>
+            </svg>
+          </button>
+          <button id="logout-btn" class="icon-btn" type="button" data-i18n-title="app.logout" title="Logout">
+            <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
+              <path fill="currentColor" d="M5 3h8a2 2 0 0 1 2 2v3h-2V5H5v14h8v-3h2v3a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2Zm11.3 5.3L20 12l-3.7 3.7-1.4-1.4 1.3-1.3H9v-2h7.2l-1.3-1.3 1.4-1.4Z"/>
+            </svg>
+          </button>
+        </div>
         <a id="app-update-badge" class="btn btn-sm primary app-update-link" hidden></a>
-        <div id="user-info" class="sidebar-user"></div>
-        <button id="logout-btn" class="btn ghost" data-i18n="app.logout">Выйти</button>
-      </div>
-    </aside>
+        <div id="app-version" class="muted app-version"></div>
+      </div>    </aside>
     <main id="content">
       <header class="app-header">
         <div>
@@ -43,6 +62,35 @@
       </header>
       <section id="content-area"></section>
     </main>
+  </div>
+
+  <div class="modal" id="stepup-modal" hidden>
+    <div class="modal-backdrop" data-close-stepup></div>
+    <div class="modal-body" role="dialog" aria-modal="true" aria-labelledby="stepup-title">
+      <div class="modal-header">
+        <h3 id="stepup-title" data-i18n="auth.stepup.title">Подтверждение личности</h3>
+      </div>
+      <div class="modal-content">
+        <p class="muted" id="stepup-subtitle" data-i18n="auth.stepup.subtitle">Требуется дополнительная проверка безопасности.</p>
+        <div class="alert" id="stepup-alert" hidden></div>
+        <div class="form-grid single-column">
+          <div class="form-field required">
+            <label for="stepup-password" data-i18n="auth.stepup.password">Пароль</label>
+            <input id="stepup-password" type="password" autocomplete="current-password">
+          </div>
+          <div class="form-field required" id="stepup-code-row" hidden>
+            <label for="stepup-code" data-i18n="auth.stepup.code">Код TOTP</label>
+            <input id="stepup-code" type="text" inputmode="numeric" autocomplete="one-time-code">
+          </div>
+        </div>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn primary" id="stepup-password-btn" data-i18n="auth.stepup.passwordConfirm">Подтвердить пароль</button>
+        <button type="button" class="btn primary" id="stepup-totp-btn" data-i18n="auth.stepup.totpConfirm" hidden>Подтвердить TOTP</button>
+        <button type="button" class="btn ghost" id="stepup-passkey-btn" data-i18n="auth.stepup.passkeyConfirm" hidden>Подтвердить passkey</button>
+        <button type="button" class="btn ghost" id="stepup-logout-btn" data-i18n="auth.stepup.logout">Выйти</button>
+      </div>
+    </div>
   </div>
   <script src="/static/js/i18n.js"></script>
   <script src="/static/js/api.js"></script>
@@ -134,7 +182,13 @@
   <script src="/static/js/backups/tabs/contents.js"></script>
   <script src="/static/js/backups/tabs/restore.js"></script>
   <script src="/static/js/backups/tabs/plan.js"></script>
+  <script src="/static/js/profile.js"></script>
   <script src="/static/js/compat.core.js"></script>
+  <script src="/static/js/app.toast.js"></script>
+  <script src="/static/js/app.notifications.js"></script>
   <script src="/static/js/app.js"></script>
 </body>
 </html>
+
+
+

@@ -628,6 +628,10 @@ func (h *AccountsHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, localized(preferredLang(r), "accounts.roleRequired"), http.StatusBadRequest)
 		return
 	}
+	if len(roles) > 1 {
+		http.Error(w, localized(preferredLang(r), "accounts.singleRoleOnly"), http.StatusBadRequest)
+		return
+	}
 	if containsRole(roles, "superadmin") && (sess == nil || !containsRole(sess.Roles, "superadmin")) {
 		http.Error(w, "forbidden", http.StatusForbidden)
 		return
@@ -768,6 +772,10 @@ func (h *AccountsHandler) UpdateUser(w http.ResponseWriter, r *http.Request) {
 	}
 	if p.Roles != nil || p.Role != "" {
 		updatedRoles = sanitizeRoles(p.Roles, p.Role)
+		if len(updatedRoles) > 1 {
+			http.Error(w, localized(preferredLang(r), "accounts.singleRoleOnly"), http.StatusBadRequest)
+			return
+		}
 		rolesChanged = true
 		if containsRole(updatedRoles, "superadmin") && (sess == nil || !containsRole(sess.Roles, "superadmin")) {
 			http.Error(w, "forbidden", http.StatusForbidden)

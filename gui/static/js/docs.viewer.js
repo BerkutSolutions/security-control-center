@@ -1,6 +1,7 @@
 (() => {
   const state = DocsPage.state;
   const UNSAFE_URL_PATTERN = /[\u0000-\u001F\u007F\s]+/g;
+  let exportApproveDocId = 0;
   const isEditableFormat = (format) => {
     const fmt = String(format || '').toLowerCase();
     if (fmt === 'md' || fmt === 'txt') return true;
@@ -69,6 +70,25 @@
     return tpl.innerHTML;
   }
 
+  function showViewAlert(messageKey, isSuccess = false) {
+    const alertBox = document.getElementById('doc-view-alert');
+    const text = BerkutI18n.t(messageKey) || messageKey;
+    if (window.AppToast && typeof window.AppToast.show === 'function') {
+      window.AppToast.show(text, isSuccess ? 'success' : 'error');
+    }
+    if (alertBox && typeof DocsPage !== 'undefined' && typeof DocsPage.showAlert === 'function') {
+      DocsPage.showAlert(alertBox, text, !!isSuccess);
+      return;
+    }
+    if (alertBox) {
+      alertBox.hidden = false;
+      alertBox.textContent = text;
+      return;
+    }
+    // Fallback only if view alert block is not available in current DOM.
+    window.alert(text);
+  }
+
   async function exportDoc(docId, format) {
     const fmt = String(format || 'pdf').trim().toLowerCase() || 'pdf';
     try {
@@ -79,7 +99,7 @@
       if (!res.ok) {
         const code = (await res.text()).trim();
         if (code === 'docs.export.approvalRequired') {
-          alert(BerkutI18n.t('docs.exportApprovalRequired'));
+          showViewAlert('docs.exportApprovalRequired');
           return;
         }
         throw new Error(code || `status_${res.status}`);
@@ -97,22 +117,116 @@
       link.remove();
       URL.revokeObjectURL(url);
     } catch (err) {
-      alert(BerkutI18n.t((err && err.message) || 'common.error'));
+      showViewAlert((err && err.message) || 'common.error');
     }
   }
 
+  function setExportApproveAlert(messageKey) {
+    const alertBox = document.getElementById('export-approve-alert');
+    if (!alertBox) return;
+    if (!messageKey) {
+      alertBox.hidden = true;
+      alertBox.textContent = '';
+      return;
+    }
+    alertBox.hidden = false;
+    alertBox.textContent = BerkutI18n.t(messageKey) || messageKey;
+  }
+
+  async function loadExportApproveCandidates(docId) {
+    const userSelect = document.getElementById('export-approve-user');
+    if (!userSelect) return 0;
+    userSelect.innerHTML = '';
+    const placeholder = document.createElement('option');
+    placeholder.value = '';
+    placeholder.textContent = BerkutI18n.t('docs.exportApproveUserPlaceholder') || '-';
+    userSelect.appendChild(placeholder);
+    const res = await Api.get(`/api/docs/${docId}/export-candidates`);
+    const items = res.items || [];
+    items.forEach((item) => {
+      const opt = document.createElement('option');
+      opt.value = item.id;
+      const display = item.display_name || item.full_name || item.username || `#${item.id}`;
+      const role = (item.roles && item.roles[0]) ? ` (${item.roles[0]})` : '';
+      opt.textContent = `${display}${role}`;
+      userSelect.appendChild(opt);
+    });
+    if (items.length) {
+      userSelect.value = `${items[0].id}`;
+    }
+    return items.length;
+  }
+
+  function bindExportApproveForm() {
+    const form = document.getElementById('export-approve-form');
+    if (!form || form.dataset.bound === '1') return;
+    form.dataset.bound = '1';
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!exportApproveDocId) return;
+      const userSelect = document.getElementById('export-approve-user');
+      const reasonInput = document.getElementById('export-approve-reason');
+      const requestedUserId = Number((userSelect && userSelect.value) || 0);
+      const reason = (reasonInput && reasonInput.value ? reasonInput.value : '').trim();
+      if (!requestedUserId) {
+        setExportApproveAlert('docs.exportApproveUserRequired');
+        return;
+      }
+      if (!reason) {
+        setExportApproveAlert('docs.export.reasonRequired');
+        return;
+      }
+      try {
+        await Api.post(`/api/docs/${exportApproveDocId}/export-approve`, {
+          requested_user_id: requestedUserId,
+          reason
+        });
+        DocsPage.closeModal('#export-approve-modal');
+        setExportApproveAlert('');
+        if (reasonInput) reasonInput.value = '';
+        exportApproveDocId = 0;
+        const viewAlert = document.getElementById('doc-view-alert');
+        if (viewAlert) {
+          DocsPage.showAlert(viewAlert, BerkutI18n.t('docs.exportApproveSaved'));
+          setTimeout(() => DocsPage.hideAlert(viewAlert), 2500);
+        }
+      } catch (err) {
+        setExportApproveAlert((err && err.message) || 'common.error');
+      }
+    });
+  }
+
+  function renderSelectedHint(selectEl, hintEl) {
+    if (!selectEl || !hintEl) return;
+    const selected = Array.from(selectEl.selectedOptions || []);
+    hintEl.innerHTML = '';
+    if (!selected.length) {
+      hintEl.textContent = BerkutI18n.t('docs.stageEmptySelection') || '';
+      return;
+    }
+    selected.forEach(opt => {
+      const tag = document.createElement('span');
+      tag.className = 'tag';
+      tag.textContent = opt.dataset.label || opt.textContent || '';
+      hintEl.appendChild(tag);
+    });
+  }
+
   async function approveExport(docId) {
-    const requestedUsername = (prompt(BerkutI18n.t('docs.exportApproveRequesterPrompt')) || '').trim();
-    if (!requestedUsername) return;
-    const reason = (prompt(BerkutI18n.t('docs.exportApproveReasonPrompt')) || '').trim();
+    exportApproveDocId = Number(docId) || 0;
+    const reasonInput = document.getElementById('export-approve-reason');
+    if (reasonInput) reasonInput.value = '';
+    setExportApproveAlert('');
+    bindExportApproveForm();
     try {
-      await Api.post(`/api/docs/${docId}/export-approve`, {
-        requested_username: requestedUsername,
-        reason
-      });
-      alert(BerkutI18n.t('docs.exportApproveSaved'));
+      const count = await loadExportApproveCandidates(exportApproveDocId);
+      if (!count) {
+        setExportApproveAlert('docs.exportApproveNoCandidates');
+      }
+      DocsPage.openModal('#export-approve-modal');
     } catch (err) {
-      alert(BerkutI18n.t((err && err.message) || 'common.error'));
+      setExportApproveAlert((err && err.message) || 'common.error');
+      DocsPage.openModal('#export-approve-modal');
     }
   }
 
@@ -140,24 +254,45 @@
     } catch (err) {
       console.warn('versions info', err);
     }
-    const aclBox = document.getElementById('doc-view-acl');
-    if (aclBox) {
-      aclBox.textContent = '';
-      try {
+    try {
+      const rolesEl = document.getElementById('doc-view-acl-roles');
+      const usersEl = document.getElementById('doc-view-acl-users');
+      const rolesHint = document.getElementById('doc-view-acl-roles-hint');
+      const usersHint = document.getElementById('doc-view-acl-users-hint');
+      if (rolesEl && usersEl) {
+        await UserDirectory.load();
         const aclRes = await Api.get(`/api/docs/${docId}/acl`);
         const acl = aclRes.acl || [];
-        const users = acl.filter(a => a.subject_type === 'user').map(a => a.subject_id);
-        const roles = acl.filter(a => a.subject_type === 'role').map(a => a.subject_id);
-        const parts = [];
-        const rolesLabel = BerkutI18n.t('accounts.roles') || 'Roles';
-        const usersLabel = BerkutI18n.t('accounts.users') || 'Users';
-        if (roles.length) parts.push(`${rolesLabel}: ${roles.join(', ')}`);
-        if (users.length) parts.push(`${usersLabel}: ${users.join(', ')}`);
-        aclBox.textContent = parts.join(' | ') || BerkutI18n.t('docs.aclEmpty') || '-';
-      } catch (err) {
-        aclBox.textContent = '-';
-        console.warn('acl info', err);
+        const roleSelected = new Set(acl.filter(a => a.subject_type === 'role').map(a => String(a.subject_id || '').trim()).filter(Boolean));
+        const userSelected = new Set(acl.filter(a => a.subject_type === 'user').map(a => String(a.subject_id || '').trim()).filter(Boolean));
+        const roleOptions = ['superadmin', 'admin', 'security_officer', 'doc_admin', 'doc_editor', 'doc_reviewer', 'doc_viewer', 'auditor', 'manager', 'analyst'];
+        rolesEl.innerHTML = '';
+        roleOptions.forEach((role) => {
+          const opt = document.createElement('option');
+          opt.value = role;
+          opt.textContent = role;
+          opt.dataset.label = role;
+          opt.selected = roleSelected.has(role);
+          rolesEl.appendChild(opt);
+        });
+        usersEl.innerHTML = '';
+        UserDirectory.all().forEach((u) => {
+          const label = u.full_name || u.username || `#${u.id}`;
+          const opt = document.createElement('option');
+          opt.value = String(u.id);
+          opt.textContent = label;
+          opt.dataset.label = label;
+          opt.selected = userSelected.has(String(u.username || '').trim());
+          usersEl.appendChild(opt);
+        });
+        if (DocsPage.enhanceMultiSelects) {
+          DocsPage.enhanceMultiSelects(['doc-view-acl-roles', 'doc-view-acl-users']);
+        }
+        renderSelectedHint(rolesEl, rolesHint);
+        renderSelectedHint(usersEl, usersHint);
       }
+    } catch (err) {
+      console.warn('acl info', err);
     }
     const linksBox = document.getElementById('doc-view-links');
     if (linksBox) {
@@ -409,4 +544,5 @@
   DocsPage.runSearch = runSearch;
   DocsPage.resetSearch = resetSearch;
   DocsPage.approveExport = approveExport;
+  DocsPage.bindExportApproveForm = bindExportApproveForm;
 })();

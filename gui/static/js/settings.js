@@ -229,7 +229,7 @@ if (typeof window !== 'undefined') {
 }
 
 const SettingsPage = (() => {
-  let activeTab = 'settings-general';
+  let activeTab = 'settings-advanced';
   let currentUser = null;
   let fullAccess = false;
   let permissions = [];
@@ -479,12 +479,15 @@ const SettingsPage = (() => {
     const httpsHomeWarning = document.getElementById('settings-https-home-warning');
     const httpsModeEl = document.getElementById('settings-https-mode');
     const aboutVersion = document.getElementById('settings-app-version');
+    let runtimeEffectiveHTTPS = false;
     if (!modeEl || !updatesEl || !saveBtn) return;
 
     const applyMode = () => {
       const home = (modeEl.value || '') === 'home';
-      if (homeWarning) homeWarning.hidden = !home;
-      if (httpsHomeWarning) httpsHomeWarning.hidden = !home;
+      const browserHTTPS = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
+      const effectiveHTTPS = runtimeEffectiveHTTPS || browserHTTPS;
+      if (homeWarning) homeWarning.hidden = !home || effectiveHTTPS;
+      if (httpsHomeWarning) httpsHomeWarning.hidden = !home || effectiveHTTPS;
       if (httpsModeEl) {
         const tlsOption = httpsModeEl.querySelector('option[value="builtin_tls"]');
         if (tlsOption) tlsOption.disabled = home;
@@ -537,6 +540,7 @@ const SettingsPage = (() => {
     const loadRuntime = async () => {
       try {
         const data = await Api.get('/api/settings/runtime');
+        runtimeEffectiveHTTPS = !!data?.effective_https;
         modeEl.value = data?.deployment_mode || 'enterprise';
         updatesEl.checked = !!data?.update_checks_enabled;
         renderUpdateStatus(statusEl, data || {});
@@ -566,6 +570,7 @@ const SettingsPage = (() => {
           update_checks_enabled: !!updatesEl.checked,
         };
         const data = await Api.put('/api/settings/runtime', payload);
+        runtimeEffectiveHTTPS = !!data?.effective_https;
         modeEl.value = data?.deployment_mode || payload.deployment_mode;
         updatesEl.checked = !!data?.update_checks_enabled;
         renderUpdateStatus(statusEl, data || {});
@@ -701,6 +706,9 @@ const SettingsPage = (() => {
 
   function bindHardeningSettings(alertBox) {
     const refreshBtn = document.getElementById('settings-hardening-refresh');
+    const saveBtn = document.getElementById('settings-hardening-save');
+    const behaviorModelEl = document.getElementById('settings-behavior-model-enabled');
+    const activityBtn = document.getElementById('settings-behavior-activity-btn');
     const scoreEl = document.getElementById('settings-hardening-score');
     const statusEl = document.getElementById('settings-hardening-status');
     const tbody = document.querySelector('#settings-hardening-table tbody');
@@ -739,6 +747,16 @@ const SettingsPage = (() => {
       });
     };
 
+    const loadRuntime = async () => {
+      if (!behaviorModelEl) return;
+      try {
+        const runtime = await Api.get('/api/settings/runtime');
+        behaviorModelEl.checked = !!runtime?.behavior_model_enabled;
+      } catch (_) {
+        // no-op
+      }
+    };
+
     const load = async () => {
       try {
         const data = await Api.get('/api/settings/hardening');
@@ -748,8 +766,137 @@ const SettingsPage = (() => {
       }
     };
 
+    if (saveBtn) {
+      saveBtn.addEventListener('click', async () => {
+        try {
+          const runtime = await Api.get('/api/settings/runtime');
+          await Api.put('/api/settings/runtime', {
+            deployment_mode: runtime?.deployment_mode || 'enterprise',
+            update_checks_enabled: !!runtime?.update_checks_enabled,
+            behavior_model_enabled: !!(behaviorModelEl && behaviorModelEl.checked),
+          });
+          showSettingsAlert(alertBox, BerkutI18n.t('settings.saved'), true);
+          await load();
+        } catch (err) {
+          showSettingsAlert(alertBox, err.message || BerkutI18n.t('common.error'));
+        }
+      });
+    }
+
     refreshBtn.addEventListener('click', load);
+    loadRuntime();
     load();
+    bindBehaviorActivityModal(activityBtn, alertBox);
+  }
+
+  function bindBehaviorActivityModal(openBtn, alertBox) {
+    const modal = document.getElementById('settings-behavior-activity-modal');
+    const userSel = document.getElementById('settings-behavior-activity-user');
+    const refreshBtn = document.getElementById('settings-behavior-activity-refresh');
+    const alertEl = document.getElementById('settings-behavior-activity-alert');
+    const suspiciousEl = document.getElementById('settings-behavior-activity-suspicious');
+    const scoreEl = document.getElementById('settings-behavior-activity-score');
+    const metricsBody = document.querySelector('#settings-behavior-activity-table tbody');
+    const reasonsBody = document.querySelector('#settings-behavior-reasons-table tbody');
+    if (!modal || !userSel || !refreshBtn || !metricsBody || !reasonsBody || !openBtn) return;
+
+    const setAlert = (msg) => {
+      if (!alertEl) return;
+      const text = String(msg || '').trim();
+      alertEl.textContent = text;
+      alertEl.hidden = !text;
+      if (text && window.AppToast?.show) AppToast.show(text, 'error', 5000, { source: 'settings-behavior-activity' });
+    };
+
+    const metricRows = (metrics) => ([
+      ['SensitiveViews5m', metrics?.SensitiveViews5m ?? metrics?.sensitive_views5m ?? 0],
+      ['Exports30m', metrics?.Exports30m ?? metrics?.exports30m ?? 0],
+      ['Denied10m', metrics?.Denied10m ?? metrics?.denied10m ?? 0],
+      ['Mutations5m', metrics?.Mutations5m ?? metrics?.mutations5m ?? 0],
+      ['Requests1m', metrics?.Requests1m ?? metrics?.requests1m ?? 0],
+      ['HistoryEvents', metrics?.HistoryEvents ?? metrics?.history_events ?? 0],
+    ]);
+
+    const reasonLabel = (key) => {
+      const map = {
+        z_sensitive: 'settings.hardening.activity.reasonSensitive',
+        z_exports: 'settings.hardening.activity.reasonExports',
+        z_denied: 'settings.hardening.activity.reasonDenied',
+        z_mutations: 'settings.hardening.activity.reasonMutations',
+        z_requests: 'settings.hardening.activity.reasonRequests',
+      };
+      const i18nKey = map[key] || '';
+      return i18nKey ? BerkutI18n.t(i18nKey) : key;
+    };
+
+    const fillUsers = async () => {
+      userSel.innerHTML = '';
+      let users = [];
+      try {
+        const res = await Api.get('/api/accounts/users?limit=500');
+        users = Array.isArray(res?.users) ? res.users : [];
+      } catch (_) {
+        users = [];
+      }
+      if (!users.length) {
+        const me = await Api.get('/api/auth/me');
+        if (me?.user) users = [me.user];
+      }
+      users.forEach((u) => {
+        const opt = document.createElement('option');
+        opt.value = String(u.id || '');
+        const title = String(u.full_name || '').trim() || String(u.username || '').trim() || `#${u.id}`;
+        opt.textContent = `${title} (${u.username || u.id})`;
+        userSel.appendChild(opt);
+      });
+    };
+
+    const loadActivity = async () => {
+      setAlert('');
+      const uid = String(userSel.value || '').trim();
+      if (!uid) return;
+      try {
+        const data = await Api.get(`/api/settings/behavior/activity?user_id=${encodeURIComponent(uid)}`);
+        if (!data?.enabled) {
+          if (suspiciousEl) suspiciousEl.textContent = BerkutI18n.t('settings.hardening.activity.disabled');
+          if (scoreEl) scoreEl.textContent = '-';
+          metricsBody.innerHTML = '';
+          reasonsBody.innerHTML = '';
+          return;
+        }
+        if (suspiciousEl) suspiciousEl.textContent = data.suspicious ? BerkutI18n.t('common.yes') : BerkutI18n.t('common.no');
+        if (scoreEl) scoreEl.textContent = `${Number(data.score || 0).toFixed(4)} (${String(data.risk_level || '').toUpperCase() || '-'})`;
+
+        metricsBody.innerHTML = '';
+        metricRows(data.metrics).forEach(([name, val]) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${name}</td><td>${val}</td>`;
+          metricsBody.appendChild(tr);
+        });
+
+        reasonsBody.innerHTML = '';
+        const reasons = Array.isArray(data.reasons) ? data.reasons : [];
+        reasons.forEach((r) => {
+          const tr = document.createElement('tr');
+          tr.innerHTML = `<td>${reasonLabel(r.key)}</td><td>${Number(r.value || 0).toFixed(4)}</td><td>${r.high ? BerkutI18n.t('settings.hardening.status.warning') : BerkutI18n.t('settings.hardening.status.ok')}</td>`;
+          reasonsBody.appendChild(tr);
+        });
+      } catch (err) {
+        setAlert(err.message || BerkutI18n.t('common.error'));
+      }
+    };
+
+    openBtn.addEventListener('click', async () => {
+      try {
+        await fillUsers();
+        modal.hidden = false;
+        await loadActivity();
+      } catch (err) {
+        showSettingsAlert(alertBox, err.message || BerkutI18n.t('common.error'));
+      }
+    });
+    refreshBtn.addEventListener('click', loadActivity);
+    userSel.addEventListener('change', loadActivity);
   }
 
   function bindMonitoringCleanup(alertBox) {
@@ -1295,13 +1442,23 @@ const SettingsPage = (() => {
 
   function showSettingsAlert(alertBox, message, success) {
     if (!alertBox) return;
-    alertBox.textContent = message;
-    alertBox.hidden = false;
-    if (success) {
-      alertBox.classList.add('success');
-    } else {
+    const text = String(message || '').trim();
+    if (!text) {
+      alertBox.hidden = true;
       alertBox.classList.remove('success');
+      alertBox.textContent = '';
+      return;
     }
+    if (window.AppToast?.show) {
+      AppToast.show(text, success ? 'success' : 'error', 5000, { source: 'settings' });
+      alertBox.hidden = true;
+      alertBox.classList.remove('success');
+      alertBox.textContent = '';
+      return;
+    }
+    alertBox.textContent = text;
+    alertBox.hidden = false;
+    alertBox.classList.toggle('success', !!success);
   }
 
   function bindOptionControls(cfg) {
@@ -1450,6 +1607,7 @@ const SettingsPage = (() => {
 
   function canViewTab(tabId) {
     if (!tabId) return false;
+    if (tabId === 'settings-general') return false;
     const perm = TAB_PERMISSIONS[tabId];
     return hasPerm(perm);
   }

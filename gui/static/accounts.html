@@ -374,11 +374,13 @@
             </div>
             <div class="form-field">
               <label data-i18n="accounts.roles">Роли</label>
-              <select name="roles" id="user-roles" multiple></select>
+              <select name="roles" id="user-roles"></select>
+              <div class="selected-hint" id="user-roles-hint"></div>
             </div>
             <div class="form-field">
               <label data-i18n="accounts.groups.title">Группы</label>
               <select name="groups" id="user-groups" multiple></select>
+              <div class="selected-hint" id="user-groups-hint"></div>
             </div>
             <div class="form-actions centered">
               <button type="submit" class="btn primary" data-i18n="common.save">Сохранить</button>
@@ -458,6 +460,37 @@
           </div>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="lock-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="accounts.lockModalTitle">Блокировка учетной записи</h3>
+        <button class="btn ghost" id="close-lock-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="lock-modal-alert" hidden></div>
+        <form id="lock-form" class="form-grid two-column">
+          <div class="form-field">
+            <label data-i18n="accounts.lockTargetUser">Пользователь</label>
+            <input id="lock-user-name" readonly>
+          </div>
+          <div class="form-field required">
+            <label data-i18n="accounts.lockDuration">Длительность блокировки (минут)</label>
+            <input id="lock-minutes" type="number" min="1" value="60" required>
+          </div>
+          <div class="form-field required wide">
+            <label data-i18n="accounts.lockReasonLabel">Причина</label>
+            <textarea id="lock-reason" rows="3" required></textarea>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" data-i18n="accounts.lockModalSubmit">Заблокировать</button>
+            <button type="button" class="btn ghost" id="cancel-lock-modal" data-i18n="common.cancel">Отмена</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>

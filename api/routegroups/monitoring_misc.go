@@ -80,5 +80,6 @@ func RegisterLogsAndSettings(apiRouter chi.Router, g Guards, logs *handlers.Logs
 	apiRouter.MethodFunc("GET", "/settings/runtime", g.SessionPerm("settings.advanced", runtime.Get))
 	apiRouter.MethodFunc("PUT", "/settings/runtime", g.SessionPerm("settings.advanced", runtime.Update))
 	apiRouter.MethodFunc("GET", "/settings/hardening", g.SessionPerm("settings.advanced", hardening.GetBaseline))
+	apiRouter.MethodFunc("GET", "/settings/behavior/activity", g.SessionPerm("settings.advanced", hardening.GetBehaviorActivity))
 	apiRouter.MethodFunc("POST", "/settings/updates/check", g.SessionPerm("settings.advanced", runtime.CheckUpdates))
 }

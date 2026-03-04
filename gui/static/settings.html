@@ -1,11 +1,11 @@
-<div class="page" id="settings-page">
+﻿<div class="page" id="settings-page">
   <div class="card">
     <div class="card-body">
       <div class="alert" id="settings-alert" hidden></div>
 
       <div class="tabs browser-tabs settings-tabs" id="settings-tabs">
-        <button class="tab-btn active" data-tab="settings-general" data-i18n="settings.tabs.general">General</button>
-        <button class="tab-btn" data-tab="settings-advanced" data-i18n="settings.tabs.advanced">Advanced</button>
+        <button class="tab-btn" data-tab="settings-general" data-i18n="settings.tabs.general" hidden>General</button>
+        <button class="tab-btn active" data-tab="settings-advanced" data-i18n="settings.tabs.general">Advanced</button>
         <button class="tab-btn" data-tab="settings-cleanup" data-i18n="settings.tabs.cleanup">Cleanup</button>
         <button class="tab-btn" data-tab="settings-https" data-i18n="settings.tabs.https">HTTPS</button>
         <button class="tab-btn" data-tab="settings-hardening" data-i18n="settings.tabs.hardening">Hardening</button>
@@ -18,7 +18,7 @@
       </div>
 
       <div class="tab-panels settings-panels">
-        <div class="tab-panel settings-panel" id="settings-general" data-tab="settings-general">
+        <div class="tab-panel settings-panel" id="settings-general" data-tab="settings-general" hidden>
           <div class="card nested-card" id="password-change-card">
             <div class="card-header">
               <div>
@@ -51,15 +51,15 @@
             <div class="card-header">
               <div>
                 <h3 data-i18n="auth.2fa.title">2FA (TOTP)</h3>
-                <p class="muted" data-i18n="auth.2fa.subtitle">Приложение-аутентификатор + recovery codes</p>
+                <p class="muted" data-i18n="auth.2fa.subtitle">РџСЂРёР»РѕР¶РµРЅРёРµ-Р°СѓС‚РµРЅС‚РёС„РёРєР°С‚РѕСЂ + recovery codes</p>
               </div>
               <div class="icon-actions">
-                <button class="btn primary" id="twofa-enable-btn" data-i18n="auth.2fa.enable">Включить</button>
-                <button class="btn ghost danger" id="twofa-disable-btn" data-i18n="auth.2fa.disable" hidden>Выключить</button>
+                <button class="btn primary" id="twofa-enable-btn" data-i18n="auth.2fa.enable">Р’РєР»СЋС‡РёС‚СЊ</button>
+                <button class="btn ghost danger" id="twofa-disable-btn" data-i18n="auth.2fa.disable" hidden>Р’С‹РєР»СЋС‡РёС‚СЊ</button>
               </div>
             </div>
             <div class="card-body">
-              <div class="muted" id="twofa-status-text" data-i18n="auth.2fa.status.unknown">Статус: неизвестно</div>
+              <div class="muted" id="twofa-status-text" data-i18n="auth.2fa.status.unknown">РЎС‚Р°С‚СѓСЃ: РЅРµРёР·РІРµСЃС‚РЅРѕ</div>
               <div class="muted small" id="twofa-recovery-remaining" hidden></div>
             </div>
           </div>
@@ -67,23 +67,23 @@
           <div class="card nested-card" id="passkeys-card">
             <div class="card-header">
               <div>
-                <h3 data-i18n="auth.passkeys.title">Ключи доступа (passkeys)</h3>
-                <p class="muted" data-i18n="auth.passkeys.subtitle">WebAuthn: вход и второй фактор без паролей/кодов</p>
+                <h3 data-i18n="auth.passkeys.title">РљР»СЋС‡Рё РґРѕСЃС‚СѓРїР° (passkeys)</h3>
+                <p class="muted" data-i18n="auth.passkeys.subtitle">WebAuthn: РІС…РѕРґ Рё РІС‚РѕСЂРѕР№ С„Р°РєС‚РѕСЂ Р±РµР· РїР°СЂРѕР»РµР№/РєРѕРґРѕРІ</p>
               </div>
               <div class="icon-actions">
-                <button class="btn primary" id="passkeys-add-btn" data-i18n="auth.passkeys.add">Добавить</button>
+                <button class="btn primary" id="passkeys-add-btn" data-i18n="auth.passkeys.add">Р”РѕР±Р°РІРёС‚СЊ</button>
               </div>
             </div>
             <div class="card-body">
-              <div class="muted" id="passkeys-status-text" data-i18n="auth.passkeys.status.loading">Загрузка…</div>
-              <div class="muted small" id="passkeys-unsupported" data-i18n="auth.passkeys.unsupported" hidden>Ваш браузер не поддерживает passkeys.</div>
+              <div class="muted" id="passkeys-status-text" data-i18n="auth.passkeys.status.loading">Р—Р°РіСЂСѓР·РєР°вЂ¦</div>
+              <div class="muted small" id="passkeys-unsupported" data-i18n="auth.passkeys.unsupported" hidden>Р’Р°С€ Р±СЂР°СѓР·РµСЂ РЅРµ РїРѕРґРґРµСЂР¶РёРІР°РµС‚ passkeys.</div>
               <div class="table-wrap" id="passkeys-table-wrap" hidden>
                 <table class="table">
                   <thead>
                     <tr>
-                      <th data-i18n="auth.passkeys.table.name">Название</th>
-                      <th data-i18n="auth.passkeys.table.created">Создан</th>
-                      <th data-i18n="auth.passkeys.table.lastUsed">Последнее использование</th>
+                      <th data-i18n="auth.passkeys.table.name">РќР°Р·РІР°РЅРёРµ</th>
+                      <th data-i18n="auth.passkeys.table.created">РЎРѕР·РґР°РЅ</th>
+                      <th data-i18n="auth.passkeys.table.lastUsed">РџРѕСЃР»РµРґРЅРµРµ РёСЃРїРѕР»СЊР·РѕРІР°РЅРёРµ</th>
                       <th></th>
                     </tr>
                   </thead>
@@ -105,8 +105,8 @@
                 <div class="form-field">
                   <label for="settings-language" data-i18n="settings.language">Interface language</label>
                   <select id="settings-language" name="language">
-                    <option value="ru">Русский</option>
-                    <option value="en">English</option>
+                    <option value="ru">RU</option>
+                    <option value="en">EN</option>
                   </select>
                 </div>
               </div>
@@ -350,9 +350,22 @@
               </div>
               <div class="inline-actions">
                 <button type="button" class="btn ghost" id="settings-hardening-refresh" data-i18n="common.refresh">Refresh</button>
+                <button type="button" class="btn ghost" id="settings-behavior-activity-btn" data-i18n="settings.hardening.activity.open">Анализ активности</button>
               </div>
             </div>
             <div class="card-body">
+              <div class="form-grid single-column">
+                <div class="form-field">
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-behavior-model-enabled">
+                    <span data-i18n="settings.hardening.behaviorModelEnabled">Включить поведенческую модель аномалий</span>
+                  </label>
+                  <p class="muted" data-i18n="settings.hardening.behaviorModelHint">При аномалиях требуется повторное подтверждение личности (пароль + TOTP/passkey).</p>
+                </div>
+              </div>
+              <div class="settings-inline-row settings-runtime-actions">
+                <button type="button" class="btn primary" id="settings-hardening-save" data-i18n="common.save">Save</button>
+              </div>
               <div class="form-grid two-column">
                 <div class="form-field">
                   <label data-i18n="settings.hardening.score">Posture score</label>
@@ -513,7 +526,7 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="auth.2fa.setup.title">Включение 2FA</h3>
+        <h3 data-i18n="auth.2fa.setup.title">Р’РєР»СЋС‡РµРЅРёРµ 2FA</h3>
         <button class="btn ghost" data-close="#twofa-setup-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
@@ -521,17 +534,17 @@
 
         <div id="twofa-setup-step" class="form-grid two-column">
           <div class="form-field wide">
-            <div class="muted" data-i18n="auth.2fa.setup.scanHint">Отсканируйте QR-код в приложении-аутентификаторе и введите код.</div>
+            <div class="muted" data-i18n="auth.2fa.setup.scanHint">РћС‚СЃРєР°РЅРёСЂСѓР№С‚Рµ QR-РєРѕРґ РІ РїСЂРёР»РѕР¶РµРЅРёРё-Р°СѓС‚РµРЅС‚РёС„РёРєР°С‚РѕСЂРµ Рё РІРІРµРґРёС‚Рµ РєРѕРґ.</div>
           </div>
           <div class="form-field">
             <img id="twofa-setup-qr" class="qr-image" alt="2FA QR">
           </div>
           <div class="form-field">
-            <label data-i18n="auth.2fa.setup.manualSecret">Секрет (manual)</label>
+            <label data-i18n="auth.2fa.setup.manualSecret">РЎРµРєСЂРµС‚ (manual)</label>
             <input id="twofa-setup-secret" readonly>
           </div>
           <div class="form-field wide required">
-            <label for="twofa-setup-code" data-i18n="auth.2fa.code">Код 2FA</label>
+            <label for="twofa-setup-code" data-i18n="auth.2fa.code">РљРѕРґ 2FA</label>
             <input id="twofa-setup-code" autocomplete="one-time-code" inputmode="numeric" required>
           </div>
         </div>
@@ -540,14 +553,69 @@
           <div class="modal-section-header">
             <h4 data-i18n="auth.2fa.recovery.title">Recovery codes</h4>
           </div>
-          <div class="muted" data-i18n="auth.2fa.recovery.hint">Сохраните эти коды. Они показываются один раз.</div>
+          <div class="muted" data-i18n="auth.2fa.recovery.hint">РЎРѕС…СЂР°РЅРёС‚Рµ СЌС‚Рё РєРѕРґС‹. РћРЅРё РїРѕРєР°Р·С‹РІР°СЋС‚СЃСЏ РѕРґРёРЅ СЂР°Р·.</div>
           <ul id="twofa-recovery-codes"></ul>
         </div>
 
         <div class="form-actions">
-          <button class="btn primary" type="button" id="twofa-setup-confirm" data-i18n="auth.2fa.enable">Включить</button>
-          <button class="btn ghost" id="twofa-setup-close" data-close="#twofa-setup-modal" data-i18n="common.close" hidden>Закрыть</button>
+          <button class="btn primary" type="button" id="twofa-setup-confirm" data-i18n="auth.2fa.enable">Р’РєР»СЋС‡РёС‚СЊ</button>
+          <button class="btn ghost" id="twofa-setup-close" data-close="#twofa-setup-modal" data-i18n="common.close" hidden>Р—Р°РєСЂС‹С‚СЊ</button>
           <button class="btn ghost" type="button" id="twofa-setup-cancel" data-close="#twofa-setup-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="settings-behavior-activity-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body wide">
+      <div class="modal-header">
+        <h3 data-i18n="settings.hardening.activity.title">Поведенческий риск: анализ активности</h3>
+        <button class="btn ghost" data-close="#settings-behavior-activity-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="form-grid two-column">
+          <div class="form-field">
+            <label for="settings-behavior-activity-user" data-i18n="settings.hardening.activity.user">Пользователь</label>
+            <select id="settings-behavior-activity-user" class="select"></select>
+          </div>
+          <div class="form-field form-actions">
+            <button type="button" class="btn primary" id="settings-behavior-activity-refresh" data-i18n="common.refresh">Обновить</button>
+          </div>
+        </div>
+        <div class="alert" id="settings-behavior-activity-alert" hidden></div>
+        <div class="form-grid two-column">
+          <div class="form-field">
+            <label data-i18n="settings.hardening.activity.suspicious">Подозрительно</label>
+            <div id="settings-behavior-activity-suspicious">-</div>
+          </div>
+          <div class="form-field">
+            <label data-i18n="settings.hardening.activity.score">Риск-оценка</label>
+            <div id="settings-behavior-activity-score">-</div>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="settings-behavior-activity-table">
+            <thead>
+              <tr>
+                <th data-i18n="settings.hardening.activity.metric">Метрика</th>
+                <th data-i18n="settings.hardening.activity.value">Значение</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+        <div class="table-responsive">
+          <table class="data-table" id="settings-behavior-reasons-table">
+            <thead>
+              <tr>
+                <th data-i18n="settings.hardening.activity.reason">Причина</th>
+                <th data-i18n="settings.hardening.activity.value">Вклад</th>
+                <th data-i18n="settings.hardening.activity.level">Уровень</th>
+              </tr>
+            </thead>
+            <tbody></tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -557,7 +625,7 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="auth.2fa.disable.title">Выключить 2FA</h3>
+        <h3 data-i18n="auth.2fa.disable.title">Р’С‹РєР»СЋС‡РёС‚СЊ 2FA</h3>
         <button class="btn ghost" data-close="#twofa-disable-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
@@ -573,7 +641,7 @@
           </div>
         </div>
         <div class="form-actions">
-          <button class="btn danger" type="button" id="twofa-disable-confirm" data-i18n="auth.2fa.disable">Выключить</button>
+          <button class="btn danger" type="button" id="twofa-disable-confirm" data-i18n="auth.2fa.disable">Р’С‹РєР»СЋС‡РёС‚СЊ</button>
           <button class="btn ghost" type="button" data-close="#twofa-disable-modal" data-i18n="common.cancel">Cancel</button>
         </div>
       </div>
@@ -584,20 +652,20 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="auth.passkeys.register.title">Добавить ключ доступа</h3>
+        <h3 data-i18n="auth.passkeys.register.title">Р”РѕР±Р°РІРёС‚СЊ РєР»СЋС‡ РґРѕСЃС‚СѓРїР°</h3>
         <button class="btn ghost" data-close="#passkeys-register-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <div class="alert" id="passkeys-register-alert" hidden></div>
         <div class="form-grid two-column">
           <div class="form-field wide required">
-            <label for="passkeys-register-name" data-i18n="auth.passkeys.name">Название</label>
+            <label for="passkeys-register-name" data-i18n="auth.passkeys.name">РќР°Р·РІР°РЅРёРµ</label>
             <input id="passkeys-register-name" autocomplete="off" required>
-            <div class="muted small" data-i18n="auth.passkeys.register.hint">Откроется системное окно создания passkey (KeePassXC, Windows Hello и т.д.).</div>
+            <div class="muted small" data-i18n="auth.passkeys.register.hint">РћС‚РєСЂРѕРµС‚СЃСЏ СЃРёСЃС‚РµРјРЅРѕРµ РѕРєРЅРѕ СЃРѕР·РґР°РЅРёСЏ passkey (KeePassXC, Windows Hello Рё С‚.Рґ.).</div>
           </div>
         </div>
         <div class="form-actions">
-          <button class="btn primary" type="button" id="passkeys-register-confirm" data-i18n="auth.passkeys.register.confirm">Создать</button>
+          <button class="btn primary" type="button" id="passkeys-register-confirm" data-i18n="auth.passkeys.register.confirm">РЎРѕР·РґР°С‚СЊ</button>
           <button class="btn ghost" type="button" data-close="#passkeys-register-modal" data-i18n="common.cancel">Cancel</button>
         </div>
       </div>
@@ -608,14 +676,14 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="auth.passkeys.rename.title">Переименовать ключ доступа</h3>
+        <h3 data-i18n="auth.passkeys.rename.title">РџРµСЂРµРёРјРµРЅРѕРІР°С‚СЊ РєР»СЋС‡ РґРѕСЃС‚СѓРїР°</h3>
         <button class="btn ghost" data-close="#passkeys-rename-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <div class="alert" id="passkeys-rename-alert" hidden></div>
         <div class="form-grid two-column">
           <div class="form-field wide required">
-            <label for="passkeys-rename-name" data-i18n="auth.passkeys.name">Название</label>
+            <label for="passkeys-rename-name" data-i18n="auth.passkeys.name">РќР°Р·РІР°РЅРёРµ</label>
             <input id="passkeys-rename-name" autocomplete="off" required>
           </div>
         </div>
@@ -631,7 +699,7 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="auth.passkeys.delete.title">Удалить ключ доступа</h3>
+        <h3 data-i18n="auth.passkeys.delete.title">РЈРґР°Р»РёС‚СЊ РєР»СЋС‡ РґРѕСЃС‚СѓРїР°</h3>
         <button class="btn ghost" data-close="#passkeys-delete-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
@@ -662,3 +730,5 @@
     </div>
   </div>
 </div>
+
+

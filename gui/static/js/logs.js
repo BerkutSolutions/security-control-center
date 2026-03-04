@@ -844,7 +844,12 @@
       'backups.retention.deleted': 'Бэкапы: удаление по ретенции',
       'settings.updates.check': 'Настройки: проверка обновлений',
       'settings.updates.toggle': 'Настройки: автопроверка обновлений',
+      'settings.behavior_model.toggle': 'Настройки: поведенческая модель',
       'settings.hardening.read': 'Настройки: hardening-проверка',
+      'security.behavior.stepup_required': 'Безопасность: требуется step-up',
+      'security.behavior.stepup_password_ok': 'Безопасность: пароль step-up подтвержден',
+      'security.behavior.stepup_failed': 'Безопасность: step-up не пройден',
+      'security.behavior.stepup_success': 'Безопасность: step-up успешно пройден',
     },
     en: {
       'login_success': 'Authentication: login success',
@@ -1166,7 +1171,12 @@
       'backups.retention.deleted': 'Backups: retention deleted',
       'settings.updates.check': 'Settings: update check',
       'settings.updates.toggle': 'Settings: update checks toggled',
+      'settings.behavior_model.toggle': 'Settings: behavioral model toggle',
       'settings.hardening.read': 'Settings: hardening read',
+      'security.behavior.stepup_required': 'Security: step-up required',
+      'security.behavior.stepup_password_ok': 'Security: step-up password confirmed',
+      'security.behavior.stepup_failed': 'Security: step-up failed',
+      'security.behavior.stepup_success': 'Security: step-up success',
     },
   };
 

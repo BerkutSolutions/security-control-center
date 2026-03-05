@@ -518,15 +518,15 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	}
 
 	inp := IncidentScoreInput{
-		RawStatus:      rawStatus,
-		DisplayStatus:  status,
-		ErrorKind:      string(decision.ErrorKind),
-		StatusCode: result.StatusCode,
-		LatencyMs:  result.LatencyMs,
-		Now:        now,
-		Prev:       prev,
-		Monitor:    m,
-		Settings:   settings,
+		RawStatus:     rawStatus,
+		DisplayStatus: status,
+		ErrorKind:     string(decision.ErrorKind),
+		StatusCode:    result.StatusCode,
+		LatencyMs:     result.LatencyMs,
+		Now:           now,
+		Prev:          prev,
+		Monitor:       m,
+		Settings:      settings,
 	}
 	if deferFailure {
 		// A deferred (retrying) failure should not affect incident scoring and auto-incidents until confirmed.
@@ -644,19 +644,18 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		next.TLSNotAfter = &tlsRecord.NotAfter
 		days := int(time.Until(tlsRecord.NotAfter).Hours() / 24)
 		next.TLSDaysLeft = &days
-		if settings.TLSExpiringDays > 0 {
-			prevDays := 99999
-			if prev != nil && prev.TLSDaysLeft != nil {
-				prevDays = *prev.TLSDaysLeft
-			}
-			if days <= settings.TLSExpiringDays && prevDays > settings.TLSExpiringDays {
-				_, _ = e.store.AddEvent(ctx, &store.MonitorEvent{
-					MonitorID: m.ID,
-					TS:        now,
-					EventType: "tls_expiring",
-					Message:   "monitoring.event.tlsExpiring",
-				})
-			}
+		thresholds := store.EnabledTLSExpiringThresholds(settings.TLSExpiringRules, settings.TLSExpiringDays)
+		prevDays := 99999
+		if prev != nil && prev.TLSDaysLeft != nil {
+			prevDays = *prev.TLSDaysLeft
+		}
+		if _, crossed := crossedTLSExpiringThreshold(prevDays, days, thresholds); crossed {
+			_, _ = e.store.AddEvent(ctx, &store.MonitorEvent{
+				MonitorID: m.ID,
+				TS:        now,
+				EventType: "tls_expiring",
+				Message:   "monitoring.event.tlsExpiring",
+			})
 		}
 	} else if prev != nil {
 		next.TLSNotAfter = prev.TLSNotAfter

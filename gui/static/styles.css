@@ -1925,24 +1925,71 @@
 
   table.data-table {
     width: 100%;
-    border-collapse: collapse;
+    border-collapse: separate;
+    border-spacing: 0 8px;
     font-size: 13px;
+    table-layout: fixed;
   }
 
   table.data-table thead {
-    background: rgba(40, 52, 82, 0.85);
+    background: transparent;
   }
 
   table.data-table th,
   table.data-table td {
     padding: 12px 14px;
-    border-bottom: 1px solid rgba(46, 60, 90, 0.5);
     text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+
+  table.data-table th {
+    background: rgba(40, 52, 82, 0.85);
+    border-top: 1px solid rgba(96, 121, 187, 0.24);
+    border-bottom: 1px solid rgba(96, 121, 187, 0.24);
+    white-space: nowrap;
+    color: rgba(255, 255, 255, 0.9);
+  }
+
+  table.data-table th:first-child {
+    border-left: 1px solid rgba(96, 121, 187, 0.24);
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+  }
+
+  table.data-table th:last-child {
+    border-right: 1px solid rgba(96, 121, 187, 0.24);
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+
+  table.data-table tbody td {
+    background: rgba(255, 255, 255, 0.04);
+    border-top: 1px solid rgba(96, 121, 187, 0.16);
+    border-bottom: 1px solid rgba(96, 121, 187, 0.16);
+    color: rgba(255, 255, 255, 0.92);
+  }
+
+  table.data-table tbody td:first-child {
+    border-left: 1px solid rgba(96, 121, 187, 0.16);
+    border-top-left-radius: 10px;
+    border-bottom-left-radius: 10px;
+  }
+
+  table.data-table tbody td:last-child {
+    border-right: 1px solid rgba(96, 121, 187, 0.16);
+    border-top-right-radius: 10px;
+    border-bottom-right-radius: 10px;
+  }
+
+  table.data-table td .badge,
+  table.data-table td .status-badge,
+  table.data-table td .pill-badge {
     white-space: nowrap;
   }
 
   table.data-table tbody tr:hover {
-    background: rgba(58, 74, 112, 0.35);
+    filter: brightness(1.08);
   }
 
   table.data-table td.actions {
@@ -1951,6 +1998,7 @@
   }
 
   table.data-table tr.placeholder td {
+    background: rgba(255, 255, 255, 0.03);
     text-align: center;
     color: rgba(255, 255, 255, 0.5);
   }
@@ -3636,6 +3684,11 @@
   background: rgba(255, 255, 255, 0.04);
 }
 
+.monitoring-table-row > div {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
 .monitoring-table-row.certs {
   grid-template-columns: minmax(120px, 1.2fr) minmax(140px, 1.4fr) minmax(120px, 0.9fr) minmax(80px, 0.6fr) minmax(120px, 1.1fr) minmax(120px, 1.1fr) minmax(120px, 0.9fr) minmax(90px, 0.7fr);
 }
@@ -3951,6 +4004,24 @@
   background: rgba(10, 14, 20, 0.65);
 }
 
+.monitoring-certs-thresholds {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.monitoring-certs-threshold {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(96, 121, 187, 0.32);
+  background: rgba(255, 255, 255, 0.04);
+  font-size: 12px;
+}
+
 .monitor-notifications-list {
   display: grid;
   gap: 8px;
@@ -4013,6 +4084,21 @@
 .status-badge.maintenance {
   background: rgba(255, 180, 84, 0.18);
   color: #ffb454;
+}
+
+.status-badge.ok {
+  background: rgba(45, 210, 123, 0.2);
+  color: #2dd27b;
+}
+
+.status-badge.violated {
+  background: rgba(255, 107, 107, 0.2);
+  color: #ff9a9a;
+}
+
+.status-badge.unknown {
+  background: rgba(255, 180, 84, 0.2);
+  color: #ffc98c;
 }
 
 .status-badge.score-low {

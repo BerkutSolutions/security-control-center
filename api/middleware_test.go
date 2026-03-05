@@ -149,6 +149,40 @@ func TestClientIPInvalidXFFFallsBackToRealIP(t *testing.T) {
 	}
 }
 
+func TestClientIPUsesImplicitPrivateProxyWhenTrustedProxiesEmpty(t *testing.T) {
+	s := &Server{
+		cfg: &config.AppConfig{
+			Security: config.SecurityConfig{
+				TrustedProxies: nil,
+			},
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
+	req.RemoteAddr = "172.18.0.5:54321"
+	req.Header.Set("X-Forwarded-For", "198.51.100.8, 172.18.0.5")
+	got := s.clientIP(req)
+	if got != "198.51.100.8" {
+		t.Fatalf("expected x-forwarded-for ip for implicit private proxy, got %s", got)
+	}
+}
+
+func TestClientIPDoesNotUseImplicitProxyForLoopbackRemote(t *testing.T) {
+	s := &Server{
+		cfg: &config.AppConfig{
+			Security: config.SecurityConfig{
+				TrustedProxies: nil,
+			},
+		},
+	}
+	req := httptest.NewRequest(http.MethodGet, "/api/auth/login", nil)
+	req.RemoteAddr = "127.0.0.1:54321"
+	req.Header.Set("X-Forwarded-For", "198.51.100.8")
+	got := s.clientIP(req)
+	if got != "127.0.0.1" {
+		t.Fatalf("expected loopback remote ip when implicit proxy trust is disabled, got %s", got)
+	}
+}
+
 func TestSecurityHeadersSetHSTSForTrustedProxyHTTPS(t *testing.T) {
 	s := &Server{
 		cfg: &config.AppConfig{

@@ -30,8 +30,8 @@ func (h *MonitoringHandler) ListCerts(w http.ResponseWriter, r *http.Request) {
 	}
 	settings, _ := h.store.GetSettings(r.Context())
 	threshold := 30
-	if settings != nil && settings.TLSExpiringDays > 0 {
-		threshold = settings.TLSExpiringDays
+	if settings != nil {
+		threshold = store.MaxEnabledTLSExpiringDay(settings.TLSExpiringRules, settings.TLSExpiringDays)
 	}
 	for i := range items {
 		if items[i].DaysLeft != nil && *items[i].DaysLeft <= threshold {

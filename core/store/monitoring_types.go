@@ -67,12 +67,12 @@ type MonitorState struct {
 	LastAttemptAt     *time.Time `json:"last_attempt_at,omitempty"`
 	LastErrorKind     string     `json:"last_error_kind,omitempty"`
 	// Derived (not stored in monitor_state): used by UI to consistently render ISSUE→DOWN escalation timelines.
-	IssueEscalateMinutes int `json:"issue_escalate_minutes,omitempty"`
-	Uptime24h         float64    `json:"uptime_24h"`
-	Uptime30d         float64    `json:"uptime_30d"`
-	AvgLatency24h     float64    `json:"avg_latency_24h"`
-	TLSDaysLeft       *int       `json:"tls_days_left,omitempty"`
-	TLSNotAfter       *time.Time `json:"tls_not_after,omitempty"`
+	IssueEscalateMinutes int        `json:"issue_escalate_minutes,omitempty"`
+	Uptime24h            float64    `json:"uptime_24h"`
+	Uptime30d            float64    `json:"uptime_30d"`
+	AvgLatency24h        float64    `json:"avg_latency_24h"`
+	TLSDaysLeft          *int       `json:"tls_days_left,omitempty"`
+	TLSNotAfter          *time.Time `json:"tls_not_after,omitempty"`
 
 	IncidentScore          *float64   `json:"incident_score,omitempty"`
 	IncidentScoreUpdatedAt *time.Time `json:"incident_score_updated_at,omitempty"`
@@ -169,28 +169,29 @@ type MaintenanceWindow struct {
 }
 
 type MonitorSettings struct {
-	ID                      int64   `json:"id"`
-	RetentionDays           int     `json:"retention_days"`
-	MaxConcurrentChecks     int     `json:"max_concurrent_checks"`
-	DefaultTimeoutSec       int     `json:"default_timeout_sec"`
-	DefaultIntervalSec      int     `json:"default_interval_sec"`
-	EngineEnabled           bool    `json:"engine_enabled"`
-	AllowPrivateNetworks    bool    `json:"allow_private_networks"`
-	IssueEscalateMinutes    int     `json:"issue_escalate_minutes"`
-	NotifyUpConfirmations   int     `json:"notify_up_confirmations"`
-	TLSRefreshHours         int     `json:"tls_refresh_hours"`
-	TLSExpiringDays         int     `json:"tls_expiring_days"`
-	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
-	NotifyRepeatDownMinutes int     `json:"notify_repeat_down_minutes"`
-	NotifyMaintenance       bool    `json:"notify_maintenance"`
-	LogDNSEvents            bool    `json:"log_dns_events"`
-	AutoTaskOnDown          bool    `json:"auto_task_on_down"`
-	AutoTLSIncident         bool    `json:"auto_tls_incident"`
-	AutoTLSIncidentDays     int     `json:"auto_tls_incident_days"`
-	AutoIncidentCloseOnUp   bool    `json:"auto_incident_close_on_up"`
-	DefaultRetries          int     `json:"default_retries"`
-	DefaultRetryIntervalSec int     `json:"default_retry_interval_sec"`
-	DefaultSLATargetPct     float64 `json:"default_sla_target_pct"`
+	ID                      int64             `json:"id"`
+	RetentionDays           int               `json:"retention_days"`
+	MaxConcurrentChecks     int               `json:"max_concurrent_checks"`
+	DefaultTimeoutSec       int               `json:"default_timeout_sec"`
+	DefaultIntervalSec      int               `json:"default_interval_sec"`
+	EngineEnabled           bool              `json:"engine_enabled"`
+	AllowPrivateNetworks    bool              `json:"allow_private_networks"`
+	IssueEscalateMinutes    int               `json:"issue_escalate_minutes"`
+	NotifyUpConfirmations   int               `json:"notify_up_confirmations"`
+	TLSRefreshHours         int               `json:"tls_refresh_hours"`
+	TLSExpiringDays         int               `json:"tls_expiring_days"`
+	TLSExpiringRules        []TLSExpiringRule `json:"tls_expiring_rules,omitempty"`
+	NotifySuppressMinutes   int               `json:"notify_suppress_minutes"`
+	NotifyRepeatDownMinutes int               `json:"notify_repeat_down_minutes"`
+	NotifyMaintenance       bool              `json:"notify_maintenance"`
+	LogDNSEvents            bool              `json:"log_dns_events"`
+	AutoTaskOnDown          bool              `json:"auto_task_on_down"`
+	AutoTLSIncident         bool              `json:"auto_tls_incident"`
+	AutoTLSIncidentDays     int               `json:"auto_tls_incident_days"`
+	AutoIncidentCloseOnUp   bool              `json:"auto_incident_close_on_up"`
+	DefaultRetries          int               `json:"default_retries"`
+	DefaultRetryIntervalSec int               `json:"default_retry_interval_sec"`
+	DefaultSLATargetPct     float64           `json:"default_sla_target_pct"`
 
 	IncidentScoringEnabled         bool    `json:"incident_scoring_enabled"`
 	IncidentScoringModel           string  `json:"incident_scoring_model"`
@@ -199,6 +200,11 @@ type MonitorSettings struct {
 	IncidentScoreOpenConfirmations int     `json:"incident_score_open_confirmations"`
 
 	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type TLSExpiringRule struct {
+	Days    int  `json:"days"`
+	Enabled bool `json:"enabled"`
 }
 
 type MonitorFilter struct {

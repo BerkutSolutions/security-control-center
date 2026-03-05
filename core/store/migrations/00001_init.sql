@@ -762,6 +762,7 @@ CREATE TABLE IF NOT EXISTS monitoring_settings (
 	allow_private_networks INTEGER NOT NULL DEFAULT 0,
 	tls_refresh_hours INTEGER NOT NULL DEFAULT 24,
 	tls_expiring_days INTEGER NOT NULL DEFAULT 30,
+	tls_expiring_rules_json TEXT NOT NULL DEFAULT '[]',
 	notify_suppress_minutes INTEGER NOT NULL DEFAULT 5,
 	notify_repeat_down_minutes INTEGER NOT NULL DEFAULT 30,
 	notify_maintenance INTEGER NOT NULL DEFAULT 0,

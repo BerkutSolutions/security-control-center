@@ -257,13 +257,16 @@ func (e *Engine) handleNotifications(ctx context.Context, m store.Monitor, prev,
 	if next.MaintenanceActive {
 		return
 	}
-	if m.NotifyTLSExpiring && tlsRecord != nil && next.TLSDaysLeft != nil && settings.TLSExpiringDays > 0 {
-		threshold := settings.TLSExpiringDays
+	if m.NotifyTLSExpiring && tlsRecord != nil && next.TLSDaysLeft != nil {
+		thresholds := store.EnabledTLSExpiringThresholds(settings.TLSExpiringRules, settings.TLSExpiringDays)
+		if len(thresholds) == 0 {
+			return
+		}
 		prevDays := 99999
 		if prev != nil && prev.TLSDaysLeft != nil {
 			prevDays = *prev.TLSDaysLeft
 		}
-		if *next.TLSDaysLeft <= threshold && prevDays > threshold && canSend(st.LastNotifiedAt) && canSend(st.LastTLSNotifiedAt) {
+		if _, crossed := crossedTLSExpiringThreshold(prevDays, *next.TLSDaysLeft, thresholds); crossed && canSend(st.LastNotifiedAt) && canSend(st.LastTLSNotifiedAt) {
 			if e.dispatchNotification(ctx, channels, buildNotificationMessage("tls_expiring", "ru", m, result, tlsRecord, now, false), "tls_expiring", &m.ID) {
 				st.LastNotifiedAt = &now
 				st.LastTLSNotifiedAt = &now

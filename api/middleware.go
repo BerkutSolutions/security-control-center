@@ -727,10 +727,15 @@ func (s *Server) clientIP(r *http.Request) string {
 		ip = r.RemoteAddr
 	}
 	ip = strings.TrimSpace(ip)
-	if s == nil || s.cfg == nil || !isTrustedProxy(ip, s.cfg.Security.TrustedProxies) {
+	if s == nil || !shouldTrustForwardedHeaders(ip, s.cfg) {
 		return ip
 	}
 	if xff := strings.TrimSpace(r.Header.Get("X-Forwarded-For")); xff != "" {
+		if len(s.cfg.Security.TrustedProxies) == 0 && isPrivateProxyHop(ip) {
+			if candidate := extractLeftmostIPFromXFF(xff); candidate != "" {
+				return candidate
+			}
+		}
 		if candidate := extractClientIPFromXFF(xff, s.cfg.Security.TrustedProxies); candidate != "" {
 			return candidate
 		}
@@ -761,7 +766,7 @@ func isHTTPSRequest(r *http.Request, cfg *config.AppConfig) bool {
 		remoteIP = strings.TrimSpace(r.RemoteAddr)
 	}
 	remoteIP = strings.TrimSpace(remoteIP)
-	if !isTrustedProxy(remoteIP, cfg.Security.TrustedProxies) {
+	if !shouldTrustForwardedHeaders(remoteIP, cfg) {
 		return false
 	}
 	xffProto := strings.ToLower(strings.TrimSpace(strings.SplitN(r.Header.Get("X-Forwarded-Proto"), ",", 2)[0]))
@@ -780,6 +785,19 @@ func extractClientIPFromXFF(xff string, trusted []string) string {
 		if !isTrustedProxy(val, trusted) {
 			return val
 		}
+	}
+	return ""
+}
+
+func extractLeftmostIPFromXFF(xff string) string {
+	parts := strings.Split(xff, ",")
+	for i := 0; i < len(parts); i++ {
+		candidate := strings.TrimSpace(parts[i])
+		parsed := net.ParseIP(candidate)
+		if parsed == nil {
+			continue
+		}
+		return parsed.String()
 	}
 	return ""
 }
@@ -814,6 +832,32 @@ func isTrustedProxy(ip string, trusted []string) bool {
 		}
 	}
 	return false
+}
+
+func shouldTrustForwardedHeaders(remoteIP string, cfg *config.AppConfig) bool {
+	if cfg == nil {
+		return false
+	}
+	if isTrustedProxy(remoteIP, cfg.Security.TrustedProxies) {
+		return true
+	}
+	// Safe fallback for containerized reverse-proxy setups when trusted proxies are not configured yet:
+	// trust forwarded headers only from private non-loopback hops.
+	if len(cfg.Security.TrustedProxies) == 0 {
+		return isPrivateProxyHop(remoteIP)
+	}
+	return false
+}
+
+func isPrivateProxyHop(ip string) bool {
+	parsed := net.ParseIP(strings.TrimSpace(ip))
+	if parsed == nil || parsed.IsLoopback() {
+		return false
+	}
+	if parsed.IsPrivate() {
+		return true
+	}
+	return parsed.IsLinkLocalUnicast()
 }
 
 func writeJSON(w http.ResponseWriter, status int, v interface{}) {

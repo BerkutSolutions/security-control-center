@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -10,12 +11,13 @@ import (
 
 func (s *monitoringStore) GetSettings(ctx context.Context) (*MonitorSettings, error) {
 	row := s.db.QueryRowContext(ctx, `
-		SELECT id, retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, issue_escalate_minutes, notify_up_confirmations, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, log_dns_events, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, auto_incident_close_on_up, default_retries, default_retry_interval_sec, default_sla_target_pct, incident_scoring_enabled, incident_scoring_model, incident_score_open_threshold, incident_score_close_threshold, incident_score_open_confirmations, updated_at
+		SELECT id, retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, issue_escalate_minutes, notify_up_confirmations, tls_refresh_hours, tls_expiring_days, tls_expiring_rules_json, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, log_dns_events, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, auto_incident_close_on_up, default_retries, default_retry_interval_sec, default_sla_target_pct, incident_scoring_enabled, incident_scoring_model, incident_score_open_threshold, incident_score_close_threshold, incident_score_open_confirmations, updated_at
 		FROM monitoring_settings ORDER BY id LIMIT 1`)
 	var settings MonitorSettings
 	var engineEnabled, allowPriv, notifyMaintenance, logDNSEvents, autoTaskOnDown, autoTLSIncident, autoIncidentCloseOnUp int
 	var scoringEnabled int
-	if err := row.Scan(&settings.ID, &settings.RetentionDays, &settings.MaxConcurrentChecks, &settings.DefaultTimeoutSec, &settings.DefaultIntervalSec, &engineEnabled, &allowPriv, &settings.IssueEscalateMinutes, &settings.NotifyUpConfirmations, &settings.TLSRefreshHours, &settings.TLSExpiringDays, &settings.NotifySuppressMinutes, &settings.NotifyRepeatDownMinutes, &notifyMaintenance, &logDNSEvents, &autoTaskOnDown, &autoTLSIncident, &settings.AutoTLSIncidentDays, &autoIncidentCloseOnUp, &settings.DefaultRetries, &settings.DefaultRetryIntervalSec, &settings.DefaultSLATargetPct, &scoringEnabled, &settings.IncidentScoringModel, &settings.IncidentScoreOpenThreshold, &settings.IncidentScoreCloseThreshold, &settings.IncidentScoreOpenConfirmations, &settings.UpdatedAt); err != nil {
+	var tlsRulesJSON string
+	if err := row.Scan(&settings.ID, &settings.RetentionDays, &settings.MaxConcurrentChecks, &settings.DefaultTimeoutSec, &settings.DefaultIntervalSec, &engineEnabled, &allowPriv, &settings.IssueEscalateMinutes, &settings.NotifyUpConfirmations, &settings.TLSRefreshHours, &settings.TLSExpiringDays, &tlsRulesJSON, &settings.NotifySuppressMinutes, &settings.NotifyRepeatDownMinutes, &notifyMaintenance, &logDNSEvents, &autoTaskOnDown, &autoTLSIncident, &settings.AutoTLSIncidentDays, &autoIncidentCloseOnUp, &settings.DefaultRetries, &settings.DefaultRetryIntervalSec, &settings.DefaultSLATargetPct, &scoringEnabled, &settings.IncidentScoringModel, &settings.IncidentScoreOpenThreshold, &settings.IncidentScoreCloseThreshold, &settings.IncidentScoreOpenConfirmations, &settings.UpdatedAt); err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
 			return nil, err
 		}
@@ -32,6 +34,11 @@ func (s *monitoringStore) GetSettings(ctx context.Context) (*MonitorSettings, er
 	settings.AutoTaskOnDown = autoTaskOnDown == 1
 	settings.AutoTLSIncident = autoTLSIncident == 1
 	settings.AutoIncidentCloseOnUp = autoIncidentCloseOnUp == 1
+	if strings.TrimSpace(tlsRulesJSON) != "" {
+		_ = json.Unmarshal([]byte(tlsRulesJSON), &settings.TLSExpiringRules)
+	}
+	settings.TLSExpiringRules = NormalizeTLSExpiringRules(settings.TLSExpiringRules, settings.TLSExpiringDays)
+	settings.TLSExpiringDays = MaxEnabledTLSExpiringDay(settings.TLSExpiringRules, settings.TLSExpiringDays)
 	// Incident scoring for monitoring is mandatory by product policy.
 	settings.IncidentScoringEnabled = true
 	if settings.IncidentScoringModel == "" {
@@ -42,12 +49,16 @@ func (s *monitoringStore) GetSettings(ctx context.Context) (*MonitorSettings, er
 
 func (s *monitoringStore) UpdateSettings(ctx context.Context, settings *MonitorSettings) error {
 	now := time.Now().UTC()
+	settings.TLSExpiringRules = NormalizeTLSExpiringRules(settings.TLSExpiringRules, settings.TLSExpiringDays)
+	settings.TLSExpiringDays = MaxEnabledTLSExpiringDay(settings.TLSExpiringRules, settings.TLSExpiringDays)
+	tlsRulesJSON, _ := json.Marshal(settings.TLSExpiringRules)
 	res, err := s.db.ExecContext(ctx, `
 		UPDATE monitoring_settings
-		SET retention_days=?, max_concurrent_checks=?, default_timeout_sec=?, default_interval_sec=?, engine_enabled=?, allow_private_networks=?, issue_escalate_minutes=?, notify_up_confirmations=?, tls_refresh_hours=?, tls_expiring_days=?, notify_suppress_minutes=?, notify_repeat_down_minutes=?, notify_maintenance=?, log_dns_events=?, auto_task_on_down=?, auto_tls_incident=?, auto_tls_incident_days=?, auto_incident_close_on_up=?, default_retries=?, default_retry_interval_sec=?, default_sla_target_pct=?, incident_scoring_enabled=?, incident_scoring_model=?, incident_score_open_threshold=?, incident_score_close_threshold=?, incident_score_open_confirmations=?, updated_at=?
+		SET retention_days=?, max_concurrent_checks=?, default_timeout_sec=?, default_interval_sec=?, engine_enabled=?, allow_private_networks=?, issue_escalate_minutes=?, notify_up_confirmations=?, tls_refresh_hours=?, tls_expiring_days=?, tls_expiring_rules_json=?, notify_suppress_minutes=?, notify_repeat_down_minutes=?, notify_maintenance=?, log_dns_events=?, auto_task_on_down=?, auto_tls_incident=?, auto_tls_incident_days=?, auto_incident_close_on_up=?, default_retries=?, default_retry_interval_sec=?, default_sla_target_pct=?, incident_scoring_enabled=?, incident_scoring_model=?, incident_score_open_threshold=?, incident_score_close_threshold=?, incident_score_open_confirmations=?, updated_at=?
 		WHERE id=?`,
 		settings.RetentionDays, settings.MaxConcurrentChecks, settings.DefaultTimeoutSec, settings.DefaultIntervalSec,
 		boolToInt(settings.EngineEnabled), boolToInt(settings.AllowPrivateNetworks), settings.IssueEscalateMinutes, settings.NotifyUpConfirmations, settings.TLSRefreshHours, settings.TLSExpiringDays,
+		string(tlsRulesJSON),
 		settings.NotifySuppressMinutes, settings.NotifyRepeatDownMinutes, boolToInt(settings.NotifyMaintenance), boolToInt(settings.LogDNSEvents),
 		boolToInt(settings.AutoTaskOnDown), boolToInt(settings.AutoTLSIncident), settings.AutoTLSIncidentDays, boolToInt(settings.AutoIncidentCloseOnUp),
 		settings.DefaultRetries, settings.DefaultRetryIntervalSec, settings.DefaultSLATargetPct,
@@ -70,11 +81,15 @@ func (s *monitoringStore) UpdateSettings(ctx context.Context, settings *MonitorS
 
 func (s *monitoringStore) insertSettings(ctx context.Context, settings *MonitorSettings) (int64, error) {
 	now := time.Now().UTC()
+	settings.TLSExpiringRules = NormalizeTLSExpiringRules(settings.TLSExpiringRules, settings.TLSExpiringDays)
+	settings.TLSExpiringDays = MaxEnabledTLSExpiringDay(settings.TLSExpiringRules, settings.TLSExpiringDays)
+	tlsRulesJSON, _ := json.Marshal(settings.TLSExpiringRules)
 	res, err := s.db.ExecContext(ctx, `
-		INSERT INTO monitoring_settings(retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, issue_escalate_minutes, notify_up_confirmations, tls_refresh_hours, tls_expiring_days, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, log_dns_events, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, auto_incident_close_on_up, default_retries, default_retry_interval_sec, default_sla_target_pct, incident_scoring_enabled, incident_scoring_model, incident_score_open_threshold, incident_score_close_threshold, incident_score_open_confirmations, updated_at)
-		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
+		INSERT INTO monitoring_settings(retention_days, max_concurrent_checks, default_timeout_sec, default_interval_sec, engine_enabled, allow_private_networks, issue_escalate_minutes, notify_up_confirmations, tls_refresh_hours, tls_expiring_days, tls_expiring_rules_json, notify_suppress_minutes, notify_repeat_down_minutes, notify_maintenance, log_dns_events, auto_task_on_down, auto_tls_incident, auto_tls_incident_days, auto_incident_close_on_up, default_retries, default_retry_interval_sec, default_sla_target_pct, incident_scoring_enabled, incident_scoring_model, incident_score_open_threshold, incident_score_close_threshold, incident_score_open_confirmations, updated_at)
+		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		settings.RetentionDays, settings.MaxConcurrentChecks, settings.DefaultTimeoutSec, settings.DefaultIntervalSec,
 		boolToInt(settings.EngineEnabled), boolToInt(settings.AllowPrivateNetworks), settings.IssueEscalateMinutes, settings.NotifyUpConfirmations, settings.TLSRefreshHours, settings.TLSExpiringDays,
+		string(tlsRulesJSON),
 		settings.NotifySuppressMinutes, settings.NotifyRepeatDownMinutes, boolToInt(settings.NotifyMaintenance), boolToInt(settings.LogDNSEvents),
 		boolToInt(settings.AutoTaskOnDown), boolToInt(settings.AutoTLSIncident), settings.AutoTLSIncidentDays, boolToInt(settings.AutoIncidentCloseOnUp),
 		settings.DefaultRetries, settings.DefaultRetryIntervalSec, settings.DefaultSLATargetPct,
@@ -102,6 +117,7 @@ func defaultMonitoringSettings() MonitorSettings {
 		NotifyUpConfirmations:   2,
 		TLSRefreshHours:         24,
 		TLSExpiringDays:         30,
+		TLSExpiringRules:        DefaultTLSExpiringRules(),
 		NotifySuppressMinutes:   5,
 		NotifyRepeatDownMinutes: 30,
 		NotifyMaintenance:       false,

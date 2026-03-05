@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -10,27 +11,28 @@ import (
 )
 
 type monitoringSettingsPayload struct {
-	RetentionDays           int     `json:"retention_days"`
-	MaxConcurrentChecks     int     `json:"max_concurrent_checks"`
-	DefaultTimeoutSec       int     `json:"default_timeout_sec"`
-	DefaultIntervalSec      int     `json:"default_interval_sec"`
-	DefaultRetries          int     `json:"default_retries"`
-	DefaultRetryIntervalSec int     `json:"default_retry_interval_sec"`
-	DefaultSLATargetPct     float64 `json:"default_sla_target_pct"`
-	EngineEnabled           *bool   `json:"engine_enabled"`
-	AllowPrivateNetworks    *bool   `json:"allow_private_networks"`
-	IssueEscalateMinutes    int     `json:"issue_escalate_minutes"`
-	NotifyUpConfirmations   int     `json:"notify_up_confirmations"`
-	TLSRefreshHours         int     `json:"tls_refresh_hours"`
-	TLSExpiringDays         int     `json:"tls_expiring_days"`
-	NotifySuppressMinutes   int     `json:"notify_suppress_minutes"`
-	NotifyRepeatDownMinutes int     `json:"notify_repeat_down_minutes"`
-	NotifyMaintenance       *bool   `json:"notify_maintenance"`
-	LogDNSEvents            *bool   `json:"log_dns_events"`
-	AutoTaskOnDown          *bool   `json:"auto_task_on_down"`
-	AutoTLSIncident         *bool   `json:"auto_tls_incident"`
-	AutoTLSIncidentDays     int     `json:"auto_tls_incident_days"`
-	AutoIncidentCloseOnUp   *bool   `json:"auto_incident_close_on_up"`
+	RetentionDays           int                     `json:"retention_days"`
+	MaxConcurrentChecks     int                     `json:"max_concurrent_checks"`
+	DefaultTimeoutSec       int                     `json:"default_timeout_sec"`
+	DefaultIntervalSec      int                     `json:"default_interval_sec"`
+	DefaultRetries          int                     `json:"default_retries"`
+	DefaultRetryIntervalSec int                     `json:"default_retry_interval_sec"`
+	DefaultSLATargetPct     float64                 `json:"default_sla_target_pct"`
+	EngineEnabled           *bool                   `json:"engine_enabled"`
+	AllowPrivateNetworks    *bool                   `json:"allow_private_networks"`
+	IssueEscalateMinutes    int                     `json:"issue_escalate_minutes"`
+	NotifyUpConfirmations   int                     `json:"notify_up_confirmations"`
+	TLSRefreshHours         int                     `json:"tls_refresh_hours"`
+	TLSExpiringDays         int                     `json:"tls_expiring_days"`
+	TLSExpiringRules        []store.TLSExpiringRule `json:"tls_expiring_rules"`
+	NotifySuppressMinutes   int                     `json:"notify_suppress_minutes"`
+	NotifyRepeatDownMinutes int                     `json:"notify_repeat_down_minutes"`
+	NotifyMaintenance       *bool                   `json:"notify_maintenance"`
+	LogDNSEvents            *bool                   `json:"log_dns_events"`
+	AutoTaskOnDown          *bool                   `json:"auto_task_on_down"`
+	AutoTLSIncident         *bool                   `json:"auto_tls_incident"`
+	AutoTLSIncidentDays     int                     `json:"auto_tls_incident_days"`
+	AutoIncidentCloseOnUp   *bool                   `json:"auto_incident_close_on_up"`
 
 	IncidentScoringEnabled         *bool   `json:"incident_scoring_enabled"`
 	IncidentScoringModel           string  `json:"incident_scoring_model"`
@@ -106,6 +108,25 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 	if payload.TLSExpiringDays > 0 {
 		current.TLSExpiringDays = payload.TLSExpiringDays
 	}
+	if len(payload.TLSExpiringRules) > 0 {
+		current.TLSExpiringRules = store.NormalizeTLSExpiringRules(payload.TLSExpiringRules, current.TLSExpiringDays)
+	} else if payload.TLSExpiringDays > 0 {
+		if len(current.TLSExpiringRules) == 0 {
+			current.TLSExpiringRules = store.NormalizeTLSExpiringRules([]store.TLSExpiringRule{
+				{Days: payload.TLSExpiringDays, Enabled: true},
+				{Days: 14, Enabled: true},
+				{Days: 7, Enabled: true},
+			}, payload.TLSExpiringDays)
+		} else {
+			rules := append([]store.TLSExpiringRule(nil), current.TLSExpiringRules...)
+			sort.Slice(rules, func(i, j int) bool {
+				return rules[i].Days > rules[j].Days
+			})
+			rules[0].Days = payload.TLSExpiringDays
+			rules[0].Enabled = true
+			current.TLSExpiringRules = store.NormalizeTLSExpiringRules(rules, payload.TLSExpiringDays)
+		}
+	}
 	if payload.NotifySuppressMinutes > 0 {
 		current.NotifySuppressMinutes = payload.NotifySuppressMinutes
 	}
@@ -160,6 +181,8 @@ func (h *MonitoringHandler) UpdateSettings(w http.ResponseWriter, r *http.Reques
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
 	}
+	current.TLSExpiringRules = store.NormalizeTLSExpiringRules(current.TLSExpiringRules, current.TLSExpiringDays)
+	current.TLSExpiringDays = store.MaxEnabledTLSExpiringDay(current.TLSExpiringRules, current.TLSExpiringDays)
 	if current.IssueEscalateMinutes < 1 || current.IssueEscalateMinutes > 24*60 {
 		http.Error(w, "monitoring.error.invalidSettings", http.StatusBadRequest)
 		return
@@ -232,6 +255,7 @@ func settingsDetails(s *store.MonitorSettings) string {
 		"notify_up_confirmations=" + strconv.Itoa(s.NotifyUpConfirmations),
 		"tls_refresh=" + strconv.Itoa(s.TLSRefreshHours),
 		"tls_expiring=" + strconv.Itoa(s.TLSExpiringDays),
+		"tls_expiring_rules=" + strconv.Itoa(len(s.TLSExpiringRules)),
 		"notify_suppress=" + strconv.Itoa(s.NotifySuppressMinutes),
 		"notify_repeat=" + strconv.Itoa(s.NotifyRepeatDownMinutes),
 		"notify_maintenance=" + strconv.FormatBool(s.NotifyMaintenance),

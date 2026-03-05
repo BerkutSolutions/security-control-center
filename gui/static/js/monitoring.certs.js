@@ -1,5 +1,8 @@
 (() => {
   const els = {};
+  const notifyState = {
+    rules: [],
+  };
 
   function bindCerts() {
     const canView = MonitoringPage.hasPermission('monitoring.certs.view')
@@ -21,6 +24,7 @@
     els.notifyTest = document.getElementById('monitor-certs-notify-test');
     els.notifyList = document.getElementById('monitor-certs-notify-list');
     els.notifyAlert = document.getElementById('monitor-certs-notify-alert');
+    els.notifyThresholds = document.getElementById('monitor-certs-thresholds');
 
     if (els.refresh) {
       els.refresh.addEventListener('click', () => loadCerts());
@@ -85,6 +89,9 @@
         : '-';
       const statusKey = (item.status || '').toLowerCase();
       const statusLabel = statusKey ? MonitoringPage.t(`monitoring.status.${statusKey}`) : '-';
+      const statusCls = statusKey === 'up'
+        ? 'status-badge ok'
+        : (statusKey === 'down' ? 'status-badge violated' : 'status-badge unknown');
       row.innerHTML = `
         <div>${item.name || `#${item.monitor_id}`}</div>
         <div>${item.url || '-'}</div>
@@ -93,7 +100,7 @@
         <div>${item.issuer || '-'}</div>
         <div>${item.common_name || '-'}</div>
         <div>${MonitoringPage.formatDate(item.checked_at)}</div>
-        <div>${statusLabel}</div>
+        <div><span class="${statusCls}">${statusLabel}</span></div>
       `;
       els.list.appendChild(row);
     });
@@ -129,8 +136,11 @@
       els.notifyAdd.addEventListener('click', () => {
         if (!els.notifyDays) return;
         const val = parseInt(els.notifyDays.value, 10);
-        if (!Number.isFinite(val) || val <= 0) return;
-        els.notifyDays.value = `${val}`;
+        if (!Number.isFinite(val) || val <= 0) {
+          showNotifyAlert('monitoring.certs.notifyInvalidDay');
+          return;
+        }
+        addNotifyRule(val);
       });
     }
     if (els.notifySave) {
@@ -164,10 +174,55 @@
   }
 
   function renderNotifySettings() {
-    if (!els.notifyDays) return;
+    if (!els.notifyDays || !els.notifyThresholds) return;
     const settings = MonitoringPage.state.settings || {};
-    const days = settings.tls_expiring_days || 30;
-    els.notifyDays.value = `${days}`;
+    const base = Number.isFinite(settings.tls_expiring_days) && settings.tls_expiring_days > 0
+      ? settings.tls_expiring_days
+      : 30;
+    const rules = Array.isArray(settings.tls_expiring_rules) && settings.tls_expiring_rules.length
+      ? settings.tls_expiring_rules
+      : [{ days: 30, enabled: true }, { days: 14, enabled: true }, { days: 7, enabled: true }, { days: base, enabled: true }];
+    notifyState.rules = normalizeRules(rules, base);
+    els.notifyDays.value = `${base}`;
+    renderNotifyRules();
+  }
+
+  function renderNotifyRules() {
+    if (!els.notifyThresholds) return;
+    els.notifyThresholds.innerHTML = '';
+    notifyState.rules.forEach((rule, index) => {
+      const row = document.createElement('label');
+      row.className = 'monitoring-certs-threshold';
+      row.innerHTML = `
+        <input type="checkbox" data-index="${index}" ${rule.enabled ? 'checked' : ''}>
+        <span>${rule.days}</span>
+      `;
+      const cb = row.querySelector('input');
+      if (cb) {
+        cb.disabled = !MonitoringPage.hasPermission('monitoring.certs.manage');
+        cb.addEventListener('change', () => {
+          const idx = parseInt(cb.dataset.index, 10);
+          if (!Number.isFinite(idx) || !notifyState.rules[idx]) return;
+          notifyState.rules[idx].enabled = cb.checked;
+        });
+      }
+      els.notifyThresholds.appendChild(row);
+    });
+  }
+
+  function addNotifyRule(days) {
+    if (!MonitoringPage.hasPermission('monitoring.certs.manage')) return;
+    const exists = notifyState.rules.find(item => item.days === days);
+    if (exists) {
+      exists.enabled = true;
+      renderNotifyRules();
+      showNotifyAlert('monitoring.certs.notifyRuleExists', true);
+      return;
+    }
+    notifyState.rules.push({ days, enabled: true });
+    notifyState.rules = normalizeRules(notifyState.rules, days);
+    renderNotifyRules();
+    showNotifyAlert('monitoring.certs.notifyRuleAdded', true);
   }
 
   function renderNotifyList() {
@@ -202,13 +257,22 @@
 
   async function saveNotifySettings() {
     if (!MonitoringPage.hasPermission('monitoring.settings.manage')) return;
-    const days = parseInt(els.notifyDays?.value, 10) || 0;
-    if (days > 0) {
+    const rules = normalizeRules(notifyState.rules, parseInt(els.notifyDays?.value, 10) || 30);
+    const enabled = rules.filter(item => item.enabled).map(item => item.days);
+    const days = enabled.length ? Math.max(...enabled) : (rules[0]?.days || 30);
+    if (days > 0 && rules.length) {
       try {
-        const res = await Api.put('/api/monitoring/settings', { tls_expiring_days: days });
+        const res = await Api.put('/api/monitoring/settings', {
+          tls_expiring_days: days,
+          tls_expiring_rules: rules,
+        });
         MonitoringPage.state.settings = res;
+        notifyState.rules = normalizeRules(res?.tls_expiring_rules || rules, days);
+        renderNotifyRules();
+        showNotifyAlert('common.saved', true);
       } catch (err) {
         console.error('save tls days', err);
+        showNotifyAlert('common.error');
       }
     }
     const list = Array.from(els.notifyList?.querySelectorAll('input[type="checkbox"]') || []);
@@ -271,6 +335,24 @@
   function getSelectedOptions(select) {
     if (!select) return [];
     return Array.from(select.selectedOptions).map(o => o.value);
+  }
+
+  function normalizeRules(items, fallback = 30) {
+    const map = new Map();
+    (Array.isArray(items) ? items : []).forEach(item => {
+      const days = parseInt(item?.days, 10);
+      if (!Number.isFinite(days) || days <= 0 || map.has(days)) return;
+      map.set(days, { days, enabled: item?.enabled !== false });
+    });
+    if (!map.size) {
+      [fallback, 30, 14, 7].forEach(days => {
+        const val = parseInt(days, 10);
+        if (Number.isFinite(val) && val > 0 && !map.has(val)) {
+          map.set(val, { days: val, enabled: true });
+        }
+      });
+    }
+    return Array.from(map.values()).sort((a, b) => b.days - a.days);
   }
 
   if (typeof MonitoringPage !== 'undefined') {

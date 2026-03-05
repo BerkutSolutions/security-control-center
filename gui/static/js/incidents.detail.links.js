@@ -198,7 +198,15 @@
       const removeBtn = tr.querySelector('.link-remove');
       if (removeBtn) {
         removeBtn.onclick = async () => {
-          if (!confirm(t('incidents.links.removeConfirm'))) return;
+          const ok = await (window.AppConfirm?.ask
+            ? window.AppConfirm.ask(t('incidents.links.removeConfirm'), {
+              title: t('common.confirm'),
+              confirmText: t('incidents.links.remove'),
+              cancelText: t('common.cancel'),
+              danger: true,
+            })
+            : Promise.resolve(window.confirm(t('incidents.links.removeConfirm'))));
+          if (!ok) return;
           try {
             await Api.del(`/api/incidents/${incidentId}/links/${link.id}`);
             await ensureIncidentLinks(incidentId, true);

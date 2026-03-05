@@ -136,6 +136,7 @@
     if (val === 'up') return 'up';
     if (val === 'dns') return 'dns';
     if (val === 'issue') return 'issue';
+    if (val === 'pending') return 'pending';
     if (val === 'paused') return 'paused';
     if (val === 'maintenance_start' || val === 'maintenance_end') return 'maintenance';
     return 'down';

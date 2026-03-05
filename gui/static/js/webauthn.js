@@ -107,6 +107,7 @@
     if (name === 'NotAllowedError') return 'auth.passkeys.notAllowed';
     if (name === 'AbortError') return 'auth.passkeys.aborted';
     if (name === 'NotSupportedError') return 'auth.passkeys.notSupported';
+    if (name === 'ConstraintError') return 'auth.passkeys.notSupported';
     if (name === 'SecurityError') return 'auth.passkeys.securityError';
     if (name === 'InvalidStateError') return 'auth.passkeys.invalidState';
     if (msg.includes('The operation either timed out or was not allowed')) return 'auth.passkeys.notAllowed';

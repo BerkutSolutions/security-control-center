@@ -240,6 +240,9 @@
     const confirmText = opts.confirmText || t('common.confirm');
     const cancelText = opts.cancelText || t('common.cancel');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(message || title, { title, confirmText, cancelText, danger: true });
+      }
       return Promise.resolve(window.confirm(message || title));
     }
     const titleEl = document.getElementById('confirm-modal-title');
@@ -274,6 +277,14 @@
     const saveText = opts.saveText || t('incidents.unsavedSave');
     const discardText = opts.discardText || t('incidents.unsavedDiscard');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(message || title, {
+          title,
+          confirmText: saveText,
+          cancelText: discardText,
+          danger: true,
+        }).then((ok) => (ok ? 'save' : 'discard'));
+      }
       const confirmSave = window.confirm(message || title);
       return Promise.resolve(confirmSave ? 'save' : 'discard');
     }

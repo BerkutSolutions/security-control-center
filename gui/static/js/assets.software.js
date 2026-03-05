@@ -118,7 +118,15 @@ const AssetsSoftware = (() => {
       restoreBtn.className = 'btn ghost btn-xs';
       restoreBtn.textContent = t('assets.software.actions.restore');
       restoreBtn.onclick = async () => {
-        if (!confirm(t('assets.software.confirm.restore'))) return;
+        const ok = await (window.AppConfirm?.ask
+          ? window.AppConfirm.ask(t('assets.software.confirm.restore'), {
+            title: t('common.confirm'),
+            confirmText: t('assets.software.actions.restore'),
+            cancelText: t('common.cancel'),
+            danger: true,
+          })
+          : Promise.resolve(confirm(t('assets.software.confirm.restore'))));
+        if (!ok) return;
         try {
           await Api.post(`/api/assets/${state.assetId}/software/${inst.id}/restore`, {});
           await load();
@@ -140,7 +148,15 @@ const AssetsSoftware = (() => {
     archiveBtn.className = 'btn ghost btn-xs danger';
     archiveBtn.textContent = t('assets.software.actions.archive');
     archiveBtn.onclick = async () => {
-      if (!confirm(t('assets.software.confirm.archive'))) return;
+      const ok = await (window.AppConfirm?.ask
+        ? window.AppConfirm.ask(t('assets.software.confirm.archive'), {
+          title: t('common.confirm'),
+          confirmText: t('assets.software.actions.archive'),
+          cancelText: t('common.cancel'),
+          danger: true,
+        })
+        : Promise.resolve(confirm(t('assets.software.confirm.archive'))));
+      if (!ok) return;
       try {
         await Api.del(`/api/assets/${state.assetId}/software/${inst.id}`);
         await load();
@@ -263,7 +279,15 @@ const AssetsSoftware = (() => {
         archiveBtn.textContent = t('assets.software.actions.restore');
         archiveBtn.classList.remove('danger');
         archiveBtn.onclick = async () => {
-          if (!confirm(t('assets.software.confirm.restore'))) return;
+          const ok = await (window.AppConfirm?.ask
+            ? window.AppConfirm.ask(t('assets.software.confirm.restore'), {
+              title: t('common.confirm'),
+              confirmText: t('assets.software.actions.restore'),
+              cancelText: t('common.cancel'),
+              danger: true,
+            })
+            : Promise.resolve(confirm(t('assets.software.confirm.restore'))));
+          if (!ok) return;
           try {
             await Api.post(`/api/assets/${state.assetId}/software/${inst.id}/restore`, {});
             closeModal('#asset-software-modal');
@@ -276,7 +300,15 @@ const AssetsSoftware = (() => {
         archiveBtn.textContent = t('assets.software.actions.archive');
         archiveBtn.classList.add('danger');
         archiveBtn.onclick = async () => {
-          if (!confirm(t('assets.software.confirm.archive'))) return;
+          const ok = await (window.AppConfirm?.ask
+            ? window.AppConfirm.ask(t('assets.software.confirm.archive'), {
+              title: t('common.confirm'),
+              confirmText: t('assets.software.actions.archive'),
+              cancelText: t('common.cancel'),
+              danger: true,
+            })
+            : Promise.resolve(confirm(t('assets.software.confirm.archive'))));
+          if (!ok) return;
           try {
             await Api.del(`/api/assets/${state.assetId}/software/${inst.id}`);
             closeModal('#asset-software-modal');

@@ -3,6 +3,7 @@ package backups
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -40,6 +41,7 @@ func (s *Service) startRestore(ctx context.Context, artifactID int64, requestedB
 	if err := s.beginPipeline("restore"); err != nil {
 		return nil, err
 	}
+	_ = s.recoverStaleOperations(ctx, staleOperationMaxAge)
 	releasePipeline := true
 	defer func() {
 		if releasePipeline {
@@ -112,6 +114,11 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 	var sourceArtifact *BackupArtifact
 	run.Status = StatusRunning
 	meta := restore.NewMeta(dryRun, requestedBy)
+	meta.Log("info", "restore.run.started", map[string]any{
+		"restore_id": runID,
+		"backup_id":  artifactID,
+		"dry_run":    dryRun,
+	})
 	run.MetaJSON = meta.Marshal()
 	s.persistRestoreRun(ctx, run)
 
@@ -128,6 +135,10 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		_ = s.restoreArtifactRecord(ctx, sourceArtifact)
 	}()
 	fail := func(step, code string, details map[string]any) {
+		meta.Log("error", "restore.run.failed", map[string]any{
+			"step": step,
+			"code": code,
+		})
 		meta.StartStep(step)
 		meta.FinishStep(step, string(StatusFailed), details)
 		run.Status = StatusFailed
@@ -144,6 +155,9 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		return
 	}
 	sourceArtifact = artifact
+	meta.Log("info", "restore.artifact.loaded", map[string]any{
+		"artifact_id": artifactID,
+	})
 	meta.StartStep(restore.StepLoadArtifact)
 	meta.FinishStep(restore.StepLoadArtifact, string(StatusSuccess), map[string]any{"artifact_id": artifactID})
 	run.MetaJSON = meta.Marshal()
@@ -154,6 +168,9 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		fail(restore.StepOpenFile, ErrorCodeFileMissing, nil)
 		return
 	}
+	meta.Log("info", "restore.artifact.path_resolved", map[string]any{
+		"path": path,
+	})
 	meta.StartStep(restore.StepOpenFile)
 	meta.FinishStep(restore.StepOpenFile, string(StatusSuccess), nil)
 	run.MetaJSON = meta.Marshal()
@@ -173,6 +190,7 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		return
 	}
 	decryptedTar := filepath.Join(tmpDir, "payload.tar")
+	meta.Log("info", "restore.decrypt.start", nil)
 	meta.StartStep(restore.StepDecryptBSCC)
 	if derr := cipher.DecryptFile(path, decryptedTar); derr != nil {
 		fail(restore.StepDecryptBSCC, ErrorCodeDecryptFailed, nil)
@@ -187,6 +205,9 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		fail(restore.StepReadManifest, ErrorCodeStorageMissing, nil)
 		return
 	}
+	meta.Log("info", "restore.payload.extracted", map[string]any{
+		"dump_path": payload.DumpPath,
+	})
 
 	meta.StartStep(restore.StepVerifyChecksums)
 	if payload.ManifestSHA != payload.Checksums.ManifestSHA256 || payload.DumpSHA != payload.Checksums.DumpSHA256 {
@@ -199,6 +220,12 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 
 	meta.StartStep(restore.StepReadManifest)
 	meta.Manifest = &payload.Manifest
+	meta.Log("info", "restore.manifest.loaded", map[string]any{
+		"app_version":      payload.Manifest.AppVersion,
+		"goose_db_version": payload.Manifest.GooseDBVersion,
+		"db_engine":        payload.Manifest.DBEngine,
+		"backup_scope":     payload.Manifest.BackupScope,
+	})
 	meta.FinishStep(restore.StepReadManifest, string(StatusSuccess), map[string]any{
 		"format_version":   payload.Manifest.FormatVersion,
 		"goose_db_version": payload.Manifest.GooseDBVersion,
@@ -222,13 +249,42 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		"backup_goose_version":  payload.Manifest.GooseDBVersion,
 		"migration_required":    needsMigrate,
 	}
+	restoreScope := normalizeManifestScope(payload.Manifest.BackupScope)
+	isFullRestore := backupScopeIsAll(restoreScope)
+	beforeCounts := map[string]int64{}
+	if !isFullRestore {
+		beforeCounts = s.scopeTableCounts(ctx, restoreScope)
+		meta.Log("info", "restore.scope.counts.before", map[string]any{
+			"counts": beforeCounts,
+		})
+	}
+	meta.Log("info", "restore.compatibility.checked", map[string]any{
+		"current_goose_version": currentGoose,
+		"backup_goose_version":  payload.Manifest.GooseDBVersion,
+		"restore_scope":         restoreScope,
+		"restore_mode":          map[bool]string{true: "full", false: "scoped"}[isFullRestore],
+	})
+	meta.Compatibility["backup_scope"] = restoreScope
+	meta.Compatibility["restore_mode"] = map[bool]string{true: "full", false: "scoped"}[isFullRestore]
 	meta.FinishStep(restore.StepCompatibilityCheck, string(StatusSuccess), meta.Compatibility)
 	run.MetaJSON = meta.Marshal()
 	s.persistRestoreRun(ctx, run)
 
 	if dryRun {
+		if !isFullRestore {
+			meta.Log("info", "restore.scope.counts.dry_run", map[string]any{
+				"counts": s.scopeTableCounts(ctx, restoreScope),
+			})
+		}
+		meta.Log("info", "restore.dry_run.completed", map[string]any{
+			"scope": restoreScope,
+		})
 		meta.StartStep(restore.StepFinish)
-		meta.FinishStep(restore.StepFinish, string(StatusSuccess), map[string]any{"mode": "dry_run"})
+		meta.FinishStep(restore.StepFinish, string(StatusSuccess), map[string]any{
+			"mode":         "dry_run",
+			"restore_mode": map[bool]string{true: "full", false: "scoped"}[isFullRestore],
+			"scope":        restoreScope,
+		})
 		run.Status = StatusSuccess
 		run.MetaJSON = meta.Marshal()
 		s.persistRestoreRun(ctx, run)
@@ -242,6 +298,7 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 		return
 	}
 	maintenanceEnabled = true
+	meta.Log("info", "restore.maintenance.enabled", nil)
 	Log(s.audits, ctx, requestedBy, AuditMaintenanceEnter, "success", "restore_id="+int64String(runID))
 	meta.FinishStep(restore.StepEnterMaintenance, string(StatusSuccess), nil)
 	run.MetaJSON = meta.Marshal()
@@ -249,36 +306,75 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 
 	meta.StartStep(restore.StepStopJobs)
 	meta.FinishStep(restore.StepStopJobs, string(StatusSuccess), map[string]any{"todo": "scheduler_pause"})
+	meta.Log("info", "restore.background_jobs.stopped", nil)
 	run.MetaJSON = meta.Marshal()
 	s.persistRestoreRun(ctx, run)
 
 	meta.StartStep(restore.StepRestoreDatabase)
 	restoreCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)
-	derr = s.replaceDatabase(restoreCtx, payload.DumpPath)
+	meta.Log("info", "restore.database.start", map[string]any{
+		"mode":  map[bool]string{true: "full", false: "scoped"}[isFullRestore],
+		"scope": restoreScope,
+	})
+	if isFullRestore {
+		derr = s.replaceDatabase(restoreCtx, payload.DumpPath)
+	} else {
+		derr = s.replaceDatabaseScoped(restoreCtx, payload.DumpPath, restoreScope)
+	}
 	cancel()
 	if derr != nil {
+		meta.Log("error", "restore.database.failed", map[string]any{"error": derr.Error()})
 		fail(restore.StepRestoreDatabase, ErrorCodePgRestore, map[string]any{"error": derr.Error()})
 		if maintenanceEnabled {
 			_ = s.repo.SetMaintenanceMode(ctx, false, "restore_failed")
 		}
 		return
 	}
-	meta.FinishStep(restore.StepRestoreDatabase, string(StatusSuccess), nil)
+	meta.Log("info", "restore.database.completed", map[string]any{
+		"mode":  map[bool]string{true: "full", false: "scoped"}[isFullRestore],
+		"scope": restoreScope,
+	})
+	if !isFullRestore {
+		afterCounts := s.scopeTableCounts(ctx, restoreScope)
+		meta.Log("info", "restore.scope.counts.after", map[string]any{
+			"counts": afterCounts,
+		})
+		if err := s.validateScopedRestore(sourceArtifact, restoreScope, beforeCounts, afterCounts, &meta); err != nil {
+			meta.Log("error", "restore.scope.validation_failed", map[string]any{
+				"error": err.Error(),
+			})
+			fail(restore.StepRestoreDatabase, ErrorCodePgRestore, map[string]any{"error": err.Error()})
+			if maintenanceEnabled {
+				_ = s.repo.SetMaintenanceMode(ctx, false, "restore_failed")
+			}
+			return
+		}
+	}
+	meta.FinishStep(restore.StepRestoreDatabase, string(StatusSuccess), map[string]any{
+		"restore_mode": map[bool]string{true: "full", false: "scoped"}[isFullRestore],
+		"scope":        restoreScope,
+	})
 	run.MetaJSON = meta.Marshal()
 	s.persistRestoreRun(ctx, run)
 
 	meta.StartStep(restore.StepRunMigrations)
-	if needsMigrate {
+	if isFullRestore && needsMigrate {
+		meta.Log("info", "restore.migrations.start", nil)
 		migCtx, migCancel := context.WithTimeout(ctx, 15*time.Minute)
 		derr = corestore.ApplyMigrations(migCtx, s.db, s.logger)
 		migCancel()
 		if derr != nil {
+			meta.Log("error", "restore.migrations.failed", map[string]any{"error": derr.Error()})
 			fail(restore.StepRunMigrations, ErrorCodePgRestore, nil)
 			_ = s.repo.SetMaintenanceMode(ctx, false, "restore_failed")
 			return
 		}
+		meta.Log("info", "restore.migrations.completed", nil)
 	}
-	meta.FinishStep(restore.StepRunMigrations, string(StatusSuccess), map[string]any{"migration_required": needsMigrate})
+	meta.FinishStep(restore.StepRunMigrations, string(StatusSuccess), map[string]any{
+		"migration_required": isFullRestore && needsMigrate,
+		"skipped_for_scoped": !isFullRestore,
+	})
 	run.MetaJSON = meta.Marshal()
 	s.persistRestoreRun(ctx, run)
 
@@ -289,10 +385,12 @@ func (s *Service) executeRestore(runID, artifactID int64, requestedBy string, dr
 	}
 	Log(s.audits, ctx, requestedBy, AuditMaintenanceExit, "success", "restore_id="+int64String(runID))
 	maintenanceEnabled = false
+	meta.Log("info", "restore.maintenance.disabled", nil)
 	meta.FinishStep(restore.StepExitMaintenance, string(StatusSuccess), nil)
 
 	meta.StartStep(restore.StepFinish)
 	meta.FinishStep(restore.StepFinish, string(StatusSuccess), nil)
+	meta.Log("info", "restore.run.completed", nil)
 	run.Status = StatusSuccess
 	run.ErrorCode = nil
 	run.ErrorMessage = nil
@@ -314,12 +412,39 @@ func (s *Service) replaceDatabase(ctx context.Context, dumpPath string) error {
 	return s.ensureCoreSchemaAfterRestore(ctx)
 }
 
+func (s *Service) replaceDatabaseScoped(ctx context.Context, dumpPath string, scope []string) error {
+	if s == nil || s.db == nil {
+		return fmt.Errorf("missing db")
+	}
+	tables := backupTablesForScope(scope)
+	if len(tables) == 0 {
+		return fmt.Errorf("empty restore scope")
+	}
+	// Scoped dump already contains only selected module tables.
+	// Restore the whole archive to avoid table-pattern mismatches that can silently skip data.
+	if err := s.restorer.Restore(ctx, restoreOptionsScoped(s.cfg, dumpPath)); err != nil {
+		return err
+	}
+	return nil
+}
+
 func restoreOptions(cfg *config.AppConfig, dumpPath string) pgrestore.Options {
 	return pgrestore.Options{
 		BinaryPath: "pg_restore",
 		DBURL:      cfg.DBURL,
 		InputPath:  dumpPath,
 		Clean:      false,
+	}
+}
+
+func restoreOptionsScoped(cfg *config.AppConfig, dumpPath string) pgrestore.Options {
+	return pgrestore.Options{
+		BinaryPath:      "pg_restore",
+		DBURL:           cfg.DBURL,
+		InputPath:       dumpPath,
+		Clean:           true,
+		DataOnly:        false,
+		DisableTriggers: false,
 	}
 }
 
@@ -453,4 +578,119 @@ func (s *Service) hasCoreSchema(ctx context.Context) (bool, error) {
 		}
 	}
 	return true, nil
+}
+
+func (s *Service) scopeTableCounts(ctx context.Context, scope []string) map[string]int64 {
+	out := map[string]int64{}
+	if s == nil || s.db == nil {
+		return out
+	}
+	tables := backupTablesForScope(scope)
+	for _, table := range tables {
+		name := strings.TrimSpace(table)
+		if name == "" {
+			continue
+		}
+		query := `SELECT COUNT(*) FROM "` + name + `"`
+		var count int64
+		if err := s.db.QueryRowContext(ctx, query).Scan(&count); err != nil {
+			out[name] = -1
+			continue
+		}
+		out[name] = count
+	}
+	return out
+}
+
+func scopeContains(scope []string, item string) bool {
+	target := strings.ToLower(strings.TrimSpace(item))
+	if target == "" {
+		return false
+	}
+	for _, raw := range scope {
+		v := strings.ToLower(strings.TrimSpace(raw))
+		if v == "all" {
+			return true
+		}
+		if v == target {
+			return true
+		}
+	}
+	return false
+}
+
+func artifactEntityCount(artifact *BackupArtifact, key string) int64 {
+	if artifact == nil || len(artifact.MetaJSON) == 0 || strings.TrimSpace(key) == "" {
+		return 0
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(artifact.MetaJSON, &payload); err != nil {
+		return 0
+	}
+	entityCountsRaw, ok := payload["entity_counts"].(map[string]any)
+	if !ok {
+		return 0
+	}
+	val, ok := entityCountsRaw[key]
+	if !ok {
+		return 0
+	}
+	switch n := val.(type) {
+	case float64:
+		return int64(n)
+	case int64:
+		return n
+	case int:
+		return int64(n)
+	case json.Number:
+		i, _ := n.Int64()
+		return i
+	default:
+		return 0
+	}
+}
+
+type scopedValidationRule struct {
+	Scope     string
+	EntityKey string
+	Table     string
+}
+
+var scopedValidationRules = []scopedValidationRule{
+	{Scope: "docs", EntityKey: "docs.documents", Table: "docs"},
+	{Scope: "docs", EntityKey: "docs.folders", Table: "doc_folders"},
+	{Scope: "incidents", EntityKey: "incidents.incidents", Table: "incidents"},
+	{Scope: "reports", EntityKey: "reports.reports", Table: "report_meta"},
+	{Scope: "monitoring", EntityKey: "monitoring.monitors", Table: "monitors"},
+	{Scope: "tasks", EntityKey: "tasks.tasks", Table: "tasks"},
+	{Scope: "tasks", EntityKey: "tasks.boards", Table: "task_boards"},
+	{Scope: "tasks", EntityKey: "tasks.spaces", Table: "task_spaces"},
+	{Scope: "controls", EntityKey: "controls.controls", Table: "controls"},
+	{Scope: "accounts", EntityKey: "accounts.users", Table: "users"},
+	{Scope: "accounts", EntityKey: "accounts.groups", Table: "groups"},
+	{Scope: "approvals", EntityKey: "approvals.approvals", Table: "approvals"},
+}
+
+func (s *Service) validateScopedRestore(artifact *BackupArtifact, scope []string, before, after map[string]int64, meta *restore.Meta) error {
+	for _, rule := range scopedValidationRules {
+		if !scopeContains(scope, rule.Scope) {
+			continue
+		}
+		expected := artifactEntityCount(artifact, rule.EntityKey)
+		beforeCount := before[rule.Table]
+		restored := after[rule.Table]
+		meta.Log("info", "restore.scope.validation", map[string]any{
+			"scope":     rule.Scope,
+			"entity":    rule.EntityKey,
+			"table":     rule.Table,
+			"expected":  expected,
+			"before":    beforeCount,
+			"restored":  restored,
+			"condition": "expected>0 => restored>0",
+		})
+		if expected > 0 && restored == 0 {
+			return fmt.Errorf("scoped restore validation failed: %s expected > 0, restored 0", rule.EntityKey)
+		}
+	}
+	return nil
 }

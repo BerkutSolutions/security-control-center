@@ -18,6 +18,18 @@
   let currentTemplateId = null;
   let currentLinks = [];
 
+  async function confirmAction(message, opts = {}) {
+    if (window.AppConfirm?.ask) {
+      return window.AppConfirm.ask(message || '', {
+        title: opts.title || t('common.confirm'),
+        confirmText: opts.confirmText || t('common.confirm'),
+        cancelText: opts.cancelText || t('common.cancel'),
+        danger: !!opts.danger
+      });
+    }
+    return Promise.resolve(window.confirm(message || ''));
+  }
+
   function initTemplates() {
     const closeBtn = document.querySelector('#task-templates-modal [data-close]');
     const newBtn = document.getElementById('task-template-new');
@@ -313,7 +325,11 @@
 
   async function deleteTemplate(id) {
     if (!hasPermission('tasks.templates.manage') || !id) return;
-    if (!confirm(t('tasks.templateDeleteConfirm'))) return;
+    const ok = await confirmAction(t('tasks.templateDeleteConfirm'), {
+      confirmText: t('common.delete'),
+      danger: true
+    });
+    if (!ok) return;
     try {
       await Api.del(`/api/tasks/templates/${id}`);
       await openTemplates();

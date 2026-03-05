@@ -283,6 +283,13 @@
     if (!state.editMode || !state.dirty) return true;
     const modal = document.getElementById('dashboard-unsaved-modal');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(t('dashboard.unsavedMessage'), {
+          title: t('common.confirm'),
+          confirmText: t('common.confirm'),
+          cancelText: t('common.cancel')
+        });
+      }
       return window.confirm(t('dashboard.unsavedMessage'));
     }
     modal.hidden = false;

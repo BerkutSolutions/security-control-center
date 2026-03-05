@@ -163,7 +163,14 @@
 
   async function deleteReport(id) {
     if (!id) return;
-    const confirmed = window.confirm(BerkutI18n.t('reports.deleteConfirm'));
+    const confirmed = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('reports.deleteConfirm'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(BerkutI18n.t('reports.deleteConfirm'))));
     if (!confirmed) return;
     try {
       await Api.del(`/api/reports/${id}`);

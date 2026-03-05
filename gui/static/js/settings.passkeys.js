@@ -227,7 +227,7 @@
   }
 
   function bind(alertBox) {
-    const page = document.getElementById('settings-page');
+    const page = document.getElementById('settings-page') || document.getElementById('profile-page');
     if (!page) return;
 
     const unsupported = document.getElementById('passkeys-unsupported');

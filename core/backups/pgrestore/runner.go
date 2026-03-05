@@ -9,10 +9,13 @@ import (
 )
 
 type Options struct {
-	BinaryPath string
-	DBURL      string
-	InputPath  string
-	Clean      bool
+	BinaryPath      string
+	DBURL           string
+	InputPath       string
+	Clean           bool
+	DataOnly        bool
+	Tables          []string
+	DisableTriggers bool
 }
 
 type Runner interface {
@@ -30,27 +33,33 @@ func (r *runner) Restore(ctx context.Context, options Options) error {
 	if bin == "" {
 		bin = "pg_restore"
 	}
-	cmd := exec.CommandContext(
-		ctx,
-		bin,
+	args := []string{
 		"--exit-on-error",
 		"--no-owner",
 		"--no-privileges",
-		"--dbname", options.DBURL,
-		options.InputPath,
-	)
-	if options.Clean {
-		args := []string{
-			"--clean",
-			"--if-exists",
-			"--exit-on-error",
-			"--no-owner",
-			"--no-privileges",
-			"--dbname", options.DBURL,
-			options.InputPath,
-		}
-		cmd = exec.CommandContext(ctx, bin, args...)
 	}
+	if options.Clean {
+		args = append(args, "--clean", "--if-exists")
+	}
+	if options.DataOnly {
+		args = append(args, "--data-only")
+	}
+	if options.DisableTriggers {
+		args = append(args, "--disable-triggers")
+	}
+	for _, raw := range options.Tables {
+		table := strings.TrimSpace(raw)
+		if table == "" {
+			continue
+		}
+		if strings.Contains(table, ".") {
+			args = append(args, "--table", table)
+			continue
+		}
+		args = append(args, "--table", "public."+table)
+	}
+	args = append(args, "--dbname", options.DBURL, options.InputPath)
+	cmd := exec.CommandContext(ctx, bin, args...)
 	var stderr bytes.Buffer
 	cmd.Stderr = &stderr
 	if err := cmd.Run(); err != nil {

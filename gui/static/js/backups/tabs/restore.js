@@ -111,6 +111,7 @@ const BackupsRestore = (() => {
       const item = res.item || null;
       setCurrentRestore(item);
       renderSteps(item?.steps || []);
+      renderLogs(item?.logs || []);
       const status = item?.status;
       if (status === 'success' || status === 'failed' || status === 'canceled') {
         stopPolling();
@@ -162,6 +163,34 @@ const BackupsRestore = (() => {
       }
       list.appendChild(li);
     });
+  }
+
+  function renderLogs(logs) {
+    const el = document.getElementById('backups-restore-log-console');
+    if (!el) return;
+    if (!Array.isArray(logs) || logs.length === 0) {
+      el.textContent = BackupsPage.t('backups.restore.consoleEmpty');
+      return;
+    }
+    const lines = logs.map((entry) => {
+      const at = entry?.at ? BackupsPage.formatDateTime(entry.at) : '-';
+      const level = String(entry?.level || 'info').toUpperCase();
+      const msg = String(entry?.message || '').trim();
+      const details = entry?.details && typeof entry.details === 'object'
+        ? ` ${safeStringify(entry.details)}`
+        : '';
+      return `[${at}] [${level}] ${msg}${details}`;
+    });
+    el.textContent = lines.join('\n');
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function safeStringify(obj) {
+    try {
+      return JSON.stringify(obj);
+    } catch (_) {
+      return String(obj || '');
+    }
   }
 
   function extractStepDetail(step) {

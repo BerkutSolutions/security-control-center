@@ -229,7 +229,15 @@
 
   async function deleteComment(commentId) {
     if (!commentId || !state.controlId) return;
-    if (!window.confirm(t('controls.comments.deleteConfirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('controls.comments.deleteConfirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.delete'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('controls.comments.deleteConfirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/controls/${state.controlId}/comments/${commentId}`);
       await loadComments();
@@ -240,7 +248,15 @@
 
   async function deleteFile(commentId, fileId) {
     if (!commentId || !fileId || !state.controlId) return;
-    if (!window.confirm(t('controls.comments.fileDeleteConfirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('controls.comments.fileDeleteConfirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.delete'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('controls.comments.fileDeleteConfirm'))));
+    if (!ok) return;
     try {
       const res = await Api.del(`/api/controls/${state.controlId}/comments/${commentId}/files/${fileId}`);
       if (res && res.status === 'deleted') {

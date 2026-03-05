@@ -1,7 +1,11 @@
 const BackupsOverview = (() => {
+  let autoRefreshTimer = null;
+  let integrityPollAbort = null;
+
   function init() {
     bindActions();
     bindScopeControls();
+    ensureAutoRefresh();
   }
 
   function bindActions() {
@@ -97,6 +101,15 @@ const BackupsOverview = (() => {
     }
   }
 
+  function ensureAutoRefresh() {
+    if (autoRefreshTimer) return;
+    autoRefreshTimer = window.setInterval(() => {
+      const panel = document.querySelector('#backups-page .tab-panel[data-tab="backups-tab-overview"]');
+      if (panel && panel.hidden) return;
+      load(false);
+    }, 5000);
+  }
+
   function render(items, integrity) {
     const lastRun = (items || [])[0] || null;
     const lastSuccessful = (items || []).find((item) => item.status === 'success') || null;
@@ -131,7 +144,11 @@ const BackupsOverview = (() => {
       warning: 'backups.integrity.state.warning',
       failed: 'backups.integrity.state.failed',
     };
-    const statusLabel = item?.status ? BackupsPage.t(statusMap[item.status] || '') || item.status : '-';
+    const runStatus = String(item?.last_restore_test_status || '').toLowerCase();
+    const isRunning = runStatus === 'queued' || runStatus === 'running';
+    const statusLabel = isRunning
+      ? BackupsPage.statusLabel(runStatus)
+      : (item?.status ? BackupsPage.t(statusMap[item.status] || '') || item.status : '-');
     const lastLabel = item?.last_restore_test_at ? `${BackupsPage.formatDateTime(item.last_restore_test_at)} (${BackupsPage.statusLabel(item.last_restore_test_status)})` : '-';
     setText('backups-overview-integrity-status', statusLabel);
     setText('backups-overview-integrity-last-test', lastLabel);
@@ -139,16 +156,49 @@ const BackupsOverview = (() => {
   }
 
   async function runIntegrityTest() {
+    if (integrityPollAbort) integrityPollAbort.aborted = true;
+    const pollCtrl = { aborted: false };
+    integrityPollAbort = pollCtrl;
     BackupsPage.setAlert('', '', '');
+    disableIntegrityAction(true);
     try {
       await Api.post('/api/backups/integrity/run', {});
       BackupsPage.setAlert('success', 'backups.integrity.queued', '');
       await load(false);
+      await pollIntegrityUntilFinished(pollCtrl);
       if (typeof BackupsRestore !== 'undefined') BackupsRestore.load();
     } catch (err) {
       const e = BackupsPage.parseError(err);
       BackupsPage.setAlert('error', e.i18nKey, BackupsPage.t('common.serverError'));
+    } finally {
+      if (integrityPollAbort === pollCtrl) integrityPollAbort = null;
+      disableIntegrityAction(false);
     }
+  }
+
+  function disableIntegrityAction(disabled) {
+    const btn = document.getElementById('backups-overview-run-integrity');
+    if (btn) btn.disabled = disabled;
+  }
+
+  async function pollIntegrityUntilFinished(ctrl) {
+    const maxAttempts = 60;
+    for (let i = 0; i < maxAttempts; i++) {
+      if (ctrl?.aborted) return;
+      await sleep(1500);
+      if (ctrl?.aborted) return;
+      const res = await Api.get('/api/backups/integrity').catch(() => null);
+      const item = res?.item || null;
+      renderIntegrity(item);
+      const st = String(item?.last_restore_test_status || '').toLowerCase();
+      if (!st || (st !== 'queued' && st !== 'running')) {
+        return;
+      }
+    }
+  }
+
+  function sleep(ms) {
+    return new Promise((resolve) => window.setTimeout(resolve, ms));
   }
 
   function setText(id, value) {

@@ -304,7 +304,14 @@ const FindingsPage = (() => {
     if (!id) return;
     const btn = document.getElementById('finding-archive');
     const archived = btn?.dataset.archived === '1';
-    const confirmed = window.confirm(t('common.confirm'));
+    const confirmed = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
     if (!confirmed) return;
     try {
       if (archived) {
@@ -483,7 +490,15 @@ const FindingsPage = (() => {
   async function deleteLink(linkId) {
     const findingId = document.getElementById('finding-id')?.value || '';
     if (!findingId || !linkId) return;
-    if (!window.confirm(t('common.confirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/findings/${findingId}/links/${linkId}`);
       await loadLinks(findingId);

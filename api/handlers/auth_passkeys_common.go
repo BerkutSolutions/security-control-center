@@ -35,12 +35,11 @@ func (h *AuthHandler) webAuthnForRequest(r *http.Request) (*webauthn.WebAuthn, e
 		if !homeOrDev {
 			return nil, errors.New("auth.passkeys.misconfigured")
 		}
-		scheme := "http"
-		if isSecureRequest(r, h.cfg) {
-			scheme = "https"
-		}
-		if strings.TrimSpace(r.Host) != "" {
-			origins = []string{scheme + "://" + strings.TrimSpace(r.Host)}
+		host := strings.TrimSpace(r.Host)
+		if host != "" {
+			// In local/dev setups behind proxies the server may not reliably infer request scheme.
+			// Allow both schemes for explicit host to avoid false origin mismatch on WebAuthn.
+			origins = []string{"https://" + host, "http://" + host}
 		}
 	}
 	if rpID == "" || len(origins) == 0 {

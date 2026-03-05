@@ -89,7 +89,15 @@
         window.open(`/api/incidents/${incidentId}/attachments/${att.id}/download`, '_blank');
       };
       tr.querySelector('.att-delete').onclick = async () => {
-        if (!confirm(t('incidents.attachments.deleteConfirm'))) return;
+        const ok = await (window.AppConfirm?.ask
+          ? window.AppConfirm.ask(t('incidents.attachments.deleteConfirm'), {
+            title: t('common.confirm'),
+            confirmText: t('common.delete'),
+            cancelText: t('common.cancel'),
+            danger: true,
+          })
+          : Promise.resolve(confirm(t('incidents.attachments.deleteConfirm'))));
+        if (!ok) return;
         try {
           await Api.del(`/api/incidents/${incidentId}/attachments/${att.id}`);
           await ensureIncidentAttachments(incidentId, true);

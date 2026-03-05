@@ -453,7 +453,15 @@
   async function deleteUser(user) {
     if (!user || !user.id) return;
     const msg = BerkutI18n.t('accounts.deleteConfirm') || 'Delete this user?';
-    if (!confirm(msg)) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(msg, {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(msg)));
+    if (!ok) return;
     await Api.del(`/api/accounts/users/${user.id}`);
     await loadUsers();
   }
@@ -468,7 +476,15 @@
   async function reset2FA(user) {
     if (!user || !user.id) return;
     const msg = BerkutI18n.t('accounts.reset2faConfirm') || 'Reset 2FA for this user?';
-    if (!confirm(msg)) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(msg, {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.confirm'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(msg)));
+    if (!ok) return;
     try {
       await Api.post(`/api/accounts/users/${user.id}/reset-2fa`, {});
       await loadUsers();

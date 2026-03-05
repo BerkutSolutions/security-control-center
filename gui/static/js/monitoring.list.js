@@ -371,6 +371,7 @@
     if (v === 'up') return 'up';
     if (v === 'dns') return 'dns';
     if (v === 'issue') return 'issue';
+    if (v === 'pending') return 'pending';
     if (v === 'paused') return 'paused';
     if (v === 'maintenance') return 'maintenance';
     return 'down';

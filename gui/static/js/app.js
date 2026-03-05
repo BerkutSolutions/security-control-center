@@ -10,6 +10,7 @@
   if (typeof AppToast !== 'undefined' && AppToast.init) {
     AppToast.init();
   }
+  initAppConfirm();
 
   let me;
   let pendingDocsTab = null;
@@ -250,6 +251,73 @@
     }
   }
 
+  function initAppConfirm() {
+    if (window.AppConfirm && typeof window.AppConfirm.ask === 'function') return;
+    let resolvePending = null;
+    const getOrCreate = () => {
+      let modal = document.getElementById('app-confirm-modal');
+      if (modal) return modal;
+      modal = document.createElement('div');
+      modal.id = 'app-confirm-modal';
+      modal.className = 'modal confirm-modal';
+      modal.hidden = true;
+      modal.innerHTML = `
+        <div class="modal-backdrop"></div>
+        <div class="modal-body">
+          <div class="modal-header">
+            <h3 id="app-confirm-title"></h3>
+            <button type="button" class="btn ghost" id="app-confirm-close" aria-label="Close">&times;</button>
+          </div>
+          <div class="modal-content">
+            <div id="app-confirm-message" class="confirm-message"></div>
+            <div class="form-actions">
+              <button type="button" class="btn primary" id="app-confirm-yes"></button>
+              <button type="button" class="btn ghost" id="app-confirm-no"></button>
+            </div>
+          </div>
+        </div>`;
+      document.body.appendChild(modal);
+      return modal;
+    };
+    const cleanup = (value) => {
+      const modal = document.getElementById('app-confirm-modal');
+      if (modal) modal.hidden = true;
+      const done = resolvePending;
+      resolvePending = null;
+      if (done) done(!!value);
+    };
+    window.AppConfirm = {
+      ask(message, opts = {}) {
+        const modal = getOrCreate();
+        const titleEl = modal.querySelector('#app-confirm-title');
+        const msgEl = modal.querySelector('#app-confirm-message');
+        const yesBtn = modal.querySelector('#app-confirm-yes');
+        const noBtn = modal.querySelector('#app-confirm-no');
+        const closeBtn = modal.querySelector('#app-confirm-close');
+        const backdrop = modal.querySelector('.modal-backdrop');
+        if (titleEl) titleEl.textContent = opts.title || BerkutI18n.t('common.confirm');
+        if (msgEl) msgEl.textContent = message || '';
+        if (yesBtn) {
+          yesBtn.textContent = opts.confirmText || BerkutI18n.t('common.confirm');
+          yesBtn.classList.toggle('danger', !!opts.danger);
+          yesBtn.classList.toggle('primary', !opts.danger);
+        }
+        if (noBtn) noBtn.textContent = opts.cancelText || BerkutI18n.t('common.cancel');
+        modal.hidden = false;
+        return new Promise((resolve) => {
+          resolvePending = resolve;
+          const onYes = () => cleanup(true);
+          const onNo = () => cleanup(false);
+          yesBtn.onclick = onYes;
+          noBtn.onclick = onNo;
+          closeBtn.onclick = onNo;
+          backdrop.onclick = onNo;
+          yesBtn.focus();
+        });
+      }
+    };
+  }
+
   function setActiveLink(path) {
     const effective = ['assets', 'software', 'findings'].includes(path) ? 'registry' : path;
     document.querySelectorAll('.sidebar-link').forEach(link => {
@@ -461,6 +529,7 @@
   function setupModalDismiss() {
     const closeModalWithHook = (modal) => {
       if (!modal) return;
+      if (modal.id === 'stepup-modal') return;
       if (modal.id === 'task-modal' && typeof TasksPage !== 'undefined' && typeof TasksPage.closeTaskModal === 'function') {
         TasksPage.closeTaskModal();
         return;
@@ -788,6 +857,13 @@
     passwordBtn.addEventListener('click', async () => {
       try {
         const data = await Api.post('/api/auth/stepup/password', { password: passwordEl ? passwordEl.value : '' });
+        if (data && data.required === false) {
+          hideModal();
+          if (window.AppToast?.show) {
+            AppToast.show(BerkutI18n.t('auth.stepup.success') || 'OK', 'success');
+          }
+          return;
+        }
         updateView(data || {});
         setAlert('');
       } catch (err) {

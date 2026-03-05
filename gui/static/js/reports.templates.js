@@ -111,7 +111,15 @@
   async function deleteTemplate() {
     const id = parseInt(document.getElementById('reports-template-id').value || '0', 10);
     if (!id) return;
-    if (!window.confirm(BerkutI18n.t('reports.template.deleteConfirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('reports.template.deleteConfirm'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(BerkutI18n.t('reports.template.deleteConfirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/reports/templates/${id}`);
       ReportsPage.showAlert('reports-templates-alert', BerkutI18n.t('reports.template.deleted'), true);

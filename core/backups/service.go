@@ -24,6 +24,8 @@ import (
 	"berkut-scc/core/utils"
 )
 
+const staleOperationMaxAge = 2 * time.Hour
+
 type Service struct {
 	cfg       *config.AppConfig
 	db        *sql.DB
@@ -99,7 +101,7 @@ func (s *Service) CreateBackupWithOptions(ctx context.Context, opts CreateBackup
 	createdRun, err := s.repo.CreateRun(ctx, run)
 	if err != nil {
 		if strings.Contains(strings.ToLower(err.Error()), "idx_backups_runs_single_active") {
-			return nil, NewDomainError(ErrorCodeNotReady, ErrorKeyNotReady)
+			return nil, NewDomainError(ErrorCodeConcurrent, ErrorKeyConcurrent)
 		}
 		return nil, err
 	}
@@ -118,6 +120,7 @@ func (s *Service) beginRun(ctx context.Context) error {
 	if s == nil || s.repo == nil {
 		return NewDomainError(ErrorCodeInternal, "common.serverError")
 	}
+	_ = s.recoverStaleOperations(ctx, staleOperationMaxAge)
 	if err := s.beginPipeline("backup"); err != nil {
 		return err
 	}
@@ -157,6 +160,7 @@ func (s *Service) DeleteBackup(ctx context.Context, id int64) error {
 		return err
 	}
 	defer s.endPipeline("delete")
+	_ = s.recoverStaleOperations(ctx, staleOperationMaxAge)
 
 	if s.IsMaintenanceMode(ctx) {
 		return NewDomainError(ErrorCodeConcurrent, ErrorKeyConcurrent)
@@ -231,7 +235,7 @@ func (s *Service) cacheRestoreRun(run *RestoreRun) {
 	s.restoreMu.Lock()
 	defer s.restoreMu.Unlock()
 	cp := *run
-	cp.DryRun, cp.Steps = decodeRestoreMeta(cp.MetaJSON, cp.DryRun)
+	cp.DryRun, cp.Steps, cp.Logs = decodeRestoreMeta(cp.MetaJSON, cp.DryRun)
 	s.restores[cp.ID] = cp
 }
 
@@ -249,19 +253,20 @@ func (s *Service) cachedRestoreRun(id int64) (*RestoreRun, bool) {
 	return &cp, true
 }
 
-func decodeRestoreMeta(raw json.RawMessage, currentDryRun bool) (bool, []RestoreStep) {
+func decodeRestoreMeta(raw json.RawMessage, currentDryRun bool) (bool, []RestoreStep, []RestoreLog) {
 	if len(raw) == 0 {
-		return currentDryRun, nil
+		return currentDryRun, nil, nil
 	}
 	type restoreMeta struct {
 		Mode  string        `json:"mode"`
 		Steps []RestoreStep `json:"steps"`
+		Logs  []RestoreLog  `json:"logs"`
 	}
 	meta := restoreMeta{}
 	if err := json.Unmarshal(raw, &meta); err != nil {
-		return currentDryRun, nil
+		return currentDryRun, nil, nil
 	}
-	return meta.Mode == "dry_run", meta.Steps
+	return meta.Mode == "dry_run", meta.Steps, meta.Logs
 }
 
 func (s *Service) runBackupFlow(ctx context.Context, run *BackupRun, outDir string, opts CreateBackupOptions) (*CreateBackupResult, error) {
@@ -277,11 +282,6 @@ func (s *Service) runBackupFlow(ctx context.Context, run *BackupRun, outDir stri
 	}
 	defer os.RemoveAll(tmpDir)
 
-	dumpPath := filepath.Join(tmpDir, "db.dump")
-	if err := s.dumpDatabase(ctx, dumpPath); err != nil {
-		return nil, s.failRun(ctx, run, NewDomainError(ErrorCodePGDumpFailed, ErrorKeyPGDumpFailed), ErrorKeyPGDumpFailed)
-	}
-
 	gooseVersion, err := s.repo.GetGooseVersion(ctx)
 	if err != nil {
 		gooseVersion = 0
@@ -289,7 +289,12 @@ func (s *Service) runBackupFlow(ctx context.Context, run *BackupRun, outDir stri
 	now := backupNow()
 	manifest := format.NewManifest(appmeta.AppVersion, gooseVersion, now.UTC())
 	manifest.IncludesFiles = opts.IncludeFiles
+	manifest.BackupScope = normalizeManifestScope(opts.Scope)
 	manifest.Notes = buildBackupNotes(opts)
+	dumpPath := filepath.Join(tmpDir, "db.dump")
+	if err := s.dumpDatabase(ctx, dumpPath, manifest.BackupScope); err != nil {
+		return nil, s.failRun(ctx, run, NewDomainError(ErrorCodePGDumpFailed, ErrorKeyPGDumpFailed), ErrorKeyPGDumpFailed)
+	}
 	payloadPath := filepath.Join(tmpDir, "payload.tar")
 	payloadInfo, err := format.BuildPayload(dumpPath, payloadPath, manifest)
 	if err != nil {
@@ -350,13 +355,14 @@ func (s *Service) runBackupFlow(ctx context.Context, run *BackupRun, outDir stri
 	}, nil
 }
 
-func (s *Service) dumpDatabase(ctx context.Context, dumpPath string) error {
+func (s *Service) dumpDatabase(ctx context.Context, dumpPath string, scope []string) error {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Minute)
 	defer cancel()
 	err := s.dumper.Dump(timeoutCtx, pgdump.DumpOptions{
 		BinaryPath: s.cfg.Backups.PGDumpBin,
 		DBURL:      s.cfg.DBURL,
 		OutputPath: dumpPath,
+		Tables:     backupTablesForScope(scope),
 	})
 	if err != nil && s.logger != nil {
 		s.logger.Errorf("backup pg_dump failed: %v", err)
@@ -589,4 +595,35 @@ func sanitizeFilenameToken(in string) string {
 		v = strings.ReplaceAll(v, "__", "_")
 	}
 	return strings.Trim(v, "_")
+}
+
+func (s *Service) recoverStaleOperations(ctx context.Context, maxAge time.Duration) error {
+	if s == nil || s.db == nil {
+		return nil
+	}
+	defer func() {
+		_ = recover()
+	}()
+	age := maxAge
+	if age <= 0 {
+		age = staleOperationMaxAge
+	}
+	cutoff := time.Now().UTC().Add(-age)
+	_, _ = s.db.ExecContext(ctx, `
+		UPDATE backups_runs
+		SET status='failed',
+			error_code='backups.error.concurrentOperation',
+			error_message='stale backup run recovered',
+			updated_at=?
+		WHERE status IN ('queued','running') AND updated_at < ?
+	`, time.Now().UTC(), cutoff)
+	_, _ = s.db.ExecContext(ctx, `
+		UPDATE backups_restore_runs
+		SET status='failed',
+			error_code='backups.error.concurrentOperation',
+			error_message='stale restore run recovered',
+			updated_at=?
+		WHERE status IN ('queued','running') AND updated_at < ?
+	`, time.Now().UTC(), cutoff)
+	return nil
 }

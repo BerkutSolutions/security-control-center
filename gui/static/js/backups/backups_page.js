@@ -128,16 +128,28 @@ const BackupsPage = (() => {
     };
     if (!err) return fallback;
     const msg = (err.message || '').trim();
-    if (!msg) return fallback;
+    const rawCode = typeof err.code === 'string' ? err.code.trim() : '';
+    const status = Number(err.status || 0);
+    const payloadRaw = rawCode || msg;
+    if (!payloadRaw && !status) return fallback;
     try {
-      const payload = JSON.parse(msg);
+      const payload = JSON.parse(payloadRaw);
       const src = payload.error || payload;
       return {
         code: src.code || fallback.code,
         i18nKey: src.i18n_key || fallback.i18nKey,
-        status: payload.status || fallback.status,
+        status: payload.status || status || fallback.status,
       };
     } catch (_) {
+      if (status === 409 || msg.includes('HTTP 409')) {
+        return { code: 'backups.error.concurrentOperation', i18nKey: 'backups.error.concurrentOperation', status: 409 };
+      }
+      if (status === 404 || msg.includes('HTTP 404')) {
+        return { code: 'backups.error.notFound', i18nKey: 'backups.error.notFound', status: 404 };
+      }
+      if (status === 400 || msg.includes('HTTP 400')) {
+        return { code: 'backups.error.invalidRequest', i18nKey: 'backups.error.invalidRequest', status: 400 };
+      }
       if (msg.includes('403')) {
         return { code: 'backups.forbidden', i18nKey: 'backups.error.forbidden', status: 403 };
       }

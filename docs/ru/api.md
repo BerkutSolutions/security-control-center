@@ -64,7 +64,7 @@ Session endpoints (нужна сессия + права вкладки):
 - UI для подтверждения TOTP/recovery находится на `/login/2fa` (чтобы менеджеры паролей подхватывали `one-time-code`).
 - Passkeys требуют HTTPS (или `localhost`) и корректной конфигурации `security.webauthn.*`.
 
-## Бэкапы (v1.0.3)
+## Бэкапы (v1.1.3)
 Основные endpoint:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -144,6 +144,6 @@ SLA-особенности:
   - `unknown` — недостаточно покрытия измерениями.
 - SLA-инцидент создается только при закрытии выбранного периода и только при включенной policy.
 
-## API update notes (1.1.2)
+## API update notes (1.1.3)
 - Critical endpoints require fresh step-up verification (15-minute window): log purge requests/approve, runtime/https updates, privileged account/group/role mutations.
 - `GET /api/monitoring/monitors/{id}/metrics` now includes forensic/debug fields: `final_url`, `remote_ip`, `response_headers`.

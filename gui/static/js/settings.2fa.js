@@ -152,7 +152,7 @@
   }
 
   function bind() {
-    const page = document.getElementById('settings-page');
+    const page = document.getElementById('settings-page') || document.getElementById('profile-page');
     if (!page) return;
     const enableBtn = document.getElementById('twofa-enable-btn');
     const disableBtn = document.getElementById('twofa-disable-btn');

@@ -84,7 +84,8 @@ func (h *AuthHandler) PasskeyRegisterBegin(w http.ResponseWriter, r *http.Reques
 		waUser,
 		webauthn.WithExclusions(exclude),
 		webauthn.WithAuthenticatorSelection(protocol.AuthenticatorSelection{UserVerification: protocol.VerificationPreferred}),
-		webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementRequired),
+		// Keep resident key preferred to support broader authenticators (e.g. some desktop key stores).
+		webauthn.WithResidentKeyRequirement(protocol.ResidentKeyRequirementPreferred),
 		webauthn.WithConveyancePreference(protocol.PreferNoAttestation),
 	)
 	if err != nil || session == nil {
@@ -161,12 +162,12 @@ func (h *AuthHandler) PasskeyRegisterFinish(w http.ResponseWriter, r *http.Reque
 	}
 	parsed, err := protocol.ParseCredentialCreationResponseBytes(payload.Credential)
 	if err != nil {
-		http.Error(w, localized(lang, "auth.passkeys.failed"), http.StatusBadRequest)
+		http.Error(w, localized(lang, passkeyRegistrationErrorKey(err)), http.StatusBadRequest)
 		return
 	}
 	cred, err := web.CreateCredential(waUser, session, parsed)
 	if err != nil || cred == nil {
-		http.Error(w, localized(lang, "auth.passkeys.failed"), http.StatusBadRequest)
+		http.Error(w, localized(lang, passkeyRegistrationErrorKey(err)), http.StatusBadRequest)
 		return
 	}
 
@@ -193,6 +194,19 @@ func (h *AuthHandler) PasskeyRegisterFinish(w http.ResponseWriter, r *http.Reque
 	}
 	_ = h.audits.Log(r.Context(), user.Username, "auth.passkey.create", "id="+strconv.FormatInt(id, 10))
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func passkeyRegistrationErrorKey(err error) string {
+	if err == nil {
+		return "auth.passkeys.failed"
+	}
+	msg := strings.ToLower(strings.TrimSpace(err.Error()))
+	switch {
+	case strings.Contains(msg, "challenge"):
+		return "auth.passkeys.challengeInvalid"
+	default:
+		return "auth.passkeys.failed"
+	}
 }
 
 func (h *AuthHandler) PasskeyRename(w http.ResponseWriter, r *http.Request) {

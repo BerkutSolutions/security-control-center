@@ -327,6 +327,9 @@ const DocsPage = (() => {
     const confirmText = opts.confirmText || BerkutI18n.t('common.confirm');
     const cancelText = opts.cancelText || BerkutI18n.t('common.cancel');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(message || title, { title, confirmText, cancelText, danger: true });
+      }
       return Promise.resolve(window.confirm(message || title));
     }
     const titleEl = document.getElementById('docs-confirm-title');

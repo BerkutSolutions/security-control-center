@@ -82,5 +82,5 @@ func initialStatus(paused bool) string {
 	if paused {
 		return "paused"
 	}
-	return "down"
+	return "pending"
 }

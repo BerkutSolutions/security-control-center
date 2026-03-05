@@ -49,13 +49,13 @@ func (s *Server) StepupVerifyPassword(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "unauthorized", http.StatusUnauthorized)
 		return
 	}
-	state, user, _, ok := s.stepupContext(r, sr)
+	state, user, methods, ok := s.stepupContext(r, sr)
 	if !ok || user == nil {
 		http.Error(w, "server error", http.StatusInternalServerError)
 		return
 	}
 	if !s.isBehaviorModelEnabled(r.Context()) {
-		writeJSON(w, http.StatusOK, s.stepupStatePayload(state, user, nil, false))
+		writeJSON(w, http.StatusOK, s.stepupStatePayload(state, user, methods, false))
 		return
 	}
 	now := time.Now().UTC()
@@ -89,7 +89,16 @@ func (s *Server) StepupVerifyPassword(w http.ResponseWriter, r *http.Request) {
 	if s.audits != nil {
 		_ = s.audits.Log(r.Context(), sr.Username, "security.behavior.stepup_password_ok", "")
 	}
-	writeJSON(w, http.StatusOK, s.stepupStatePayload(state, user, nil, true))
+	if !methods["totp"] && !methods["passkey"] {
+		if err := s.completeStepup(r.Context(), sr); err != nil {
+			http.Error(w, "common.serverError", http.StatusInternalServerError)
+			return
+		}
+		state, _ = s.behaviorRiskStore.GetState(r.Context(), sr.UserID)
+		writeJSON(w, http.StatusOK, s.stepupStatePayload(state, user, methods, false))
+		return
+	}
+	writeJSON(w, http.StatusOK, s.stepupStatePayload(state, user, methods, true))
 }
 
 func (s *Server) StepupVerifyTOTP(w http.ResponseWriter, r *http.Request) {
@@ -480,12 +489,11 @@ func (s *Server) webAuthnForRequest(r *http.Request) (*webauthn.WebAuthn, error)
 		if !homeOrDev {
 			return nil, errors.New("auth.passkeys.misconfigured")
 		}
-		scheme := "http"
-		if isHTTPSRequest(r, s.cfg) {
-			scheme = "https"
-		}
-		if strings.TrimSpace(r.Host) != "" {
-			origins = []string{scheme + "://" + strings.TrimSpace(r.Host)}
+		host := strings.TrimSpace(r.Host)
+		if host != "" {
+			// In local/dev setups behind proxies the server may not reliably infer request scheme.
+			// Allow both schemes for explicit host to avoid false origin mismatch on WebAuthn.
+			origins = []string{"https://" + host, "http://" + host}
 		}
 	}
 	if rpID == "" || len(origins) == 0 {

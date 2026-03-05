@@ -111,15 +111,10 @@ func (s *usersStore) Create(ctx context.Context, user *User, roles []string) (in
 	if err != nil {
 		return 0, err
 	}
-	res, err := tx.ExecContext(ctx, `
+	userID, err := insertIDTx(ctx, tx, `
 		INSERT INTO users(username, email, full_name, department, position, clearance_level, clearance_tags, password_hash, salt, password_set, require_password_change, active, disabled_at, locked_until, lock_reason, lock_stage, failed_attempts, totp_secret, totp_secret_enc, totp_enabled, last_login_at, last_failed_at, password_changed_at, created_at, updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		user.Username, user.Email, user.FullName, user.Department, user.Position, user.ClearanceLevel, tagsToJSON(user.ClearanceTags), user.PasswordHash, user.Salt, boolToInt(user.PasswordSet), boolToInt(user.RequirePasswordChange), boolToInt(user.Active), nullTime(user.DisabledAt), nullTime(user.LockedUntil), user.LockReason, user.LockStage, user.FailedAttempts, user.TOTPSecret, user.TOTPSecretEnc, boolToInt(user.TOTPEnabled), nullTime(user.LastLoginAt), nullTime(user.LastFailedAt), nullTime(user.PasswordChangedAt), now, now)
-	if err != nil {
-		tx.Rollback()
-		return 0, err
-	}
-	userID, err := res.LastInsertId()
 	if err != nil {
 		tx.Rollback()
 		return 0, err
@@ -481,7 +476,17 @@ func ensureRoleTx(ctx context.Context, tx *sql.Tx, role string) (int64, error) {
 	if err := row.Scan(&id); err == nil {
 		return id, nil
 	}
-	res, err := tx.ExecContext(ctx, `INSERT INTO roles(name) VALUES(?)`, role)
+	return insertIDTx(ctx, tx, `INSERT INTO roles(name) VALUES(?)`, role)
+}
+
+func insertIDTx(ctx context.Context, tx *sql.Tx, query string, args ...any) (int64, error) {
+	trimmed := strings.TrimSpace(query)
+	returningQuery := strings.TrimRight(trimmed, ";") + " RETURNING id"
+	var id int64
+	if err := tx.QueryRowContext(ctx, returningQuery, args...).Scan(&id); err == nil {
+		return id, nil
+	}
+	res, err := tx.ExecContext(ctx, query, args...)
 	if err != nil {
 		return 0, err
 	}

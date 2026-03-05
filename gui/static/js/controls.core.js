@@ -967,7 +967,14 @@ const ControlsPage = (() => {
   async function deleteControl() {
     const id = document.getElementById('control-id').value;
     if (!id) return;
-    const ok = window.confirm(t('common.confirm'));
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
     if (!ok) return;
     try {
       await Api.del(`/api/controls/${id}`);
@@ -1183,7 +1190,15 @@ const ControlsPage = (() => {
   async function deleteControlLink(linkId) {
     const controlId = document.getElementById('control-id')?.value || '';
     if (!controlId || !linkId) return;
-    if (!window.confirm(t('common.confirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/controls/${controlId}/links/${linkId}`);
       await loadControlLinks(controlId);
@@ -1287,7 +1302,15 @@ const ControlsPage = (() => {
 
   async function deleteCheck(id) {
     if (!id) return;
-    if (!window.confirm(t('common.confirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/checks/${id}`);
       loadChecks();
@@ -1401,7 +1424,15 @@ const ControlsPage = (() => {
 
   async function deleteViolation(id) {
     if (!id) return;
-    if (!window.confirm(t('common.confirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(t('common.confirm'), {
+        title: t('common.confirm'),
+        confirmText: t('common.confirm'),
+        cancelText: t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(t('common.confirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/violations/${id}`);
       loadViolations();

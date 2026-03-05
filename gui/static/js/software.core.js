@@ -22,6 +22,18 @@ const SoftwarePage = (() => {
     return msg || raw || 'error';
   }
 
+  async function confirmAction(message, opts = {}) {
+    if (window.AppConfirm?.ask) {
+      return window.AppConfirm.ask(message || '', {
+        title: opts.title || t('common.confirm'),
+        confirmText: opts.confirmText || t('common.confirm'),
+        cancelText: opts.cancelText || t('common.cancel'),
+        danger: !!opts.danger,
+      });
+    }
+    return Promise.resolve(window.confirm(message || ''));
+  }
+
   function parseCSV(value) {
     return (value || '')
       .toString()
@@ -162,7 +174,10 @@ const SoftwarePage = (() => {
       restoreBtn.className = 'btn ghost btn-xs';
       restoreBtn.textContent = t('software.actions.restore');
       restoreBtn.addEventListener('click', async () => {
-        if (!confirm(t('software.confirm.restore'))) return;
+        const ok = await confirmAction(t('software.confirm.restore'), {
+          confirmText: t('software.actions.restore'),
+        });
+        if (!ok) return;
         await Api.post(`/api/software/${item.id}/restore`, {});
         await refresh();
       });
@@ -180,7 +195,11 @@ const SoftwarePage = (() => {
     delBtn.className = 'btn ghost btn-xs danger';
     delBtn.textContent = t('software.actions.archive');
     delBtn.addEventListener('click', async () => {
-      if (!confirm(t('software.confirm.archive'))) return;
+      const ok = await confirmAction(t('software.confirm.archive'), {
+        confirmText: t('software.actions.archive'),
+        danger: true,
+      });
+      if (!ok) return;
       await Api.del(`/api/software/${item.id}`);
       await refresh();
     });
@@ -269,7 +288,10 @@ const SoftwarePage = (() => {
       archiveBtn.textContent = t('software.actions.restore');
       archiveBtn.classList.remove('danger');
       archiveBtn.onclick = async () => {
-        if (!confirm(t('software.confirm.restore'))) return;
+        const ok = await confirmAction(t('software.confirm.restore'), {
+          confirmText: t('software.actions.restore'),
+        });
+        if (!ok) return;
         try {
           await Api.post(`/api/software/${item.id}/restore`, {});
           closeModal('#software-modal');
@@ -282,7 +304,11 @@ const SoftwarePage = (() => {
       archiveBtn.textContent = t('software.actions.archive');
       archiveBtn.classList.add('danger');
       archiveBtn.onclick = async () => {
-        if (!confirm(t('software.confirm.archive'))) return;
+        const ok = await confirmAction(t('software.confirm.archive'), {
+          confirmText: t('software.actions.archive'),
+          danger: true,
+        });
+        if (!ok) return;
         try {
           await Api.del(`/api/software/${item.id}`);
           closeModal('#software-modal');

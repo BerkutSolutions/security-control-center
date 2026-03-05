@@ -29,6 +29,7 @@ type Meta struct {
 	Compatibility map[string]any   `json:"compatibility,omitempty"`
 	Plan          []string         `json:"plan,omitempty"`
 	Steps         []Step           `json:"steps"`
+	Logs          []LogEntry       `json:"logs,omitempty"`
 }
 
 type Step struct {
@@ -38,6 +39,13 @@ type Step struct {
 	FinishedAt     *time.Time     `json:"finished_at,omitempty"`
 	MessageI18NKey string         `json:"message_i18n_key"`
 	Details        map[string]any `json:"details,omitempty"`
+}
+
+type LogEntry struct {
+	At      string         `json:"at"`
+	Level   string         `json:"level"`
+	Message string         `json:"message"`
+	Details map[string]any `json:"details,omitempty"`
 }
 
 func NewMeta(dryRun bool, requestedBy string) Meta {
@@ -81,6 +89,25 @@ func NewMeta(dryRun bool, requestedBy string) Meta {
 			"compatibility_check",
 		},
 		Steps: items,
+		Logs:  make([]LogEntry, 0, 32),
+	}
+}
+
+func (m *Meta) Log(level, message string, details map[string]any) {
+	if m == nil {
+		return
+	}
+	entry := LogEntry{
+		At:      time.Now().UTC().Format(time.RFC3339Nano),
+		Level:   level,
+		Message: message,
+	}
+	if len(details) > 0 {
+		entry.Details = details
+	}
+	m.Logs = append(m.Logs, entry)
+	if len(m.Logs) > 400 {
+		m.Logs = append([]LogEntry(nil), m.Logs[len(m.Logs)-400:]...)
 	}
 }
 

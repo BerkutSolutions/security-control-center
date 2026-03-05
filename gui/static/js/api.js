@@ -31,12 +31,13 @@ const Api = (() => {
     if (lower === 'server error' || lower === 'internal server error') {
       msg = 'common.serverError';
     }
-    const target = String(url || '').trim();
-    if (status > 0 && target) {
-      msg = `${msg} (HTTP ${status}, ${target})`;
-    } else if (status > 0) {
-      msg = `${msg} (HTTP ${status})`;
+    if (lower === 'invalid credentials') {
+      msg = 'auth.invalidCredentials';
     }
+    if ((lower === 'forbidden' || lower === 'access denied') && status === 403) {
+      msg = 'common.accessDenied';
+    }
+    const target = String(url || '').trim();
     const err = new Error(msg);
     err.status = status;
     err.path = target;
@@ -94,7 +95,8 @@ const Api = (() => {
       }
       if (!res.ok) {
         const text = await res.text();
-        throw new Error((text || res.statusText || '').trim());
+        dispatchAuthChallenge(res.status, text);
+        throw buildHttpError(url, res, text);
       }
       dispatchDataChanged('POST', url);
       const ct = res.headers.get('content-type') || '';

@@ -3,13 +3,14 @@ package format
 import "time"
 
 type Manifest struct {
-	FormatVersion  string `json:"format_version"`
-	CreatedAt      string `json:"created_at"`
-	AppVersion     string `json:"app_version"`
-	DBEngine       string `json:"db_engine"`
-	GooseDBVersion int64  `json:"goose_db_version"`
-	IncludesFiles  bool   `json:"includes_files"`
-	Notes          string `json:"notes,omitempty"`
+	FormatVersion  string   `json:"format_version"`
+	CreatedAt      string   `json:"created_at"`
+	AppVersion     string   `json:"app_version"`
+	DBEngine       string   `json:"db_engine"`
+	GooseDBVersion int64    `json:"goose_db_version"`
+	IncludesFiles  bool     `json:"includes_files"`
+	BackupScope    []string `json:"backup_scope,omitempty"`
+	Notes          string   `json:"notes,omitempty"`
 }
 
 func NewManifest(appVersion string, gooseVersion int64, now time.Time) Manifest {

@@ -13,7 +13,7 @@ func (s *monitoringStore) CreateMonitor(ctx context.Context, m *Monitor) (int64,
 	now := time.Now().UTC()
 	headersJSON, _ := json.Marshal(normalizeHeaders(m.Headers))
 	allowedJSON, _ := json.Marshal(normalizeStatusRanges(m.AllowedStatus))
-	res, err := s.db.ExecContext(ctx, `
+	id, err := insertIDDB(ctx, s.db, `
 		INSERT INTO monitors(name, type, url, host, port, method, request_body, request_body_type, headers_json, interval_sec, timeout_sec, retries, retry_interval_sec, allowed_status_json, ignore_tls_errors, notify_tls_expiring, is_active, is_paused, tags_json, group_id, sla_target_pct, auto_incident, auto_task_on_down, incident_severity, incident_type_id, created_by, created_at, updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`,
 		strings.TrimSpace(m.Name), strings.ToLower(strings.TrimSpace(m.Type)), strings.TrimSpace(m.URL), strings.TrimSpace(m.Host),
@@ -26,7 +26,6 @@ func (s *monitoringStore) CreateMonitor(ctx context.Context, m *Monitor) (int64,
 	if err != nil {
 		return 0, err
 	}
-	id, _ := res.LastInsertId()
 	return id, nil
 }
 
@@ -61,10 +60,10 @@ func (s *monitoringStore) GetMonitor(ctx context.Context, id int64) (*Monitor, e
 
 func (s *monitoringStore) ListMonitors(ctx context.Context, filter MonitorFilter) ([]MonitorSummary, error) {
 	query := `
-		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, m.request_body, m.request_body_type, m.headers_json,
+		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, COALESCE(m.request_body,''), COALESCE(m.request_body_type,''), COALESCE(m.headers_json,'{}'),
 			m.interval_sec, m.timeout_sec, m.retries, m.retry_interval_sec, m.allowed_status_json, m.ignore_tls_errors, m.notify_tls_expiring, m.is_active, m.is_paused,
-			m.tags_json, m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, m.incident_severity, m.incident_type_id, m.created_by, m.created_at, m.updated_at,
-			COALESCE(s.status, ''), s.last_checked_at, s.last_up_at, s.last_down_at, s.last_latency_ms, s.last_status_code, s.last_error, s.incident_score
+			COALESCE(m.tags_json,'[]'), m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, COALESCE(m.incident_severity,''), COALESCE(m.incident_type_id,''), COALESCE(m.created_by,0), m.created_at, m.updated_at,
+			COALESCE(s.status, ''), s.last_checked_at, s.last_up_at, s.last_down_at, s.last_latency_ms, s.last_status_code, COALESCE(s.last_error,''), s.incident_score
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id`
 	var clauses []string
@@ -110,9 +109,9 @@ func (s *monitoringStore) ListMonitors(ctx context.Context, filter MonitorFilter
 
 func (s *monitoringStore) ListDueMonitors(ctx context.Context, now time.Time) ([]Monitor, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, m.request_body, m.request_body_type, m.headers_json,
+		SELECT m.id, m.name, m.type, m.url, m.host, m.port, m.method, COALESCE(m.request_body,''), COALESCE(m.request_body_type,''), COALESCE(m.headers_json,'{}'),
 			m.interval_sec, m.timeout_sec, m.retries, m.retry_interval_sec, m.allowed_status_json, m.ignore_tls_errors, m.notify_tls_expiring, m.is_active, m.is_paused,
-			m.tags_json, m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, m.incident_severity, m.incident_type_id, m.created_by, m.created_at, m.updated_at,
+			COALESCE(m.tags_json,'[]'), m.group_id, m.sla_target_pct, m.auto_incident, m.auto_task_on_down, COALESCE(m.incident_severity,''), COALESCE(m.incident_type_id,''), COALESCE(m.created_by,0), m.created_at, m.updated_at,
 			s.last_checked_at, s.retry_at, s.retry_attempt
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id
@@ -245,7 +244,7 @@ func (s *monitoringStore) SetMonitorPaused(ctx context.Context, id int64, paused
 	}
 	if !paused {
 		status = strings.ToLower(strings.TrimSpace(lastResult))
-		if status != "up" && status != "down" {
+		if status != "pending" && status != "up" && status != "down" {
 			if lastUp != nil && (lastDown == nil || lastUp.After(*lastDown)) {
 				status = "up"
 			} else {
@@ -294,18 +293,40 @@ func scanMonitor(row interface {
 	Scan(dest ...any) error
 }) (*Monitor, error) {
 	var m Monitor
-	var headersRaw, allowedRaw, tagsRaw string
+	var requestBody sql.NullString
+	var requestBodyType sql.NullString
+	var headersRaw sql.NullString
+	var allowedRaw sql.NullString
+	var tagsRaw sql.NullString
+	var incidentSeverity sql.NullString
+	var incidentTypeID sql.NullString
+	var createdBy sql.NullInt64
 	var isActive, isPaused, autoIncident, autoTaskOnDown, ignoreTLS, notifyTLS int
 	var groupID sql.NullInt64
 	var sla sql.NullFloat64
 	if err := row.Scan(
-		&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &m.RequestBody, &m.RequestBodyType, &headersRaw,
+		&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &requestBody, &requestBodyType, &headersRaw,
 		&m.IntervalSec, &m.TimeoutSec, &m.Retries, &m.RetryIntervalSec, &allowedRaw, &ignoreTLS, &notifyTLS, &isActive, &isPaused,
-		&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &m.IncidentSeverity, &m.IncidentTypeID, &m.CreatedBy, &m.CreatedAt, &m.UpdatedAt); err != nil {
+		&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &incidentSeverity, &incidentTypeID, &createdBy, &m.CreatedAt, &m.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil
 		}
 		return nil, err
+	}
+	if requestBody.Valid {
+		m.RequestBody = requestBody.String
+	}
+	if requestBodyType.Valid {
+		m.RequestBodyType = requestBodyType.String
+	}
+	if incidentSeverity.Valid {
+		m.IncidentSeverity = incidentSeverity.String
+	}
+	if incidentTypeID.Valid {
+		m.IncidentTypeID = incidentTypeID.String
+	}
+	if createdBy.Valid {
+		m.CreatedBy = createdBy.Int64
 	}
 	m.IgnoreTLSErrors = ignoreTLS == 1
 	m.NotifyTLSExpiring = notifyTLS == 1
@@ -313,14 +334,14 @@ func scanMonitor(row interface {
 	m.IsPaused = isPaused == 1
 	m.AutoIncident = autoIncident == 1
 	m.AutoTaskOnDown = autoTaskOnDown == 1
-	if headersRaw != "" {
-		_ = json.Unmarshal([]byte(headersRaw), &m.Headers)
+	if headersRaw.Valid && headersRaw.String != "" {
+		_ = json.Unmarshal([]byte(headersRaw.String), &m.Headers)
 	}
-	if allowedRaw != "" {
-		_ = json.Unmarshal([]byte(allowedRaw), &m.AllowedStatus)
+	if allowedRaw.Valid && allowedRaw.String != "" {
+		_ = json.Unmarshal([]byte(allowedRaw.String), &m.AllowedStatus)
 	}
-	if tagsRaw != "" {
-		_ = json.Unmarshal([]byte(tagsRaw), &m.Tags)
+	if tagsRaw.Valid && tagsRaw.String != "" {
+		_ = json.Unmarshal([]byte(tagsRaw.String), &m.Tags)
 	}
 	if groupID.Valid {
 		m.GroupID = &groupID.Int64
@@ -334,20 +355,43 @@ func scanMonitor(row interface {
 
 func scanMonitorSummary(rows *sql.Rows) (MonitorSummary, error) {
 	var m MonitorSummary
-	var headersRaw, allowedRaw, tagsRaw string
+	var requestBody sql.NullString
+	var requestBodyType sql.NullString
+	var headersRaw sql.NullString
+	var allowedRaw sql.NullString
+	var tagsRaw sql.NullString
+	var incidentSeverity sql.NullString
+	var incidentTypeID sql.NullString
+	var createdBy sql.NullInt64
 	var isActive, isPaused, autoIncident, autoTaskOnDown, ignoreTLS, notifyTLS int
 	var groupID sql.NullInt64
 	var sla sql.NullFloat64
 	var status sql.NullString
 	var lastChecked, lastUp, lastDown sql.NullTime
 	var lastLatency, lastStatus sql.NullInt64
+	var lastError sql.NullString
 	var incidentScore sql.NullFloat64
 	if err := rows.Scan(
-		&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &m.RequestBody, &m.RequestBodyType, &headersRaw,
+		&m.ID, &m.Name, &m.Type, &m.URL, &m.Host, &m.Port, &m.Method, &requestBody, &requestBodyType, &headersRaw,
 		&m.IntervalSec, &m.TimeoutSec, &m.Retries, &m.RetryIntervalSec, &allowedRaw, &ignoreTLS, &notifyTLS, &isActive, &isPaused,
-		&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &m.IncidentSeverity, &m.IncidentTypeID, &m.CreatedBy, &m.CreatedAt, &m.UpdatedAt,
-		&status, &lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &m.LastError, &incidentScore); err != nil {
+		&tagsRaw, &groupID, &sla, &autoIncident, &autoTaskOnDown, &incidentSeverity, &incidentTypeID, &createdBy, &m.CreatedAt, &m.UpdatedAt,
+		&status, &lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &lastError, &incidentScore); err != nil {
 		return m, err
+	}
+	if requestBody.Valid {
+		m.RequestBody = requestBody.String
+	}
+	if requestBodyType.Valid {
+		m.RequestBodyType = requestBodyType.String
+	}
+	if incidentSeverity.Valid {
+		m.IncidentSeverity = incidentSeverity.String
+	}
+	if incidentTypeID.Valid {
+		m.IncidentTypeID = incidentTypeID.String
+	}
+	if createdBy.Valid {
+		m.CreatedBy = createdBy.Int64
 	}
 	m.IgnoreTLSErrors = ignoreTLS == 1
 	m.NotifyTLSExpiring = notifyTLS == 1
@@ -355,14 +399,14 @@ func scanMonitorSummary(rows *sql.Rows) (MonitorSummary, error) {
 	m.IsPaused = isPaused == 1
 	m.AutoIncident = autoIncident == 1
 	m.AutoTaskOnDown = autoTaskOnDown == 1
-	if headersRaw != "" {
-		_ = json.Unmarshal([]byte(headersRaw), &m.Headers)
+	if headersRaw.Valid && headersRaw.String != "" {
+		_ = json.Unmarshal([]byte(headersRaw.String), &m.Headers)
 	}
-	if allowedRaw != "" {
-		_ = json.Unmarshal([]byte(allowedRaw), &m.AllowedStatus)
+	if allowedRaw.Valid && allowedRaw.String != "" {
+		_ = json.Unmarshal([]byte(allowedRaw.String), &m.AllowedStatus)
 	}
-	if tagsRaw != "" {
-		_ = json.Unmarshal([]byte(tagsRaw), &m.Tags)
+	if tagsRaw.Valid && tagsRaw.String != "" {
+		_ = json.Unmarshal([]byte(tagsRaw.String), &m.Tags)
 	}
 	if groupID.Valid {
 		m.GroupID = &groupID.Int64
@@ -391,11 +435,28 @@ func scanMonitorSummary(rows *sql.Rows) (MonitorSummary, error) {
 		val := int(lastStatus.Int64)
 		m.LastStatusCode = &val
 	}
+	if lastError.Valid {
+		m.LastError = lastError.String
+	}
 	if incidentScore.Valid {
 		val := incidentScore.Float64
 		m.IncidentScore = &val
 	}
 	return m, nil
+}
+
+func insertIDDB(ctx context.Context, db *sql.DB, query string, args ...any) (int64, error) {
+	trimmed := strings.TrimSpace(query)
+	returningQuery := strings.TrimRight(trimmed, ";") + " RETURNING id"
+	var id int64
+	if err := db.QueryRowContext(ctx, returningQuery, args...).Scan(&id); err == nil {
+		return id, nil
+	}
+	res, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 func normalizeMonitorTags(tags []string) []string {

@@ -19,6 +19,18 @@ const SoftwareDetail = (() => {
     return (err && err.message) ? err.message : (fallbackKey || 'Error');
   }
 
+  async function confirmAction(message, opts = {}) {
+    if (window.AppConfirm?.ask) {
+      return window.AppConfirm.ask(message || '', {
+        title: opts.title || t('common.confirm'),
+        confirmText: opts.confirmText || t('common.confirm'),
+        cancelText: opts.cancelText || t('common.cancel'),
+        danger: !!opts.danger,
+      });
+    }
+    return Promise.resolve(window.confirm(message || ''));
+  }
+
   function openModal(selector) {
     const modal = document.querySelector(selector);
     if (modal) modal.hidden = false;
@@ -101,7 +113,10 @@ const SoftwareDetail = (() => {
       restoreBtn.className = 'btn ghost btn-xs';
       restoreBtn.textContent = t('software.versions.actions.restore');
       restoreBtn.onclick = async () => {
-        if (!confirm(t('software.versions.confirm.restore'))) return;
+        const ok = await confirmAction(t('software.versions.confirm.restore'), {
+          confirmText: t('software.versions.actions.restore'),
+        });
+        if (!ok) return;
         try {
           await Api.post(`/api/software/${productID}/versions/${v.id}/restore`, {});
           await loadVersions(productID, opts);
@@ -123,7 +138,11 @@ const SoftwareDetail = (() => {
     archiveBtn.className = 'btn ghost btn-xs danger';
     archiveBtn.textContent = t('software.versions.actions.archive');
     archiveBtn.onclick = async () => {
-      if (!confirm(t('software.versions.confirm.archive'))) return;
+      const ok = await confirmAction(t('software.versions.confirm.archive'), {
+        confirmText: t('software.versions.actions.archive'),
+        danger: true,
+      });
+      if (!ok) return;
       try {
         await Api.del(`/api/software/${productID}/versions/${v.id}`);
         await loadVersions(productID, opts);

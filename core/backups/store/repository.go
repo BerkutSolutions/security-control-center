@@ -99,14 +99,10 @@ func (r *Repository) CreateRun(ctx context.Context, run *backups.BackupRun) (*ba
 	if run.MetaJSON == nil {
 		run.MetaJSON = json.RawMessage("{}")
 	}
-	res, err := r.db.ExecContext(ctx, `
+	id, err := insertID(ctx, r.db, `
 		INSERT INTO backups_runs(artifact_id, status, size_bytes, checksum, filename, storage_path, error_code, error_message, meta_json, created_at, updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?)
 	`, run.ArtifactID, run.Status, run.SizeBytes, run.Checksum, run.Filename, run.StoragePath, run.ErrorCode, run.ErrorMessage, run.MetaJSON, now, now)
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
@@ -143,14 +139,10 @@ func (r *Repository) CreateArtifact(ctx context.Context, artifact *backups.Backu
 	if artifact.Source == "" {
 		artifact.Source = backups.ArtifactSourceLocal
 	}
-	res, err := r.db.ExecContext(ctx, `
+	id, err := insertID(ctx, r.db, `
 		INSERT INTO backups_artifacts(run_id, source, created_by_user_id, origin_filename, status, size_bytes, checksum, filename, storage_path, error_code, error_message, meta_json, created_at, updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?)
 	`, artifact.RunID, artifact.Source, artifact.CreatedByID, artifact.OriginFile, artifact.Status, artifact.SizeBytes, artifact.Checksum, artifact.Filename, artifact.StoragePath, artifact.ErrorCode, artifact.ErrorMessage, artifact.MetaJSON, now, now)
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
@@ -205,14 +197,10 @@ func (r *Repository) CreateRestoreRun(ctx context.Context, run *backups.RestoreR
 	if run.MetaJSON == nil {
 		run.MetaJSON = json.RawMessage("{}")
 	}
-	res, err := r.db.ExecContext(ctx, `
+	id, err := insertID(ctx, r.db, `
 		INSERT INTO backups_restore_runs(artifact_id, status, size_bytes, filename, storage_path, error_code, error_message, meta_json, created_at, updated_at)
 		VALUES(?,?,?,?,?,?,?,?,?,?)
 	`, run.ArtifactID, run.Status, run.SizeBytes, run.Filename, run.StoragePath, run.ErrorCode, run.ErrorMessage, run.MetaJSON, now, now)
-	if err != nil {
-		return nil, err
-	}
-	id, err := res.LastInsertId()
 	if err != nil {
 		return nil, err
 	}
@@ -220,6 +208,20 @@ func (r *Repository) CreateRestoreRun(ctx context.Context, run *backups.RestoreR
 	run.CreatedAt = now
 	run.UpdatedAt = now
 	return run, nil
+}
+
+func insertID(ctx context.Context, db *sql.DB, query string, args ...any) (int64, error) {
+	trimmed := strings.TrimSpace(query)
+	returningQuery := strings.TrimRight(trimmed, ";") + " RETURNING id"
+	var id int64
+	if err := db.QueryRowContext(ctx, returningQuery, args...).Scan(&id); err == nil {
+		return id, nil
+	}
+	res, err := db.ExecContext(ctx, query, args...)
+	if err != nil {
+		return 0, err
+	}
+	return res.LastInsertId()
 }
 
 func (r *Repository) UpdateRestoreRun(ctx context.Context, run *backups.RestoreRun) error {
@@ -368,7 +370,7 @@ func scanRestoreRun(s artifactScanner) (backups.RestoreRun, error) {
 	item.ErrorCode = nullableString(errorCode)
 	item.ErrorMessage = nullableString(errorMessage)
 	item.MetaJSON = safeMeta(meta)
-	item.DryRun, item.Steps = decodeRestoreMeta(item.MetaJSON)
+	item.DryRun, item.Steps, item.Logs = decodeRestoreMeta(item.MetaJSON)
 	return item, nil
 }
 
@@ -395,14 +397,15 @@ func safeMeta(raw []byte) json.RawMessage {
 	return json.RawMessage(raw)
 }
 
-func decodeRestoreMeta(raw json.RawMessage) (bool, []backups.RestoreStep) {
+func decodeRestoreMeta(raw json.RawMessage) (bool, []backups.RestoreStep, []backups.RestoreLog) {
 	type restoreMeta struct {
 		Mode  string                `json:"mode"`
 		Steps []backups.RestoreStep `json:"steps"`
+		Logs  []backups.RestoreLog  `json:"logs"`
 	}
 	meta := restoreMeta{}
 	if err := json.Unmarshal(raw, &meta); err != nil {
-		return false, nil
+		return false, nil, nil
 	}
-	return meta.Mode == "dry_run", meta.Steps
+	return meta.Mode == "dry_run", meta.Steps, meta.Logs
 }

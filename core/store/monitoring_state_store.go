@@ -102,7 +102,7 @@ func (s *monitoringStore) MarkMonitorDueNow(ctx context.Context, monitorID int64
 		VALUES(?, ?, NULL, 0, NULL)
 		ON CONFLICT (monitor_id)
 		DO UPDATE SET last_checked_at=NULL, retry_at=NULL, retry_attempt=0`,
-		monitorID, "down",
+		monitorID, "pending",
 	)
 	return err
 }
@@ -282,6 +282,7 @@ func scanMonitorState(row interface {
 	var lastErrorKind sql.NullString
 	var lastChecked, lastUp, lastDown sql.NullTime
 	var lastLatency, lastStatus sql.NullInt64
+	var lastError sql.NullString
 	var maintenanceInt sql.NullInt64
 	var tlsDays sql.NullInt64
 	var tlsNotAfter sql.NullTime
@@ -293,7 +294,7 @@ func scanMonitorState(row interface {
 	var incidentScoreObs sql.NullString
 	if err := row.Scan(
 		&st.MonitorID, &st.Status, &st.LastResultStatus, &maintenanceInt, &retryAt, &retryAttempt, &lastAttemptAt, &lastErrorKind,
-		&lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &st.LastError,
+		&lastChecked, &lastUp, &lastDown, &lastLatency, &lastStatus, &lastError,
 		&st.Uptime24h, &st.Uptime30d, &st.AvgLatency24h, &tlsDays, &tlsNotAfter,
 		&incidentScore, &incidentScoreUpdatedAt, &incidentScoreReasons, &incidentScorePosterior, &incidentScoreState, &incidentScoreObs,
 	); err != nil {
@@ -335,6 +336,9 @@ func scanMonitorState(row interface {
 	if lastStatus.Valid {
 		val := int(lastStatus.Int64)
 		st.LastStatusCode = &val
+	}
+	if lastError.Valid {
+		st.LastError = lastError.String
 	}
 	if tlsDays.Valid {
 		val := int(tlsDays.Int64)

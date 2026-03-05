@@ -15,6 +15,7 @@ type DumpOptions struct {
 	BinaryPath string
 	DBURL      string
 	OutputPath string
+	Tables     []string
 }
 
 type Runner interface {
@@ -55,6 +56,17 @@ func (r *CommandRunner) Dump(ctx context.Context, opts DumpOptions) error {
 		"-U", user,
 		"-d", dbName,
 		"-f", opts.OutputPath,
+	}
+	for _, raw := range opts.Tables {
+		table := strings.TrimSpace(raw)
+		if table == "" {
+			continue
+		}
+		if strings.Contains(table, ".") {
+			args = append(args, "--table", table)
+			continue
+		}
+		args = append(args, "--table", "public."+table)
 	}
 	cmd := exec.CommandContext(ctx, bin, args...)
 	env := os.Environ()

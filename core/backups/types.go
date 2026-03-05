@@ -60,6 +60,7 @@ type RestoreRun struct {
 	Status       RunStatus       `json:"status"`
 	DryRun       bool            `json:"dry_run"`
 	Steps        []RestoreStep   `json:"steps,omitempty"`
+	Logs         []RestoreLog    `json:"logs,omitempty"`
 	SizeBytes    *int64          `json:"size_bytes,omitempty"`
 	Filename     *string         `json:"filename,omitempty"`
 	StoragePath  *string         `json:"storage_path,omitempty"`
@@ -131,4 +132,11 @@ type RestoreStep struct {
 	FinishedAt     *time.Time     `json:"finished_at,omitempty"`
 	MessageI18NKey string         `json:"message_i18n_key"`
 	Details        map[string]any `json:"details,omitempty"`
+}
+
+type RestoreLog struct {
+	At      string         `json:"at"`
+	Level   string         `json:"level"`
+	Message string         `json:"message"`
+	Details map[string]any `json:"details,omitempty"`
 }

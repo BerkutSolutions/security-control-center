@@ -2926,6 +2926,11 @@
     gap: 10px;
   }
 
+  #stepup-modal .modal-actions {
+    margin-top: 14px;
+    flex-wrap: wrap;
+  }
+
   .asset-modal {
     position: fixed;
     inset: 0;
@@ -3433,6 +3438,10 @@
   background: #f2994a;
 }
 
+.status-dot.pending {
+  background: rgba(193, 205, 230, 0.9);
+}
+
 .status-dot.paused {
   background: #f2c94c;
 }
@@ -3660,6 +3669,10 @@
 
 .monitoring-event.issue {
   border: 1px solid rgba(242, 153, 74, 0.35);
+}
+
+.monitoring-event.pending {
+  border: 1px solid rgba(193, 205, 230, 0.35);
 }
 
 .monitoring-event.maintenance {
@@ -8280,6 +8293,33 @@ body.auth-locked #main-screen {
 #docs-page .confirm-modal .btn.primary {
   background: linear-gradient(180deg, #d44343 0%, #b73232 100%);
   border-color: #a92b2b;
+}
+
+.confirm-modal .modal-body {
+  max-width: 420px;
+}
+
+.confirm-modal .confirm-message {
+  margin: 10px 0 14px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+}
+
+.backups-restore-log-console {
+  margin-top: 8px;
+  min-height: 160px;
+  max-height: 320px;
+  overflow: auto;
+  padding: 10px 12px;
+  border: 1px solid rgba(125, 155, 255, 0.24);
+  border-radius: 10px;
+  background: rgba(6, 10, 18, 0.9);
+  color: rgba(226, 236, 255, 0.9);
+  font-family: "Courier New", monospace;
+  font-size: 12px;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
   @media (max-width: 900px) {

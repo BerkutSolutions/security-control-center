@@ -200,7 +200,15 @@ const AssetsPage = (() => {
       restoreBtn.className = 'btn ghost btn-xs';
       restoreBtn.textContent = t('assets.actions.restore') || 'Restore';
       restoreBtn.addEventListener('click', async () => {
-        if (!confirm(t('assets.confirm.restore'))) return;
+        const ok = await (window.AppConfirm?.ask
+          ? window.AppConfirm.ask(t('assets.confirm.restore'), {
+            title: t('common.confirm'),
+            confirmText: t('assets.actions.restore') || t('common.confirm'),
+            cancelText: t('common.cancel'),
+            danger: true,
+          })
+          : Promise.resolve(confirm(t('assets.confirm.restore'))));
+        if (!ok) return;
         await Api.post(`/api/assets/${item.id}/restore`, {});
         await refresh();
       });
@@ -218,7 +226,15 @@ const AssetsPage = (() => {
     delBtn.className = 'btn ghost btn-xs danger';
     delBtn.textContent = t('assets.actions.archive') || 'Archive';
     delBtn.addEventListener('click', async () => {
-      if (!confirm(t('assets.confirm.archive'))) return;
+      const ok = await (window.AppConfirm?.ask
+        ? window.AppConfirm.ask(t('assets.confirm.archive'), {
+          title: t('common.confirm'),
+          confirmText: t('assets.actions.archive') || t('common.delete'),
+          cancelText: t('common.cancel'),
+          danger: true,
+        })
+        : Promise.resolve(confirm(t('assets.confirm.archive'))));
+      if (!ok) return;
       await Api.del(`/api/assets/${item.id}`);
       await refresh();
     });

@@ -1147,6 +1147,14 @@ const SettingsPage = (() => {
   function confirmSettingsCleanup(message) {
     const modal = document.getElementById('settings-cleanup-confirm-modal');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(message || BerkutI18n.t('common.confirm'), {
+          title: BerkutI18n.t('common.confirm'),
+          confirmText: BerkutI18n.t('common.confirm'),
+          cancelText: BerkutI18n.t('common.cancel'),
+          danger: true,
+        });
+      }
       return Promise.resolve(window.confirm(message || BerkutI18n.t('common.confirm')));
     }
     const titleEl = document.getElementById('settings-cleanup-confirm-title');
@@ -1416,7 +1424,14 @@ const SettingsPage = (() => {
 
     const removeType = async (item) => {
       if (!item || !item.id) return;
-      const ok = window.confirm(BerkutI18n.t('settings.controls.typesDeleteConfirm'));
+      const ok = await (window.AppConfirm?.ask
+        ? window.AppConfirm.ask(BerkutI18n.t('settings.controls.typesDeleteConfirm'), {
+          title: BerkutI18n.t('common.confirm'),
+          confirmText: BerkutI18n.t('common.delete'),
+          cancelText: BerkutI18n.t('common.cancel'),
+          danger: true,
+        })
+        : Promise.resolve(window.confirm(BerkutI18n.t('settings.controls.typesDeleteConfirm'))));
       if (!ok) return;
       try {
         await Api.del(`/api/controls/types/${item.id}`);

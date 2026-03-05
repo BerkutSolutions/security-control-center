@@ -22,7 +22,7 @@ func (h *MonitoringHandler) GetState(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if state == nil {
-		state = &store.MonitorState{MonitorID: id, Status: "down", LastResultStatus: "down"}
+		state = &store.MonitorState{MonitorID: id, Status: "pending", LastResultStatus: "pending"}
 	}
 	if settings, err := h.store.GetSettings(r.Context()); err == nil {
 		val := settings.IssueEscalateMinutes

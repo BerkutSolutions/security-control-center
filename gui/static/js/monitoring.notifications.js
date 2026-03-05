@@ -127,7 +127,16 @@
     els.list.querySelectorAll('.notify-delete').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const id = parseInt(e.target.closest('tr')?.dataset.id || '0', 10);
-        if (!id || !confirm(MonitoringPage.t('monitoring.notifications.confirmDelete'))) return;
+        if (!id) return;
+        const ok = await (window.AppConfirm?.ask
+          ? window.AppConfirm.ask(MonitoringPage.t('monitoring.notifications.confirmDelete'), {
+            title: MonitoringPage.t('common.confirm'),
+            confirmText: MonitoringPage.t('common.delete'),
+            cancelText: MonitoringPage.t('common.cancel'),
+            danger: true,
+          })
+          : Promise.resolve(window.confirm(MonitoringPage.t('monitoring.notifications.confirmDelete'))));
+        if (!ok) return;
         try {
           await Api.del(`/api/monitoring/notifications/${id}`);
           await loadChannels();

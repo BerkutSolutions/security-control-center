@@ -170,7 +170,7 @@
         await saveMonitorNotifications(id);
       }
       if (id && MonitoringPage.hasPermission('monitoring.view')) {
-        await MonitoringPage.waitMonitorCheckedAfter?.(id, prevCheckedAt);
+        Promise.resolve(MonitoringPage.waitMonitorCheckedAfter?.(id, prevCheckedAt)).catch(() => {});
       }
       els.modal.hidden = true;
       modalState.editingId = null;

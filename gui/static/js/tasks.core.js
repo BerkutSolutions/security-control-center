@@ -139,6 +139,14 @@ const TasksPage = (() => {
   function confirmAction(opts = {}) {
     const modal = document.getElementById('tasks-confirm-modal');
     if (!modal) {
+      if (window.AppConfirm?.ask) {
+        return window.AppConfirm.ask(opts.message || '', {
+          title: opts.title || t('common.confirm'),
+          confirmText: opts.confirmText || t('common.confirm'),
+          cancelText: opts.cancelText || t('common.cancel'),
+          danger: true,
+        });
+      }
       return Promise.resolve(window.confirm(opts.message || ''));
     }
     const title = document.getElementById('tasks-confirm-title');

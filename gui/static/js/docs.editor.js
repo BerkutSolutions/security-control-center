@@ -214,7 +214,14 @@
         confirmText: BerkutI18n.t('common.delete'),
         cancelText: BerkutI18n.t('common.cancel'),
       })
-      : confirm(BerkutI18n.t('docs.deleteConfirm'));
+      : (window.AppConfirm?.ask
+        ? await window.AppConfirm.ask(BerkutI18n.t('docs.deleteConfirm'), {
+          title: BerkutI18n.t('docs.menu.delete'),
+          confirmText: BerkutI18n.t('common.delete'),
+          cancelText: BerkutI18n.t('common.cancel'),
+          danger: true,
+        })
+        : confirm(BerkutI18n.t('docs.deleteConfirm')));
     if (!ok) return;
     await Api.del(`/api/docs/${docId}`);
     await DocsPage.loadDocs();
@@ -268,7 +275,15 @@
   }
 
   async function restoreVersion(docId, ver) {
-    if (!confirm(BerkutI18n.t('docs.restoreConfirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('docs.restoreConfirm'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('docs.restore'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(BerkutI18n.t('docs.restoreConfirm'))));
+    if (!ok) return;
     await Api.post(`/api/docs/${docId}/versions/${ver}/restore`, {});
     await DocsPage.loadDocs();
     DocsPage.closeModal('#versions-modal');

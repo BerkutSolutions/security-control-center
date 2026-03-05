@@ -69,7 +69,9 @@
         const labelKey = action === 'events'
           ? 'monitoring.events.clearConfirmEvents'
           : 'monitoring.events.clearConfirmMetrics';
-        const confirmed = window.confirm(MonitoringPage.t(labelKey));
+        const confirmed = await (window.AppConfirm?.ask
+          ? window.AppConfirm.ask(MonitoringPage.t(labelKey), { danger: true })
+          : Promise.resolve(window.confirm(MonitoringPage.t(labelKey))));
         if (!confirmed) {
           els.clearStats.value = '';
           return;
@@ -955,7 +957,14 @@
   async function handleDelete() {
     const mon = MonitoringPage.selectedMonitor();
     if (!mon) return;
-    const confirmed = window.confirm(MonitoringPage.t('monitoring.confirmDelete'));
+    const confirmed = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(MonitoringPage.t('monitoring.confirmDelete'), {
+        title: MonitoringPage.t('common.confirm'),
+        confirmText: MonitoringPage.t('common.delete'),
+        cancelText: MonitoringPage.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(MonitoringPage.t('monitoring.confirmDelete'))));
     if (!confirmed) return;
     try {
       await Api.del(`/api/monitoring/monitors/${mon.id}`);
@@ -983,6 +992,7 @@
     if (val === 'up') return 'up';
     if (val === 'dns') return 'dns';
     if (val === 'issue') return 'issue';
+    if (val === 'pending') return 'pending';
     if (val === 'paused') return 'paused';
     if (val === 'maintenance' || val === 'maintenance_start' || val === 'maintenance_end') return 'maintenance';
     return 'down';

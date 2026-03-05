@@ -92,7 +92,7 @@ func (h *MonitoringHandler) CreateMonitor(w http.ResponseWriter, r *http.Request
 	_ = h.store.UpsertMonitorState(r.Context(), &store.MonitorState{
 		MonitorID:        mon.ID,
 		Status:           initialStatus(mon.IsPaused),
-		LastResultStatus: "down",
+		LastResultStatus: initialStatus(mon.IsPaused),
 	})
 	h.requestImmediateCheck(mon.ID)
 	h.audit(r, monitorAuditMonitorCreate, strconv.FormatInt(id, 10))
@@ -341,7 +341,7 @@ func (h *MonitoringHandler) CloneMonitor(w http.ResponseWriter, r *http.Request)
 	_ = h.store.UpsertMonitorState(r.Context(), &store.MonitorState{
 		MonitorID:        clone.ID,
 		Status:           initialStatus(clone.IsPaused),
-		LastResultStatus: "down",
+		LastResultStatus: initialStatus(clone.IsPaused),
 	})
 	h.requestImmediateCheck(clone.ID)
 	h.audit(r, monitorAuditMonitorClone, strconv.FormatInt(newID, 10))

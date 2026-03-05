@@ -29,6 +29,7 @@
     menuPaths = new Set(paths || []);
     loadState();
     bindSignals();
+    emitChanged();
     onMenuRendered();
     scheduleRefresh(0);
     if (timer) clearInterval(timer);
@@ -362,6 +363,7 @@
       .map((it) => normalizeStoredError(it))
       .filter(Boolean)
       .filter((it) => !dismissedKeys.has(it.key));
+    items = sortItems(transientItems.slice());
   }
 
   function normalizeStoredError(it) {

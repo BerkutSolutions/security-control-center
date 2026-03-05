@@ -83,6 +83,13 @@
         message: BerkutI18n.t('docs.unsavedWarning'),
       });
     }
+    if (window.AppConfirm?.ask) {
+      return window.AppConfirm.ask(BerkutI18n.t('docs.unsavedWarning'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.confirm'),
+        cancelText: BerkutI18n.t('common.cancel')
+      });
+    }
     return window.confirm(BerkutI18n.t('docs.unsavedWarning'));
   }
 

@@ -289,7 +289,16 @@
   }
 
   async function deleteItem(item) {
-    if (!item?.id || !window.confirm(MonitoringPage.t('monitoring.maintenance.confirmDelete'))) return;
+    if (!item?.id) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(MonitoringPage.t('monitoring.maintenance.confirmDelete'), {
+        title: MonitoringPage.t('common.confirm'),
+        confirmText: MonitoringPage.t('common.delete'),
+        cancelText: MonitoringPage.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(window.confirm(MonitoringPage.t('monitoring.maintenance.confirmDelete'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/monitoring/maintenance/${item.id}`);
       await loadMaintenance();

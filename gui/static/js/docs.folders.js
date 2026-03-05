@@ -104,7 +104,15 @@
 
   async function deleteFolder(folderId) {
     if (!folderId) return;
-    if (!confirm(BerkutI18n.t('docs.folderDeleteConfirm'))) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('docs.folderDeleteConfirm'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(BerkutI18n.t('docs.folderDeleteConfirm'))));
+    if (!ok) return;
     try {
       await Api.del(`/api/docs/folders/${folderId}`);
       if (state.selectedFolder === folderId) {

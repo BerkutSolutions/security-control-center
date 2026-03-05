@@ -252,7 +252,15 @@
   }
 
   async function deleteRole(role) {
-    if (!confirm(BerkutI18n.t('accounts.roles.deleteConfirm') || 'Delete this role?')) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('accounts.roles.deleteConfirm') || 'Delete this role?', {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(BerkutI18n.t('accounts.roles.deleteConfirm') || 'Delete this role?')));
+    if (!ok) return;
     try {
       await Api.del(`/api/accounts/roles/${role.id}`);
       await loadRoles();

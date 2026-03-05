@@ -420,7 +420,15 @@
   }
 
   async function deleteGroup(id) {
-    if (!confirm(BerkutI18n.t('accounts.groups.deleteConfirm') || 'Delete this group?')) return;
+    const ok = await (window.AppConfirm?.ask
+      ? window.AppConfirm.ask(BerkutI18n.t('accounts.groups.deleteConfirm') || 'Delete this group?', {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      })
+      : Promise.resolve(confirm(BerkutI18n.t('accounts.groups.deleteConfirm') || 'Delete this group?')));
+    if (!ok) return;
     await Api.del(`/api/accounts/groups/${id}`);
     await loadGroups();
     if (state.selectedGroupId === id) {

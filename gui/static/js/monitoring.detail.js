@@ -390,6 +390,9 @@
         latency: m.latency_ms || 0,
         statusCode: m.status_code ?? m.statusCode ?? null,
         error,
+        finalUrl: m.final_url || m.finalUrl || '',
+        remoteIp: m.remote_ip || m.remoteIp || '',
+        responseHeaders: m.response_headers || m.responseHeaders || null,
         kind,
       };
     });
@@ -759,13 +762,31 @@
         : (pt.kind === 'issue' ? MonitoringPage.t('monitoring.status.issue') : MonitoringPage.t('monitoring.status.down')));
     const codeText = pt.statusCode ? `HTTP ${pt.statusCode}` : '-';
     const errText = pt.error ? MonitoringPage.sanitizeErrorMessage(pt.error) : '-';
-    return [
+    const lines = [
       `${MonitoringPage.t('monitoring.tooltip.time')}: ${MonitoringPage.formatDate(pt.ts)}`,
       `${MonitoringPage.t('monitoring.tooltip.latency')}: ${MonitoringPage.formatLatency(pt.latency)}`,
       `${MonitoringPage.t('monitoring.tooltip.status')}: ${statusText}`,
       `${MonitoringPage.t('monitoring.tooltip.code')}: ${codeText}`,
       `${MonitoringPage.t('monitoring.tooltip.error')}: ${errText}`,
-    ].join('\n');
+    ];
+    if (pt.remoteIp) {
+      lines.push(`${MonitoringPage.t('monitoring.tooltip.remoteIp')}: ${pt.remoteIp}`);
+    }
+    if (pt.finalUrl) {
+      lines.push(`${MonitoringPage.t('monitoring.tooltip.finalUrl')}: ${pt.finalUrl}`);
+    }
+    const headersText = formatResponseHeaders(pt.responseHeaders);
+    if (headersText) {
+      lines.push(`${MonitoringPage.t('monitoring.tooltip.responseHeaders')}: ${headersText}`);
+    }
+    return lines.join('\n');
+  }
+
+  function formatResponseHeaders(value) {
+    if (!value || typeof value !== 'object') return '';
+    const entries = Object.entries(value).filter(([k, v]) => k && v);
+    if (!entries.length) return '';
+    return entries.map(([k, v]) => `${k}=${v}`).join('; ');
   }
 
   function niceStep(raw) {

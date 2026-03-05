@@ -293,3 +293,64 @@ func TestLongTimeoutEscalatesIssueToDown(t *testing.T) {
 		t.Fatalf("expected retries cleared on escalation, got retry_at=%v retry_attempt=%d", st.RetryAt, st.RetryAttempt)
 	}
 }
+
+func TestHTTP404MarkedAsIssue(t *testing.T) {
+	db := mustMonitoringTestDB(t)
+	monStore := store.NewMonitoringStore(db)
+	engine := NewEngine(monStore, nil)
+
+	settings := store.MonitorSettings{
+		EngineEnabled:           true,
+		MaxConcurrentChecks:     1,
+		AllowPrivateNetworks:    true,
+		DefaultRetryIntervalSec: 1,
+	}
+
+	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)
+	id, err := monStore.CreateMonitor(context.Background(), &store.Monitor{
+		Name:             "http-404",
+		Type:             "http",
+		URL:              "https://example.com/missing",
+		Method:           "GET",
+		IntervalSec:      60,
+		TimeoutSec:       5,
+		Retries:          2,
+		RetryIntervalSec: 1,
+		AllowedStatus:    []string{"200-299"},
+		IsActive:         true,
+		IsPaused:         false,
+		CreatedBy:        1,
+		CreatedAt:        base.Add(-time.Hour),
+		UpdatedAt:        base.Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("create monitor: %v", err)
+	}
+
+	engine.attemptFn = func(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
+		code := 404
+		return CheckResult{
+			CheckedAt:  base,
+			OK:         false,
+			StatusCode: &code,
+			Error:      "status_404",
+		}, nil
+	}
+
+	mon, err := monStore.GetMonitor(context.Background(), id)
+	if err != nil || mon == nil {
+		t.Fatalf("get monitor: %v", err)
+	}
+	_, _, _ = engine.runCheck(context.Background(), *mon, settings)
+
+	st, err := monStore.GetMonitorState(context.Background(), id)
+	if err != nil || st == nil {
+		t.Fatalf("get state: %v", err)
+	}
+	if got := strings.ToLower(strings.TrimSpace(st.LastResultStatus)); got != "issue" {
+		t.Fatalf("expected 404 to be issue, got %q", got)
+	}
+	if st.LastStatusCode == nil || *st.LastStatusCode != 404 {
+		t.Fatalf("expected status code 404 saved in state, got %+v", st.LastStatusCode)
+	}
+}

@@ -754,6 +754,9 @@ var migrations = []string{
 		ok INTEGER NOT NULL DEFAULT 0,
 		status_code INTEGER,
 		error TEXT,
+		final_url TEXT NOT NULL DEFAULT '',
+		remote_ip TEXT NOT NULL DEFAULT '',
+		response_headers_json TEXT NOT NULL DEFAULT '',
 		FOREIGN KEY(monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 	);`,
 	`CREATE TABLE IF NOT EXISTS monitor_events (
@@ -978,6 +981,7 @@ func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Lo
 		ensureUserColumns,
 		ensureAuth2FASchema,
 		ensureAuthPasskeysSchema,
+		ensureAuditLogIntegritySchema,
 		ensureRoleColumns,
 		ensureGroupColumns,
 		ensureSessionColumns,
@@ -1009,6 +1013,72 @@ func applySQLiteTestMigrations(ctx context.Context, db *sql.DB, logger *utils.Lo
 	}
 	if logger != nil {
 		logger.Printf("sqlite test migrations applied")
+	}
+	return nil
+}
+
+func ensureAuditLogIntegritySchema(ctx context.Context, db *sql.DB) error {
+	type col struct {
+		Name string
+		SQL  string
+	}
+	cols := []col{
+		{Name: "prev_hash", SQL: "ALTER TABLE audit_log ADD COLUMN prev_hash TEXT NOT NULL DEFAULT ''"},
+		{Name: "event_hash", SQL: "ALTER TABLE audit_log ADD COLUMN event_hash TEXT NOT NULL DEFAULT ''"},
+		{Name: "event_sig", SQL: "ALTER TABLE audit_log ADD COLUMN event_sig TEXT NOT NULL DEFAULT ''"},
+	}
+	for _, c := range cols {
+		exists, err := columnExists(ctx, db, "audit_log", c.Name)
+		if err != nil {
+			return err
+		}
+		if exists {
+			continue
+		}
+		if _, err := db.ExecContext(ctx, c.SQL); err != nil {
+			return fmt.Errorf("add column %s: %w", c.Name, err)
+		}
+	}
+	stmts := []string{
+		`CREATE TABLE IF NOT EXISTS audit_log_maintenance_guard (
+			id INTEGER PRIMARY KEY CHECK (id = 1),
+			allow_delete INTEGER NOT NULL DEFAULT 0,
+			updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+		);`,
+		`INSERT OR IGNORE INTO audit_log_maintenance_guard(id, allow_delete, updated_at) VALUES(1, 0, CURRENT_TIMESTAMP);`,
+		`CREATE TABLE IF NOT EXISTS audit_purge_requests (
+			id INTEGER PRIMARY KEY AUTOINCREMENT,
+			initiated_by TEXT NOT NULL,
+			approved_by TEXT NOT NULL DEFAULT '',
+			status TEXT NOT NULL DEFAULT 'pending',
+			retention_days INTEGER NOT NULL,
+			cutoff_at TIMESTAMP NOT NULL,
+			reason TEXT NOT NULL DEFAULT '',
+			created_at TIMESTAMP NOT NULL,
+			expires_at TIMESTAMP NOT NULL,
+			approved_at TIMESTAMP,
+			executed_at TIMESTAMP,
+			execution_details TEXT NOT NULL DEFAULT ''
+		);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_purge_requests_status ON audit_purge_requests(status, created_at);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_log_created_id ON audit_log(created_at, id);`,
+		`CREATE INDEX IF NOT EXISTS idx_audit_log_event_hash ON audit_log(event_hash);`,
+		`CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_update
+		BEFORE UPDATE ON audit_log
+		BEGIN
+			SELECT RAISE(ABORT, 'audit_log is append-only');
+		END;`,
+		`CREATE TRIGGER IF NOT EXISTS trg_audit_log_no_delete
+		BEFORE DELETE ON audit_log
+		WHEN (SELECT allow_delete FROM audit_log_maintenance_guard WHERE id=1) != 1
+		BEGIN
+			SELECT RAISE(ABORT, 'audit_log is append-only');
+		END;`,
+	}
+	for i, stmt := range stmts {
+		if _, err := db.ExecContext(ctx, stmt); err != nil {
+			return fmt.Errorf("ensure audit schema stmt #%d failed: %w", i+1, err)
+		}
 	}
 	return nil
 }
@@ -1406,6 +1476,9 @@ func ensureMonitoringColumns(ctx context.Context, db *sql.DB) error {
 		{Table: "monitor_state", Name: "incident_score_posterior", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_posterior TEXT NOT NULL DEFAULT '[]'"},
 		{Table: "monitor_state", Name: "incident_score_state", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_state TEXT NOT NULL DEFAULT ''"},
 		{Table: "monitor_state", Name: "incident_score_observation", SQL: "ALTER TABLE monitor_state ADD COLUMN incident_score_observation TEXT NOT NULL DEFAULT ''"},
+		{Table: "monitor_metrics", Name: "final_url", SQL: "ALTER TABLE monitor_metrics ADD COLUMN final_url TEXT NOT NULL DEFAULT ''"},
+		{Table: "monitor_metrics", Name: "remote_ip", SQL: "ALTER TABLE monitor_metrics ADD COLUMN remote_ip TEXT NOT NULL DEFAULT ''"},
+		{Table: "monitor_metrics", Name: "response_headers_json", SQL: "ALTER TABLE monitor_metrics ADD COLUMN response_headers_json TEXT NOT NULL DEFAULT ''"},
 		{Table: "monitoring_settings", Name: "tls_refresh_hours", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_refresh_hours INTEGER NOT NULL DEFAULT 24"},
 		{Table: "monitoring_settings", Name: "tls_expiring_days", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_expiring_days INTEGER NOT NULL DEFAULT 30"},
 		{Table: "monitoring_settings", Name: "tls_expiring_rules_json", SQL: "ALTER TABLE monitoring_settings ADD COLUMN tls_expiring_rules_json TEXT NOT NULL DEFAULT '[]'"},

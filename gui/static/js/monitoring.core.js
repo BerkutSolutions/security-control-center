@@ -235,6 +235,7 @@ const MonitoringPage = (() => {
     if (!msg) return false;
     const val = String(msg).trim().toLowerCase();
     if (!val) return false;
+    if (val === 'status_404' || val.includes('status code 404')) return true;
     if (val.startsWith('status_')) return false;
     if (val.startsWith('monitoring.error.')) {
       // Treat common network-related i18n keys as "issue" (orange) in charts/strips.

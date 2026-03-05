@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"berkut-scc/api/routegroups"
 	"berkut-scc/core/rbac"
@@ -14,6 +15,9 @@ func (s *Server) registerAccountsRoutes(apiRouter chi.Router, h routeHandlers) {
 		RequirePermission: func(p string) func(http.HandlerFunc) http.HandlerFunc { return s.requirePermission(rbac.Permission(p)) },
 		RequireAnyPermission: func(perms ...string) func(http.HandlerFunc) http.HandlerFunc {
 			return s.requireAnyPermission(toPermissions(perms)...)
+		},
+		RequireFreshStepup: func(maxAgeSec int) func(http.HandlerFunc) http.HandlerFunc {
+			return s.requireFreshStepup(time.Duration(maxAgeSec) * time.Second)
 		},
 	}, h.accounts)
 }

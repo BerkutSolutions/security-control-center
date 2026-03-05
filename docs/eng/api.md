@@ -11,12 +11,13 @@ Base path: `/api`
 - Tasks: `/api/tasks/*`
 - Monitoring: `/api/monitoring/*`
 - Backups: `/api/backups/*`
-- Logs: `/api/logs`
+- Logs: `/api/logs`, `/api/logs/export`, `/api/logs/export/package`
 - HTTPS settings: `GET/PUT /api/settings/https`
 
 ## Notes
 - State-changing requests require CSRF.
 - All endpoints are enforced server-side with permission checks.
+- Critical endpoints additionally require fresh step-up verification (15-minute window): log purge requests/approve, runtime/https updates, and privileged account/group/role mutations.
 
 ## App: Tab Compatibility and Jobs (v1.0.13)
 - Compat:
@@ -110,6 +111,7 @@ Primary endpoints:
   - `GET /api/monitoring/monitors/{id}/events`
   - `DELETE /api/monitoring/monitors/{id}/events`
   - `GET /api/monitoring/events`
+  - Metrics response includes forensic/debug fields: `final_url`, `remote_ip`, `response_headers`.
 - SLA:
   - `GET /api/monitoring/sla/overview`
   - `GET /api/monitoring/sla/history`

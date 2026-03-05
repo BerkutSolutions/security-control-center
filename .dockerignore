@@ -20,3 +20,5 @@ node_modules/
 
 # Documentation is not required for runtime image
 docs/
+LOCAL_RELEASE_RULES.md
+local_checks/

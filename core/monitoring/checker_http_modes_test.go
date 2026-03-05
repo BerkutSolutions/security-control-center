@@ -122,6 +122,66 @@ func TestCheckMonitorHTTPRedirectFollowDefault(t *testing.T) {
 	}
 }
 
+func TestCheckMonitorHTTP404AllowedIsUp(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusNotFound)
+		_, _ = w.Write([]byte(`not found`))
+	}))
+	defer srv.Close()
+
+	res := CheckMonitor(context.Background(), store.Monitor{
+		Type:          "http",
+		URL:           srv.URL,
+		Method:        "GET",
+		AllowedStatus: []string{"200-299", "404"},
+		TimeoutSec:    3,
+	}, store.MonitorSettings{AllowPrivateNetworks: true, DefaultTimeoutSec: 3})
+
+	if !res.OK {
+		t.Fatalf("expected 404 to be UP when allowed, got error=%s status=%v", res.Error, res.StatusCode)
+	}
+	if res.Error != "" {
+		t.Fatalf("expected empty error for allowed 404, got %q", res.Error)
+	}
+	if res.StatusCode == nil || *res.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected status code 404, got %v", res.StatusCode)
+	}
+}
+
+func TestCheckMonitorHTTPCapturesDebugFields(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("X-Request-Id", "req-123")
+		w.Header().Set("Server", "test-server")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte(`ok`))
+	}))
+	defer srv.Close()
+
+	res := CheckMonitor(context.Background(), store.Monitor{
+		Type:          "http",
+		URL:           srv.URL,
+		Method:        "GET",
+		AllowedStatus: []string{"200-299"},
+		TimeoutSec:    3,
+	}, store.MonitorSettings{AllowPrivateNetworks: true, DefaultTimeoutSec: 3})
+
+	if !res.OK {
+		t.Fatalf("expected ok, got error=%s", res.Error)
+	}
+	if res.FinalURL == "" {
+		t.Fatalf("expected final url captured")
+	}
+	if res.RemoteIP == "" {
+		t.Fatalf("expected remote ip captured")
+	}
+	if len(res.RespHdrs) == 0 {
+		t.Fatalf("expected response headers captured")
+	}
+	if got := res.RespHdrs["x-request-id"]; got != "req-123" {
+		t.Fatalf("expected x-request-id=req-123, got %q", got)
+	}
+}
+
 func TestCheckMonitorPingByHost(t *testing.T) {
 	res := CheckMonitor(context.Background(), store.Monitor{
 		Type:       TypePing,

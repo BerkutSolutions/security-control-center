@@ -1,6 +1,6 @@
 # Documentation
 
-Version baseline: `1.1.0`
+Version baseline: `1.1.2`
 
 This directory contains detailed technical documentation for the current runtime model.
 
@@ -19,8 +19,14 @@ Primary entry points:
 - Backups EN: `docs/eng/backups.md`
 - Upgrade / rollback RU: `docs/ru/upgrade.md`
 - Upgrade / rollback EN: `docs/eng/upgrade.md`
+- Upgrade playbook RU: `docs/ru/upgrade_playbook.md`
+- Upgrade playbook EN: `docs/eng/upgrade_playbook.md`
+- Load profile (Medium-20) RU: `docs/ru/load_profile_medium20.md`
+- Load profile (Medium-20) EN: `docs/eng/load_profile_medium20.md`
 - HTTPS + OnlyOffice RU: `docs/ru/https_onlyoffice.md`
 - HTTPS + OnlyOffice EN: `docs/eng/https_onlyoffice.md`
+- Security baseline (prod) RU: `docs/ru/security_baseline_prod.md`
+- Security baseline (prod) EN: `docs/eng/security_baseline_prod.md`
 - Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
 - Tabs/UX wiki RU: `docs/ru/wiki/tabs.md`
 - Tabs/UX wiki EN: `docs/eng/wiki/tabs.md`
@@ -30,6 +36,8 @@ Primary entry points:
 - Compatibility (cheatsheet) RU: `docs/ru/compatibility_cheatsheet.md`
 - Compatibility (user guide) EN: `docs/eng/compatibility.md`
 - Compatibility (cheatsheet) EN: `docs/eng/compatibility_cheatsheet.md`
+- Compatibility policy RU: `docs/ru/compatibility_policy.md`
+- Compatibility policy EN: `docs/eng/compatibility_policy.md`
 - Local compose example (runtime TZ, Postgres, OnlyOffice): `docker-compose.local.yml`
 
 Root product overview:

@@ -26,7 +26,7 @@ func TestRoutegroupsRequireSessionGuards(t *testing.T) {
 			if !strings.Contains(line, ".MethodFunc(") {
 				continue
 			}
-			if strings.Contains(line, "g.SessionPerm(") || strings.Contains(line, "g.SessionAnyPerm(") {
+			if strings.Contains(line, "g.SessionPerm(") || strings.Contains(line, "g.SessionAnyPerm(") || strings.Contains(line, "g.SessionPermStepup(") {
 				continue
 			}
 			// OnlyOffice Document Server callbacks are validated by signed tokens/JWT inside handlers

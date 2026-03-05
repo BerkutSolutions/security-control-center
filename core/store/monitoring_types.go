@@ -83,13 +83,16 @@ type MonitorState struct {
 }
 
 type MonitorMetric struct {
-	ID         int64     `json:"id"`
-	MonitorID  int64     `json:"monitor_id"`
-	TS         time.Time `json:"ts"`
-	LatencyMs  int       `json:"latency_ms"`
-	OK         bool      `json:"ok"`
-	StatusCode *int      `json:"status_code,omitempty"`
-	Error      *string   `json:"error,omitempty"`
+	ID         int64             `json:"id"`
+	MonitorID  int64             `json:"monitor_id"`
+	TS         time.Time         `json:"ts"`
+	LatencyMs  int               `json:"latency_ms"`
+	OK         bool              `json:"ok"`
+	StatusCode *int              `json:"status_code,omitempty"`
+	Error      *string           `json:"error,omitempty"`
+	FinalURL   string            `json:"final_url,omitempty"`
+	RemoteIP   string            `json:"remote_ip,omitempty"`
+	RespHdrs   map[string]string `json:"response_headers,omitempty"`
 }
 
 type MonitorEvent struct {

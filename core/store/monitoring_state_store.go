@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"strings"
 	"time"
 )
 
@@ -107,10 +108,17 @@ func (s *monitoringStore) MarkMonitorDueNow(ctx context.Context, monitorID int64
 }
 
 func (s *monitoringStore) AddMetric(ctx context.Context, metric *MonitorMetric) (int64, error) {
+	hdrJSON := ""
+	if metric != nil && len(metric.RespHdrs) > 0 {
+		if b, err := json.Marshal(metric.RespHdrs); err == nil {
+			hdrJSON = string(b)
+		}
+	}
 	res, err := s.db.ExecContext(ctx, `
-		INSERT INTO monitor_metrics(monitor_id, ts, latency_ms, ok, status_code, error)
-		VALUES(?,?,?,?,?,?)`,
-		metric.MonitorID, metric.TS, metric.LatencyMs, boolToInt(metric.OK), metric.StatusCode, metric.Error)
+		INSERT INTO monitor_metrics(monitor_id, ts, latency_ms, ok, status_code, error, final_url, remote_ip, response_headers_json)
+		VALUES(?,?,?,?,?,?,?,?,?)`,
+		metric.MonitorID, metric.TS, metric.LatencyMs, boolToInt(metric.OK), metric.StatusCode, metric.Error,
+		strings.TrimSpace(metric.FinalURL), strings.TrimSpace(metric.RemoteIP), hdrJSON)
 	if err != nil {
 		return 0, err
 	}
@@ -120,7 +128,7 @@ func (s *monitoringStore) AddMetric(ctx context.Context, metric *MonitorMetric) 
 
 func (s *monitoringStore) ListMetrics(ctx context.Context, monitorID int64, since time.Time) ([]MonitorMetric, error) {
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, monitor_id, ts, latency_ms, ok, status_code, error
+		SELECT id, monitor_id, ts, latency_ms, ok, status_code, error, final_url, remote_ip, response_headers_json
 		FROM monitor_metrics WHERE monitor_id=? AND ts>=? ORDER BY ts ASC`, monitorID, since)
 	if err != nil {
 		return nil, err
@@ -132,7 +140,10 @@ func (s *monitoringStore) ListMetrics(ctx context.Context, monitorID int64, sinc
 		var okInt int
 		var status sql.NullInt64
 		var errText sql.NullString
-		if err := rows.Scan(&m.ID, &m.MonitorID, &m.TS, &m.LatencyMs, &okInt, &status, &errText); err != nil {
+		var finalURL sql.NullString
+		var remoteIP sql.NullString
+		var hdrJSON sql.NullString
+		if err := rows.Scan(&m.ID, &m.MonitorID, &m.TS, &m.LatencyMs, &okInt, &status, &errText, &finalURL, &remoteIP, &hdrJSON); err != nil {
 			return nil, err
 		}
 		m.OK = okInt == 1
@@ -143,6 +154,18 @@ func (s *monitoringStore) ListMetrics(ctx context.Context, monitorID int64, sinc
 		if errText.Valid {
 			val := errText.String
 			m.Error = &val
+		}
+		if finalURL.Valid {
+			m.FinalURL = strings.TrimSpace(finalURL.String)
+		}
+		if remoteIP.Valid {
+			m.RemoteIP = strings.TrimSpace(remoteIP.String)
+		}
+		if hdrJSON.Valid && strings.TrimSpace(hdrJSON.String) != "" {
+			var headers map[string]string
+			if err := json.Unmarshal([]byte(hdrJSON.String), &headers); err == nil && len(headers) > 0 {
+				m.RespHdrs = headers
+			}
 		}
 		res = append(res, m)
 	}

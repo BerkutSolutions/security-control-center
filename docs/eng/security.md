@@ -34,6 +34,8 @@ Requirements:
 - Runtime storage: PostgreSQL.
 - Encryption for sensitive content and attachments.
 - Critical audit records in `audit_log`.
+- `audit_log` is append-only (UPDATE/DELETE operations are blocked).
+- Tamper-evident audit uses a `prev_hash -> event_hash` chain and HMAC signature (`event_sig`) with `BERKUT_AUDIT_SIGNING_KEY`.
 - SSRF block audits (e.g., monitoring/OnlyOffice restricted targets): `security.ssrf.blocked`.
 
 ## Web security

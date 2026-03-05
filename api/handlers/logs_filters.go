@@ -15,23 +15,7 @@ func (h *LogsHandler) filteredLogs(r *http.Request, filter logFilter) ([]store.A
 	out := make([]store.AuditRecord, 0, min(filter.Limit, len(raw)))
 	for i := range raw {
 		item := raw[i]
-		if filter.To != nil && item.CreatedAt.After(*filter.To) {
-			continue
-		}
-		action := strings.ToLower(strings.TrimSpace(item.Action))
-		user := strings.ToLower(strings.TrimSpace(item.Username))
-		details := strings.ToLower(strings.TrimSpace(item.Details))
-		section := logCategory(action)
-		if filter.Section != "" && section != filter.Section {
-			continue
-		}
-		if filter.Action != "" && !strings.Contains(action, filter.Action) {
-			continue
-		}
-		if filter.User != "" && !strings.Contains(user, filter.User) {
-			continue
-		}
-		if filter.Query != "" && !strings.Contains(action, filter.Query) && !strings.Contains(details, filter.Query) {
+		if !matchLogFilter(item, filter) {
 			continue
 		}
 		out = append(out, item)
@@ -40,6 +24,29 @@ func (h *LogsHandler) filteredLogs(r *http.Request, filter logFilter) ([]store.A
 		}
 	}
 	return out, nil
+}
+
+func matchLogFilter(item store.AuditRecord, filter logFilter) bool {
+	if filter.To != nil && item.CreatedAt.After(*filter.To) {
+		return false
+	}
+	action := strings.ToLower(strings.TrimSpace(item.Action))
+	user := strings.ToLower(strings.TrimSpace(item.Username))
+	details := strings.ToLower(strings.TrimSpace(item.Details))
+	section := logCategory(action)
+	if filter.Section != "" && section != filter.Section {
+		return false
+	}
+	if filter.Action != "" && !strings.Contains(action, filter.Action) {
+		return false
+	}
+	if filter.User != "" && !strings.Contains(user, filter.User) {
+		return false
+	}
+	if filter.Query != "" && !strings.Contains(action, filter.Query) && !strings.Contains(details, filter.Query) {
+		return false
+	}
+	return true
 }
 
 func logCategory(action string) string {

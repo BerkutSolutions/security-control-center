@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"berkut-scc/api/routegroups"
 	"berkut-scc/core/rbac"
@@ -13,6 +14,9 @@ func (s *Server) registerMonitoringRoutes(apiRouter chi.Router, h routeHandlers)
 	routegroups.RegisterMonitoring(apiRouter, routegroups.Guards{
 		WithSession:       s.withSession,
 		RequirePermission: func(p string) func(http.HandlerFunc) http.HandlerFunc { return s.requirePermission(rbac.Permission(p)) },
+		RequireFreshStepup: func(maxAgeSec int) func(http.HandlerFunc) http.HandlerFunc {
+			return s.requireFreshStepup(time.Duration(maxAgeSec) * time.Second)
+		},
 	}, h.monitoring)
 }
 
@@ -31,6 +35,9 @@ func (s *Server) registerTemplatesAndApprovalsRoutes(apiRouter chi.Router, h rou
 	routegroups.RegisterTemplatesAndApprovals(apiRouter, routegroups.Guards{
 		WithSession:       s.withSession,
 		RequirePermission: func(p string) func(http.HandlerFunc) http.HandlerFunc { return s.requirePermission(rbac.Permission(p)) },
+		RequireFreshStepup: func(maxAgeSec int) func(http.HandlerFunc) http.HandlerFunc {
+			return s.requireFreshStepup(time.Duration(maxAgeSec) * time.Second)
+		},
 	}, h.docs)
 }
 
@@ -38,5 +45,8 @@ func (s *Server) registerLogsAndSettingsRoutes(apiRouter chi.Router, h routeHand
 	routegroups.RegisterLogsAndSettings(apiRouter, routegroups.Guards{
 		WithSession:       s.withSession,
 		RequirePermission: func(p string) func(http.HandlerFunc) http.HandlerFunc { return s.requirePermission(rbac.Permission(p)) },
+		RequireFreshStepup: func(maxAgeSec int) func(http.HandlerFunc) http.HandlerFunc {
+			return s.requireFreshStepup(time.Duration(maxAgeSec) * time.Second)
+		},
 	}, h.logs, h.https, h.runtime, h.hardening)
 }

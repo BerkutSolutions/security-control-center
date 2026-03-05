@@ -34,6 +34,8 @@ security:
 - Runtime-хранилище: PostgreSQL.
 - Шифрование чувствительного контента и вложений.
 - Аудит критичных действий в `audit_log`.
+- `audit_log` работает в append-only режиме (UPDATE/DELETE блокируются).
+- Для tamper-evident аудита используется цепочка `prev_hash -> event_hash` и HMAC-подпись (`event_sig`) через `BERKUT_AUDIT_SIGNING_KEY`.
 - Аудит блокировок SSRF (например, запретные цели мониторинга/OnlyOffice): `security.ssrf.blocked`.
 
 ## Веб-безопасность

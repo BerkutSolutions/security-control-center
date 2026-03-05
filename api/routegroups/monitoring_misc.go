@@ -73,12 +73,16 @@ func RegisterLogsAndSettings(apiRouter chi.Router, g Guards, logs *handlers.Logs
 	apiRouter.Route("/logs", func(logsRouter chi.Router) {
 		logsRouter.MethodFunc("GET", "/", g.SessionPerm("logs.view", logs.List))
 		logsRouter.MethodFunc("GET", "/export", g.SessionPerm("logs.view", logs.Export))
+		logsRouter.MethodFunc("GET", "/export/package", g.SessionPerm("logs.view", logs.ExportPackage))
+		logsRouter.MethodFunc("GET", "/purge/requests", g.SessionPerm("logs.manage", logs.ListPurgeRequests))
+		logsRouter.MethodFunc("POST", "/purge/requests", g.SessionPermStepup("logs.manage", 900, logs.CreatePurgeRequest))
+		logsRouter.MethodFunc("POST", "/purge/requests/{id:[0-9]+}/approve", g.SessionPermStepup("logs.manage", 900, logs.ApprovePurgeRequest))
 	})
 
 	apiRouter.MethodFunc("GET", "/settings/https", g.SessionPerm("settings.advanced", https.Get))
-	apiRouter.MethodFunc("PUT", "/settings/https", g.SessionPerm("settings.advanced", https.Update))
+	apiRouter.MethodFunc("PUT", "/settings/https", g.SessionPermStepup("settings.advanced", 900, https.Update))
 	apiRouter.MethodFunc("GET", "/settings/runtime", g.SessionPerm("settings.advanced", runtime.Get))
-	apiRouter.MethodFunc("PUT", "/settings/runtime", g.SessionPerm("settings.advanced", runtime.Update))
+	apiRouter.MethodFunc("PUT", "/settings/runtime", g.SessionPermStepup("settings.advanced", 900, runtime.Update))
 	apiRouter.MethodFunc("GET", "/settings/hardening", g.SessionPerm("settings.advanced", hardening.GetBaseline))
 	apiRouter.MethodFunc("GET", "/settings/behavior/activity", g.SessionPerm("settings.advanced", hardening.GetBehaviorActivity))
 	apiRouter.MethodFunc("POST", "/settings/updates/check", g.SessionPerm("settings.advanced", runtime.CheckUpdates))

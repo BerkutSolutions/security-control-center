@@ -63,6 +63,11 @@ func (h *PreflightHandler) Report(w http.ResponseWriter, r *http.Request) {
 	report.Checks = append(report.Checks, h.checkRunMode())
 	report.Checks = append(report.Checks, h.checkTrustedProxies())
 	report.Checks = append(report.Checks, h.checkMetrics())
+	report.Checks = append(report.Checks, h.checkBaselineTLS())
+	report.Checks = append(report.Checks, h.checkBaselineTrustedProxies())
+	report.Checks = append(report.Checks, h.checkBaselineMetrics())
+	report.Checks = append(report.Checks, h.checkBaselineAuditSigning())
+	report.Checks = append(report.Checks, h.checkBaselineWebAuthn())
 	report.Checks = append(report.Checks, h.checkOnlyOffice(ctx))
 
 	ok := true
@@ -251,6 +256,99 @@ func (h *PreflightHandler) checkMetrics() PreflightCheck {
 		return PreflightCheck{ID: "metrics", Status: "needs_attention", I18NKey: "preflight.metrics.no_token"}
 	}
 	return PreflightCheck{ID: "metrics", Status: "ok", I18NKey: "preflight.metrics.ok"}
+}
+
+func (h *PreflightHandler) checkBaselineTLS() PreflightCheck {
+	if h == nil || h.cfg == nil {
+		return PreflightCheck{ID: "baseline.tls", Status: "needs_attention", I18NKey: "preflight.baseline.tls.unknown"}
+	}
+	if !isEnterpriseProd(h.cfg) {
+		return PreflightCheck{ID: "baseline.tls", Status: "ok", I18NKey: "preflight.baseline.tls.na"}
+	}
+	if h.cfg.TLSEnabled {
+		return PreflightCheck{ID: "baseline.tls", Status: "ok", I18NKey: "preflight.baseline.tls.ok_builtin"}
+	}
+	proxies := append([]string(nil), h.cfg.Security.TrustedProxies...)
+	if len(proxies) == 0 {
+		return PreflightCheck{ID: "baseline.tls", Status: "failed", I18NKey: "preflight.baseline.tls.failed"}
+	}
+	for _, proxy := range proxies {
+		if isBroadTrustedProxyCIDR(proxy) {
+			return PreflightCheck{ID: "baseline.tls", Status: "failed", I18NKey: "preflight.baseline.tls.failed"}
+		}
+	}
+	return PreflightCheck{ID: "baseline.tls", Status: "ok", I18NKey: "preflight.baseline.tls.ok_proxy"}
+}
+
+func (h *PreflightHandler) checkBaselineTrustedProxies() PreflightCheck {
+	if h == nil || h.cfg == nil {
+		return PreflightCheck{ID: "baseline.trusted_proxies", Status: "needs_attention", I18NKey: "preflight.baseline.trusted_proxies.unknown"}
+	}
+	if !isEnterpriseProd(h.cfg) {
+		return PreflightCheck{ID: "baseline.trusted_proxies", Status: "ok", I18NKey: "preflight.baseline.trusted_proxies.na"}
+	}
+	proxies := append([]string(nil), h.cfg.Security.TrustedProxies...)
+	if len(proxies) == 0 {
+		return PreflightCheck{ID: "baseline.trusted_proxies", Status: "failed", I18NKey: "preflight.baseline.trusted_proxies.failed_empty"}
+	}
+	for _, proxy := range proxies {
+		if isBroadTrustedProxyCIDR(proxy) {
+			return PreflightCheck{ID: "baseline.trusted_proxies", Status: "failed", I18NKey: "preflight.baseline.trusted_proxies.failed_broad"}
+		}
+	}
+	return PreflightCheck{ID: "baseline.trusted_proxies", Status: "ok", I18NKey: "preflight.baseline.trusted_proxies.ok"}
+}
+
+func (h *PreflightHandler) checkBaselineMetrics() PreflightCheck {
+	if h == nil || h.cfg == nil {
+		return PreflightCheck{ID: "baseline.metrics", Status: "needs_attention", I18NKey: "preflight.baseline.metrics.unknown"}
+	}
+	if !isEnterpriseProd(h.cfg) {
+		return PreflightCheck{ID: "baseline.metrics", Status: "ok", I18NKey: "preflight.baseline.metrics.na"}
+	}
+	if !h.cfg.Observability.MetricsEnabled {
+		return PreflightCheck{ID: "baseline.metrics", Status: "failed", I18NKey: "preflight.baseline.metrics.failed_disabled"}
+	}
+	if strings.TrimSpace(h.cfg.Observability.MetricsToken) == "" {
+		return PreflightCheck{ID: "baseline.metrics", Status: "failed", I18NKey: "preflight.baseline.metrics.failed_token"}
+	}
+	return PreflightCheck{ID: "baseline.metrics", Status: "ok", I18NKey: "preflight.baseline.metrics.ok"}
+}
+
+func (h *PreflightHandler) checkBaselineAuditSigning() PreflightCheck {
+	if h == nil || h.cfg == nil {
+		return PreflightCheck{ID: "baseline.audit_signing", Status: "needs_attention", I18NKey: "preflight.baseline.audit_signing.unknown"}
+	}
+	if !isEnterpriseProd(h.cfg) {
+		return PreflightCheck{ID: "baseline.audit_signing", Status: "ok", I18NKey: "preflight.baseline.audit_signing.na"}
+	}
+	if strings.TrimSpace(os.Getenv("BERKUT_AUDIT_SIGNING_KEY")) == "" {
+		return PreflightCheck{ID: "baseline.audit_signing", Status: "failed", I18NKey: "preflight.baseline.audit_signing.failed"}
+	}
+	return PreflightCheck{ID: "baseline.audit_signing", Status: "ok", I18NKey: "preflight.baseline.audit_signing.ok"}
+}
+
+func (h *PreflightHandler) checkBaselineWebAuthn() PreflightCheck {
+	if h == nil || h.cfg == nil {
+		return PreflightCheck{ID: "baseline.webauthn", Status: "needs_attention", I18NKey: "preflight.baseline.webauthn.unknown"}
+	}
+	if !isEnterpriseProd(h.cfg) || !h.cfg.Security.WebAuthn.Enabled {
+		return PreflightCheck{ID: "baseline.webauthn", Status: "ok", I18NKey: "preflight.baseline.webauthn.na"}
+	}
+	if strings.TrimSpace(h.cfg.Security.WebAuthn.RPID) == "" || len(h.cfg.Security.WebAuthn.Origins) == 0 {
+		return PreflightCheck{ID: "baseline.webauthn", Status: "needs_attention", I18NKey: "preflight.baseline.webauthn.needs_attention"}
+	}
+	return PreflightCheck{ID: "baseline.webauthn", Status: "ok", I18NKey: "preflight.baseline.webauthn.ok"}
+}
+
+func isEnterpriseProd(cfg *config.AppConfig) bool {
+	if cfg == nil {
+		return false
+	}
+	if cfg.IsHomeMode() {
+		return false
+	}
+	return !strings.EqualFold(strings.TrimSpace(cfg.AppEnv), "dev")
 }
 
 func isBroadTrustedProxyCIDR(raw string) bool {

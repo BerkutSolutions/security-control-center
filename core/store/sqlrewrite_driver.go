@@ -129,28 +129,9 @@ func (c *rewriteConn) wrapResultWithLastInsertID(ctx context.Context, query stri
 	if !isInsert {
 		return rewriteResult{base: res}, nil
 	}
-	var lastID int64
-	rows, err := c.QueryContext(ctx, "SELECT lastval()", nil)
-	if err == nil && rows != nil {
-		dest := make([]driver.Value, 1)
-		if rows.Next(dest) == nil {
-			switch v := dest[0].(type) {
-			case int64:
-				lastID = v
-				_ = rows.Close()
-				return rewriteResult{base: res, lastInsertID: lastID, hasLastID: true}, nil
-			case int32:
-				lastID = int64(v)
-				_ = rows.Close()
-				return rewriteResult{base: res, lastInsertID: lastID, hasLastID: true}, nil
-			case int:
-				lastID = int64(v)
-				_ = rows.Close()
-				return rewriteResult{base: res, lastInsertID: lastID, hasLastID: true}, nil
-			}
-		}
-		_ = rows.Close()
-	}
+	_ = ctx
+	_ = query
+	_ = args
 	return rewriteResult{base: res}, nil
 }
 

@@ -2,7 +2,7 @@
 
 
 
-Актуальная версия документации: `1.1.0`
+Актуальная версия документации: `1.1.2`
 
 
 
@@ -85,3 +85,10 @@
 - Upgrade: добавлен preflight `GET /api/app/preflight` (проверки администратора) и опциональный backup-before-migrate.
 
 - Auth: добавлены 2FA (TOTP + recovery codes), passkeys (WebAuthn) и отдельная страница подтверждения 2FA `/login/2fa` для совместимости с менеджерами паролей.
+
+
+15. Security baseline (prod): `docs/ru/security_baseline_prod.md`
+16. Compatibility policy: `docs/ru/compatibility_policy.md`
+17. Upgrade playbook: `docs/ru/upgrade_playbook.md`
+
+18. Load profile (Medium-20): docs/ru/load_profile_medium20.md

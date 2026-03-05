@@ -29,11 +29,18 @@ func Validate(cfg *AppConfig) error {
 	csrk := strings.TrimSpace(cfg.CSRFKey)
 	pep := strings.TrimSpace(cfg.Pepper)
 	docKey := strings.TrimSpace(cfg.Docs.EncryptionKey)
+	auditKey := strings.TrimSpace(cfg.AuditSigningKey)
 	if csrk == "" || pep == "" || docKey == "" {
 		return fmt.Errorf("csrf_key, pepper, and docs.encryption_key must be set via env")
 	}
 	if cfg.IsHomeMode() {
 		if appEnv != "dev" {
+			if auditKey == "" {
+				return fmt.Errorf("audit_signing_key must be set outside APP_ENV=dev")
+			}
+			if len(auditKey) < 32 {
+				return fmt.Errorf("audit_signing_key must be at least 32 characters")
+			}
 			key := strings.TrimSpace(cfg.Backups.EncryptionKey)
 			if key == "" {
 				return fmt.Errorf("backups.encryption_key must be set outside APP_ENV=dev")
@@ -57,6 +64,12 @@ func Validate(cfg *AppConfig) error {
 		}
 		if len(key) < 32 {
 			return fmt.Errorf("backups.encryption_key must be at least 32 characters")
+		}
+		if auditKey == "" {
+			return fmt.Errorf("audit_signing_key must be set outside APP_ENV=dev")
+		}
+		if len(auditKey) < 32 {
+			return fmt.Errorf("audit_signing_key must be at least 32 characters")
 		}
 	}
 	if cfg.Docs.OnlyOffice.Enabled {

@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.1.0`
+Documentation version baseline: `1.1.2`
 
 
 
@@ -45,6 +45,14 @@ Documentation version baseline: `1.1.0`
 16.1 HA compose example (api + worker): `docs/ru/docker-compose.ha.yml`
 
 17. Monitoring notification message template: `docs/eng/monitoring_notifications_message_template.md`
+
+18. Security baseline (prod): `docs/eng/security_baseline_prod.md`
+
+19. Compatibility policy: `docs/eng/compatibility_policy.md`
+
+20. Upgrade playbook: `docs/eng/upgrade_playbook.md`
+
+21. Load profile (Medium-20): `docs/eng/load_profile_medium20.md`
 
 
 

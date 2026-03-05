@@ -7,6 +7,7 @@ deployment_mode: "enterprise"
 run_mode: "all"
 csrf_key: ""
 pepper: ""
+audit_signing_key: ""
 tls_enabled: false
 tls_cert: ""
 tls_key: ""

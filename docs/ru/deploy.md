@@ -12,6 +12,7 @@
 
 Секреты:
 - `CSRF_KEY`, `PEPPER`, `DOCS_ENCRYPTION_KEY`
+- `BERKUT_AUDIT_SIGNING_KEY` (обязателен вне `APP_ENV=dev`, минимум 32 символа)
 
 DB/runtime:
 - `BERKUT_DB_DRIVER=postgres`
@@ -39,6 +40,9 @@ Passkeys (WebAuthn):
 Upgrade:
 - Preflight: `GET /api/app/preflight` (право `app.preflight.view`)
 - Backup-before-migrate (опционально): `BERKUT_UPGRADE_BACKUP_BEFORE_MIGRATE=true`
+
+Аудит:
+- Экспорт forensic-пакета: `GET /api/logs/export/package` (zip: `audit_events.jsonl`, `manifest.json`, `checksums.sha256`, `manifest.signature`)
 
 ## HTTPS (reverse-proxy) + OnlyOffice
 В `docker-compose.yaml` есть профиль `proxy` (сервисы `nginx` + `onlyoffice` + `certgen`):

@@ -3,27 +3,28 @@ package config
 import "time"
 
 type AppConfig struct {
-	DBDriver       string              `yaml:"db_driver" env:"BERKUT_DB_DRIVER" env-default:"postgres"`
-	DBURL          string              `yaml:"db_url" env:"BERKUT_DB_URL" env-default:"postgres://berkut:berkut@localhost:5432/berkut?sslmode=disable"`
-	DBPath         string              `yaml:"db_path"` // deprecated
-	ListenAddr     string              `yaml:"listen_addr" env:"BERKUT_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
-	SessionTTL     time.Duration       `yaml:"session_ttl" env:"BERKUT_SESSION_TTL" env-default:"3h"`
-	AppEnv         string              `yaml:"app_env" env:"BERKUT_APP_ENV"`
-	DeploymentMode string              `yaml:"deployment_mode" env:"BERKUT_DEPLOYMENT_MODE" env-default:"enterprise"`
-	RunMode        string              `yaml:"run_mode" env:"BERKUT_RUN_MODE" env-default:"all"`
-	CSRFKey        string              `yaml:"csrf_key" env:"BERKUT_CSRF_KEY"`
-	Pepper         string              `yaml:"pepper" env:"BERKUT_PEPPER"`
-	TLSEnabled     bool                `yaml:"tls_enabled" env:"BERKUT_TLS_ENABLED" env-default:"false"`
-	TLSCert        string              `yaml:"tls_cert" env:"BERKUT_TLS_CERT"`
-	TLSKey         string              `yaml:"tls_key" env:"BERKUT_TLS_KEY"`
-	Scheduler      SchedulerConfig     `yaml:"scheduler"`
-	Monitoring     MonitoringConfig    `yaml:"monitoring"`
-	Observability  ObservabilityConfig `yaml:"observability"`
-	Upgrade        UpgradeConfig       `yaml:"upgrade"`
-	Docs           DocsConfig          `yaml:"docs"`
-	Security       SecurityConfig      `yaml:"security"`
-	Incidents      IncidentsConfig     `yaml:"incidents"`
-	Backups        BackupsConfig       `yaml:"backups"`
+	DBDriver        string              `yaml:"db_driver" env:"BERKUT_DB_DRIVER" env-default:"postgres"`
+	DBURL           string              `yaml:"db_url" env:"BERKUT_DB_URL" env-default:"postgres://berkut:berkut@localhost:5432/berkut?sslmode=disable"`
+	DBPath          string              `yaml:"db_path"` // deprecated
+	ListenAddr      string              `yaml:"listen_addr" env:"BERKUT_LISTEN_ADDR" env-default:"0.0.0.0:8080"`
+	SessionTTL      time.Duration       `yaml:"session_ttl" env:"BERKUT_SESSION_TTL" env-default:"3h"`
+	AppEnv          string              `yaml:"app_env" env:"BERKUT_APP_ENV"`
+	DeploymentMode  string              `yaml:"deployment_mode" env:"BERKUT_DEPLOYMENT_MODE" env-default:"enterprise"`
+	RunMode         string              `yaml:"run_mode" env:"BERKUT_RUN_MODE" env-default:"all"`
+	CSRFKey         string              `yaml:"csrf_key" env:"BERKUT_CSRF_KEY"`
+	Pepper          string              `yaml:"pepper" env:"BERKUT_PEPPER"`
+	AuditSigningKey string              `yaml:"audit_signing_key" env:"BERKUT_AUDIT_SIGNING_KEY"`
+	TLSEnabled      bool                `yaml:"tls_enabled" env:"BERKUT_TLS_ENABLED" env-default:"false"`
+	TLSCert         string              `yaml:"tls_cert" env:"BERKUT_TLS_CERT"`
+	TLSKey          string              `yaml:"tls_key" env:"BERKUT_TLS_KEY"`
+	Scheduler       SchedulerConfig     `yaml:"scheduler"`
+	Monitoring      MonitoringConfig    `yaml:"monitoring"`
+	Observability   ObservabilityConfig `yaml:"observability"`
+	Upgrade         UpgradeConfig       `yaml:"upgrade"`
+	Docs            DocsConfig          `yaml:"docs"`
+	Security        SecurityConfig      `yaml:"security"`
+	Incidents       IncidentsConfig     `yaml:"incidents"`
+	Backups         BackupsConfig       `yaml:"backups"`
 }
 
 func (c *AppConfig) IsHomeMode() bool {

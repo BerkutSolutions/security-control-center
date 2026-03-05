@@ -54,6 +54,9 @@ type CheckResult struct {
 	LatencyMs  int
 	StatusCode *int
 	Error      string
+	FinalURL   string
+	RemoteIP   string
+	RespHdrs   map[string]string
 	CheckedAt  time.Time
 	TLS        *TLSInfo
 }
@@ -180,18 +183,35 @@ func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSetti
 			req.Header.Set("Content-Type", "application/xml")
 		}
 	}
-	client := &http.Client{
-		Timeout: timeout,
+	var remoteIP string
+	dialer := &net.Dialer{Timeout: timeout}
+	transport := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		DialContext: func(ctx context.Context, network, addr string) (net.Conn, error) {
+			conn, err := dialer.DialContext(ctx, network, addr)
+			if err == nil && conn != nil {
+				remote := strings.TrimSpace(conn.RemoteAddr().String())
+				if host, _, splitErr := net.SplitHostPort(remote); splitErr == nil && host != "" {
+					remoteIP = host
+				} else {
+					remoteIP = remote
+				}
+			}
+			return conn, err
+		},
+		ResponseHeaderTimeout: timeout,
+		TLSHandshakeTimeout:   timeout,
+		ExpectContinueTimeout: time.Second,
 	}
+	client := &http.Client{Timeout: timeout, Transport: transport}
+	defer transport.CloseIdleConnections()
 	if expectsRedirectStatus(m.AllowedStatus) {
 		client.CheckRedirect = func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		}
 	}
 	if strings.EqualFold(parsed.Scheme, "https") && m.IgnoreTLSErrors {
-		client.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
+		transport.TLSClientConfig = &tls.Config{InsecureSkipVerify: true}
 	}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -201,6 +221,11 @@ func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSetti
 	code := resp.StatusCode
 	res := CheckResult{
 		StatusCode: &code,
+		RemoteIP:   remoteIP,
+		RespHdrs:   collectDebugHeaders(resp.Header),
+	}
+	if resp.Request != nil && resp.Request.URL != nil {
+		res.FinalURL = resp.Request.URL.String()
 	}
 	if strings.EqualFold(parsed.Scheme, "https") && resp.TLS != nil {
 		if info := tlsFromState(resp.TLS); info != nil {
@@ -241,6 +266,35 @@ func checkHTTP(ctx context.Context, m store.Monitor, settings store.MonitorSetti
 		}
 	}
 	return res, nil
+}
+
+func collectDebugHeaders(headers http.Header) map[string]string {
+	if len(headers) == 0 {
+		return nil
+	}
+	keys := []string{
+		"server",
+		"via",
+		"x-request-id",
+		"x-correlation-id",
+		"x-amzn-requestid",
+		"cf-ray",
+		"x-cache",
+		"location",
+		"retry-after",
+		"content-type",
+		"content-length",
+	}
+	out := make(map[string]string, len(keys))
+	for _, k := range keys {
+		if v := strings.TrimSpace(headers.Get(k)); v != "" {
+			out[k] = v
+		}
+	}
+	if len(out) == 0 {
+		return nil
+	}
+	return out
 }
 
 func checkTCP(ctx context.Context, m store.Monitor, settings store.MonitorSettings, timeout time.Duration) (CheckResult, error) {

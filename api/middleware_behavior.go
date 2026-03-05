@@ -323,3 +323,49 @@ func lockDurationForFailures(failed int) time.Duration {
 	idx := int(math.Min(float64(failed-1), float64(len(behaviorLockDurations)-1)))
 	return behaviorLockDurations[idx]
 }
+
+func (s *Server) requireFreshStepup(maxAge time.Duration) func(http.HandlerFunc) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			if maxAge <= 0 {
+				maxAge = 15 * time.Minute
+			}
+			sr, ok := sessionFromRequest(r)
+			if !ok || sr == nil {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+				return
+			}
+			if s.behaviorRiskStore == nil || !s.isBehaviorModelEnabled(r.Context()) {
+				next.ServeHTTP(w, r)
+				return
+			}
+			state, err := s.behaviorRiskStore.GetState(r.Context(), sr.UserID)
+			if err != nil {
+				http.Error(w, "common.serverError", http.StatusInternalServerError)
+				return
+			}
+			if state == nil {
+				state = &store.BehaviorRiskState{UserID: sr.UserID}
+			}
+			now := time.Now().UTC()
+			if state.LockedUntil != nil && now.Before(*state.LockedUntil) {
+				http.Error(w, "auth.stepup.locked", http.StatusLocked)
+				return
+			}
+			fresh := state.LastVerifiedAt != nil && now.Sub(state.LastVerifiedAt.UTC()) <= maxAge
+			if !fresh {
+				state.StepupRequired = true
+				state.PasswordVerified = false
+				triggered := now
+				state.LastTriggeredAt = &triggered
+				_ = s.behaviorRiskStore.SaveState(r.Context(), state)
+				if s.audits != nil {
+					_ = s.audits.Log(r.Context(), sr.Username, "security.behavior.stepup_required", "reason=critical_endpoint|path="+trimPath(r.URL.Path))
+				}
+				http.Error(w, "auth.stepup.required", http.StatusForbidden)
+				return
+			}
+			next.ServeHTTP(w, r)
+		}
+	}
+}

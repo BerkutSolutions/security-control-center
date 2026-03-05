@@ -441,6 +441,9 @@ func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.M
 		OK:         result.OK,
 		StatusCode: statusCode,
 		Error:      errText,
+		FinalURL:   strings.TrimSpace(result.FinalURL),
+		RemoteIP:   strings.TrimSpace(result.RemoteIP),
+		RespHdrs:   result.RespHdrs,
 	})
 	if err != nil && e.logger != nil {
 		e.logger.Errorf("monitoring add metric: %v", err)
@@ -456,15 +459,14 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 		rawStatus = "up"
 	} else if decision.ErrorKind == ErrorKindDNS || isDNSErrorText(result.Error) {
 		rawStatus = "dns"
-	} else if decision.ErrorKind == ErrorKindTimeout ||
+	} else if (decision.ErrorKind == ErrorKindHTTPStatus && result.StatusCode != nil && *result.StatusCode == 404) ||
+		decision.ErrorKind == ErrorKindTimeout ||
 		decision.ErrorKind == ErrorKindConnect ||
 		decision.ErrorKind == ErrorKindConnectionRefused ||
 		decision.ErrorKind == ErrorKindNetworkUnreachable ||
 		decision.ErrorKind == ErrorKindTLS ||
 		decision.ErrorKind == ErrorKindRequestFailed {
-		// Non-HTTP transient failures (timeouts, TLS/network issues, unexpected EOF) are ambiguous and often caused
-		// by the monitoring host/network rather than the target. Represent them as an orange "issue" state instead
-		// of a hard DOWN to reduce false positives and alert noise.
+		// Treat transient network failures and HTTP 404 as "issue" (orange) to reduce noisy DOWN transitions.
 		rawStatus = "issue"
 	}
 	// Retry policy: if a retry is scheduled for this failed attempt, keep the last_result_status stable

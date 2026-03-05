@@ -11,7 +11,7 @@ Base path: `/api`
 - Tasks: `/api/tasks/*`
 - Monitoring: `/api/monitoring/*`
 - Backups: `/api/backups/*`
-- Logs: `/api/logs`
+- Logs: `/api/logs`, `/api/logs/export`, `/api/logs/export/package`
 - HTTPS settings: `GET/PUT /api/settings/https`
 
 ## Важно
@@ -143,3 +143,7 @@ SLA-особенности:
   - `violated` — цель SLA нарушена;
   - `unknown` — недостаточно покрытия измерениями.
 - SLA-инцидент создается только при закрытии выбранного периода и только при включенной policy.
+
+## API update notes (1.1.2)
+- Critical endpoints require fresh step-up verification (15-minute window): log purge requests/approve, runtime/https updates, privileged account/group/role mutations.
+- `GET /api/monitoring/monitors/{id}/metrics` now includes forensic/debug fields: `final_url`, `remote_ip`, `response_headers`.

@@ -704,6 +704,9 @@ CREATE TABLE IF NOT EXISTS monitor_metrics (
 		ok INTEGER NOT NULL DEFAULT 0,
 		status_code INTEGER,
 		error TEXT,
+		final_url TEXT NOT NULL DEFAULT '',
+		remote_ip TEXT NOT NULL DEFAULT '',
+		response_headers_json TEXT NOT NULL DEFAULT '',
 		FOREIGN KEY(monitor_id) REFERENCES monitors(id) ON DELETE CASCADE
 	);
 

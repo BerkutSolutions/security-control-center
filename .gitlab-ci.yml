@@ -21,6 +21,8 @@ verify-go:
     GOCACHE: "$CI_PROJECT_DIR/.cache/go-build"
   script:
     - go version
+    - bash scripts/ci/baseline_gate.sh
+    - bash scripts/ci/latest1_upgrade_gate.sh
     - make ci
   only:
     - branches

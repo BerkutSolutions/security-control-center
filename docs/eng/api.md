@@ -1,4 +1,4 @@
-﻿# API
+# API
 
 Base path: `/api`
 
@@ -65,7 +65,7 @@ Notes:
 - The UI for entering TOTP/recovery code is at `/login/2fa` (so password managers can detect the `one-time-code` field).
 - Passkeys require HTTPS (or `localhost`) and a correct `security.webauthn.*` configuration.
 
-## Backups (v1.1.3)
+## Backups (v1.1.4)
 Primary endpoints:
 - `GET /api/backups`
 - `GET /api/backups/{id}`

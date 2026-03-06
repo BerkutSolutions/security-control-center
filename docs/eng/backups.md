@@ -1,7 +1,7 @@
-﻿# Berkut SCC - Backups (.bscc)
+# Berkut SCC - Backups (.bscc)
 
 ## Overview
-Backups module in version `1.1.3` supports:
+Backups module in version `1.1.4` supports:
 - encrypted `.bscc` creation (DB-only);
 - `.bscc` import/upload;
 - streaming `.bscc` download;

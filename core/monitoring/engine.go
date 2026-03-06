@@ -455,18 +455,20 @@ func (e *Engine) runCheck(ctx context.Context, m store.Monitor, settings store.M
 func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckResult, tlsRecord *store.MonitorTLS, settings store.MonitorSettings, decision RetryDecision) error {
 	prev, _ := e.store.GetMonitorState(ctx, m.ID)
 	rawStatus := "down"
+	isHTTP404 := decision.ErrorKind == ErrorKindHTTPStatus && result.StatusCode != nil && *result.StatusCode == 404
+	isHTTP503 := decision.ErrorKind == ErrorKindHTTPStatus && result.StatusCode != nil && *result.StatusCode == 503
 	if result.OK {
 		rawStatus = "up"
 	} else if decision.ErrorKind == ErrorKindDNS || isDNSErrorText(result.Error) {
 		rawStatus = "dns"
-	} else if (decision.ErrorKind == ErrorKindHTTPStatus && result.StatusCode != nil && *result.StatusCode == 404) ||
+	} else if isHTTP404 || isHTTP503 ||
 		decision.ErrorKind == ErrorKindTimeout ||
 		decision.ErrorKind == ErrorKindConnect ||
 		decision.ErrorKind == ErrorKindConnectionRefused ||
 		decision.ErrorKind == ErrorKindNetworkUnreachable ||
 		decision.ErrorKind == ErrorKindTLS ||
 		decision.ErrorKind == ErrorKindRequestFailed {
-		// Treat transient network failures and HTTP 404 as "issue" (orange) to reduce noisy DOWN transitions.
+		// Treat transient network failures and HTTP 404/503 as "issue" (orange) to reduce noisy DOWN transitions.
 		rawStatus = "issue"
 	}
 	// Retry policy: if a retry is scheduled for this failed attempt, keep the last_result_status stable
@@ -487,6 +489,10 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 	// Escalation policy: if we have been failing with transient network errors for a long time, treat it as a confirmed DOWN.
 	// This prevents "perma-orange" state when the service is effectively dead for a long time.
 	issueEscalateMin := settings.IssueEscalateMinutes
+	// HTTP 503 indicates service overload/unavailability and should escalate faster.
+	if isHTTP503 {
+		issueEscalateMin = 2
+	}
 	if issueEscalateMin <= 0 {
 		issueEscalateMin = 10
 	}
@@ -496,7 +502,8 @@ func (e *Engine) updateState(ctx context.Context, m store.Monitor, result CheckR
 			decision.ErrorKind == ErrorKindConnectionRefused ||
 			decision.ErrorKind == ErrorKindNetworkUnreachable ||
 			decision.ErrorKind == ErrorKindTLS ||
-			decision.ErrorKind == ErrorKindRequestFailed) &&
+			decision.ErrorKind == ErrorKindRequestFailed ||
+			isHTTP503) &&
 		prev != nil &&
 		prev.LastUpAt != nil {
 		if now.Sub(prev.LastUpAt.UTC()) >= time.Duration(issueEscalateMin)*time.Minute {

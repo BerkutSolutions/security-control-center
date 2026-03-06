@@ -354,3 +354,135 @@ func TestHTTP404MarkedAsIssue(t *testing.T) {
 		t.Fatalf("expected status code 404 saved in state, got %+v", st.LastStatusCode)
 	}
 }
+
+func TestHTTP503MarkedAsIssue(t *testing.T) {
+	db := mustMonitoringTestDB(t)
+	monStore := store.NewMonitoringStore(db)
+	engine := NewEngine(monStore, nil)
+
+	settings := store.MonitorSettings{
+		EngineEnabled:           true,
+		MaxConcurrentChecks:     1,
+		AllowPrivateNetworks:    true,
+		DefaultRetryIntervalSec: 1,
+	}
+
+	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)
+	id, err := monStore.CreateMonitor(context.Background(), &store.Monitor{
+		Name:             "http-503",
+		Type:             "http",
+		URL:              "https://example.com/unavailable",
+		Method:           "GET",
+		IntervalSec:      60,
+		TimeoutSec:       5,
+		Retries:          2,
+		RetryIntervalSec: 1,
+		AllowedStatus:    []string{"200-299"},
+		IsActive:         true,
+		IsPaused:         false,
+		CreatedBy:        1,
+		CreatedAt:        base.Add(-time.Hour),
+		UpdatedAt:        base.Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("create monitor: %v", err)
+	}
+
+	engine.attemptFn = func(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
+		code := 503
+		return CheckResult{
+			CheckedAt:  base,
+			OK:         false,
+			StatusCode: &code,
+			Error:      "status_503",
+		}, nil
+	}
+
+	mon, err := monStore.GetMonitor(context.Background(), id)
+	if err != nil || mon == nil {
+		t.Fatalf("get monitor: %v", err)
+	}
+	_, _, _ = engine.runCheck(context.Background(), *mon, settings)
+
+	st, err := monStore.GetMonitorState(context.Background(), id)
+	if err != nil || st == nil {
+		t.Fatalf("get state: %v", err)
+	}
+	if got := strings.ToLower(strings.TrimSpace(st.LastResultStatus)); got != "issue" {
+		t.Fatalf("expected 503 to be issue, got %q", got)
+	}
+	if st.LastStatusCode == nil || *st.LastStatusCode != 503 {
+		t.Fatalf("expected status code 503 saved in state, got %+v", st.LastStatusCode)
+	}
+}
+
+func TestHTTP503EscalatesIssueToDownAfterTwoMinutes(t *testing.T) {
+	db := mustMonitoringTestDB(t)
+	monStore := store.NewMonitoringStore(db)
+	engine := NewEngine(monStore, nil)
+
+	settings := store.MonitorSettings{
+		EngineEnabled:           true,
+		MaxConcurrentChecks:     1,
+		AllowPrivateNetworks:    true,
+		DefaultRetryIntervalSec: 1,
+		IssueEscalateMinutes:    10, // should be ignored for HTTP 503
+	}
+
+	base := time.Date(2026, 3, 2, 14, 0, 0, 0, time.UTC)
+	id, err := monStore.CreateMonitor(context.Background(), &store.Monitor{
+		Name:             "http-503-escalate",
+		Type:             "http",
+		URL:              "https://example.com/unavailable",
+		Method:           "GET",
+		IntervalSec:      60,
+		TimeoutSec:       5,
+		Retries:          2,
+		RetryIntervalSec: 1,
+		AllowedStatus:    []string{"200-299"},
+		IsActive:         true,
+		IsPaused:         false,
+		CreatedBy:        1,
+		CreatedAt:        base.Add(-time.Hour),
+		UpdatedAt:        base.Add(-time.Hour),
+	})
+	if err != nil {
+		t.Fatalf("create monitor: %v", err)
+	}
+
+	lastUp := base.Add(-3 * time.Minute)
+	lastChecked := base.Add(-time.Minute)
+	if err := monStore.UpsertMonitorState(context.Background(), &store.MonitorState{
+		MonitorID:        id,
+		Status:           "issue",
+		LastResultStatus: "issue",
+		LastCheckedAt:    &lastChecked,
+		LastUpAt:         &lastUp,
+	}); err != nil {
+		t.Fatalf("seed state: %v", err)
+	}
+
+	engine.attemptFn = func(ctx context.Context, m store.Monitor, settings store.MonitorSettings) (CheckResult, error) {
+		code := 503
+		return CheckResult{
+			CheckedAt:  base,
+			OK:         false,
+			StatusCode: &code,
+			Error:      "status_503",
+		}, nil
+	}
+
+	mon, err := monStore.GetMonitor(context.Background(), id)
+	if err != nil || mon == nil {
+		t.Fatalf("get monitor: %v", err)
+	}
+	_, _, _ = engine.runCheck(context.Background(), *mon, settings)
+
+	st, err := monStore.GetMonitorState(context.Background(), id)
+	if err != nil || st == nil {
+		t.Fatalf("get state: %v", err)
+	}
+	if got := strings.ToLower(strings.TrimSpace(st.LastResultStatus)); got != "down" {
+		t.Fatalf("expected 503 issue to escalate to down after 2m, got %q", got)
+	}
+}

@@ -1,6 +1,6 @@
-# Documentation
+﻿# Documentation
 
-Version baseline: `1.1.4`
+Version baseline: `1.1.5`
 
 This directory contains detailed technical documentation for the current runtime model.
 
@@ -38,8 +38,17 @@ Primary entry points:
 - Compatibility (cheatsheet) EN: `docs/eng/compatibility_cheatsheet.md`
 - Compatibility policy RU: `docs/ru/compatibility_policy.md`
 - Compatibility policy EN: `docs/eng/compatibility_policy.md`
+- OSS Security EN: `docs/eng/oss/SECURITY.md`
+- OSS Security RU: `docs/ru/oss/SECURITY.md`
+- OSS Contributing EN: `docs/eng/oss/CONTRIBUTING.md`
+- OSS Contributing RU: `docs/ru/oss/CONTRIBUTING.md`
+- OSS Code of Conduct EN: `docs/eng/oss/CODE_OF_CONDUCT.md`
+- OSS Code of Conduct RU: `docs/ru/oss/CODE_OF_CONDUCT.md`
+- OSS Support EN: `docs/eng/oss/SUPPORT.md`
+- OSS Support RU: `docs/ru/oss/SUPPORT.md`
 - Local compose example (runtime TZ, Postgres, OnlyOffice): `docker-compose.local.yml`
 
 Root product overview:
 - `README.md`
 - `README.en.md`
+

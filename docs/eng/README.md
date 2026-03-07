@@ -1,8 +1,8 @@
-# Berkut SCC Documentation (EN)
+﻿# Berkut SCC Documentation (EN)
 
 
 
-Documentation version baseline: `1.1.4`
+Documentation version baseline: `1.1.5`
 
 
 
@@ -54,6 +54,14 @@ Documentation version baseline: `1.1.4`
 
 21. Load profile (Medium-20): `docs/eng/load_profile_medium20.md`
 
+22. OSS Security: `docs/eng/oss/SECURITY.md`
+
+23. OSS Contributing: `docs/eng/oss/CONTRIBUTING.md`
+
+24. OSS Code of Conduct: `docs/eng/oss/CODE_OF_CONDUCT.md`
+
+25. OSS Support: `docs/eng/oss/SUPPORT.md`
+
 
 
 ## Context
@@ -90,7 +98,7 @@ Documentation is aligned with current runtime reality:
 
 - Localization and UX: fixes for logs/monitoring UI alignment and missing i18n labels.
 
-- Backups: improved “New backup options” UX and hardened DB restore pipeline (`pg_restore`).
+- Backups: improved вЂњNew backup optionsвЂќ UX and hardened DB restore pipeline (`pg_restore`).
 
 - Compose/runtime: unified container timezone via `TZ` (recommended `Europe/Moscow`).
 
@@ -101,3 +109,4 @@ Documentation is aligned with current runtime reality:
 - Upgrade: added admin preflight `GET /api/app/preflight` and optional backup-before-migrate.
 
 - Auth: added 2FA (TOTP + recovery codes), passkeys (WebAuthn), and a dedicated 2FA confirmation page `/login/2fa` for password manager compatibility.
+

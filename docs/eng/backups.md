@@ -1,7 +1,7 @@
-# Berkut SCC - Backups (.bscc)
+﻿# Berkut SCC - Backups (.bscc)
 
 ## Overview
-Backups module in version `1.1.4` supports:
+Backups module in version `1.1.5` supports:
 - encrypted `.bscc` creation (DB-only);
 - `.bscc` import/upload;
 - streaming `.bscc` download;
@@ -53,3 +53,4 @@ During a real restore, the app enables maintenance mode:
 - Permissions are enforced server-side for every endpoint.
 - API errors are sanitized (no internal paths, stack traces, or raw internals).
 - Upload/download/delete flows are hardened (size limits, path validation, concurrency locks, safe error codes).
+

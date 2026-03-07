@@ -98,7 +98,7 @@ Documentation is aligned with current runtime reality:
 
 - Localization and UX: fixes for logs/monitoring UI alignment and missing i18n labels.
 
-- Backups: improved вЂњNew backup optionsвЂќ UX and hardened DB restore pipeline (`pg_restore`).
+- Backups: improved “New backup options” UX and hardened DB restore pipeline (`pg_restore`).
 
 - Compose/runtime: unified container timezone via `TZ` (recommended `Europe/Moscow`).
 

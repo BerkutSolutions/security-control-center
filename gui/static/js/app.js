@@ -3,7 +3,7 @@
   let inactivityTimer;
   let autoLogoutHandler;
   let pingTimer;
-  const MENU_ORDER = ['dashboard', 'tasks', 'monitoring', 'docs', 'approvals', 'incidents', 'registry', 'reports', 'accounts', 'settings', 'backups', 'logs'];
+  const MENU_ORDER = ['dashboard', 'tasks', 'monitoring', 'docs', 'approvals', 'incidents', 'registry', 'reports', 'accounts', 'accesses', 'settings', 'backups', 'logs'];
   const lang = prefs.language || localStorage.getItem('berkut_lang') || 'ru';
   await BerkutI18n.load(lang);
   BerkutI18n.apply();
@@ -26,7 +26,7 @@
     window.location.href = '/password-change';
     return;
   }
-  await loadAppMeta();
+  loadAppMeta().catch(() => {});
   bindProfileShortcut();
   bindNotificationsUI();
   bindStepupUI();
@@ -114,6 +114,7 @@
     if (base === 'incidents') return 'incidents';
     if (base === 'settings') return 'settings';
     if (base === 'accounts') return 'accounts';
+    if (base === 'accesses') return 'accesses';
     if (base === 'dashboard') return 'dashboard';
     if (base === 'registry') return 'registry';
     if (base === 'controls') return 'registry';
@@ -343,7 +344,7 @@
     area.innerHTML = html;
     const titleEl = document.getElementById('page-title');
     const descEl = document.getElementById('page-desc');
-    if (path === 'docs') {
+    if (path === 'docs' || path === 'accesses') {
       if (titleEl) titleEl.textContent = '';
       if (descEl) descEl.textContent = '';
     } else {
@@ -391,6 +392,9 @@
     }
     if (path === 'dashboard' && typeof DashboardPage !== 'undefined') {
       DashboardPage.init();
+    }
+    if (path === 'accesses' && typeof AccessesPage !== 'undefined') {
+      AccessesPage.init();
     }
     // legacy "controls" route is mapped to "registry" by pathFromLocation; keep a safety init.
     if (path === 'controls' && typeof ControlsPage !== 'undefined') {
@@ -534,7 +538,13 @@
         TasksPage.closeTaskModal();
         return;
       }
-      modal.hidden = true;
+      const finish = () => {
+        modal.classList.remove('is-closing');
+        modal.hidden = true;
+      };
+      if (modal.hidden) return;
+      modal.classList.add('is-closing');
+      window.setTimeout(finish, 190);
     };
     document.addEventListener('keydown', (e) => {
       if (e.key !== 'Escape') return;
@@ -599,6 +609,8 @@
         return BerkutI18n.t('logs.subtitle');
       case 'settings':
         return BerkutI18n.t('settings.subtitle');
+      case 'accesses':
+        return BerkutI18n.t('accesses.subtitle');
       case 'reports':
         return BerkutI18n.t('reports.subtitle');
       case 'backups':

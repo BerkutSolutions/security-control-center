@@ -104,6 +104,7 @@ var scopeTables = map[string][]string{
 		"users",
 		"groups",
 		"roles",
+		"app_module_state",
 	},
 }
 

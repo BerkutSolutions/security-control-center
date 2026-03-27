@@ -34,6 +34,7 @@ func (s *Service) snapshotEntityCounts(ctx context.Context, scope []string) map[
 	if scopeIncludes(scope, "accounts") {
 		s.addCount(ctx, out, "accounts.users", "SELECT COUNT(*) FROM users")
 		s.addCount(ctx, out, "accounts.groups", "SELECT COUNT(*) FROM groups")
+		s.addCount(ctx, out, "accounts.accesses", "SELECT COUNT(*) FROM app_module_state WHERE module_id='accesses.data'")
 	}
 	if scopeIncludes(scope, "approvals") {
 		s.addCount(ctx, out, "approvals.approvals", "SELECT COUNT(*) FROM approvals")

@@ -17,7 +17,8 @@ services:
       - -lc
       - |
         set -e
-        apk add --no-cache openssl >/dev/null
+        retry() { i=0; until "$@"; do i=$$(($$i+1)); [ "$$i" -ge 4 ] && return 1; sleep 2; done; }
+        retry apk add --no-cache openssl >/dev/null
         mkdir -p /certs
         if [ -s /certs/fullchain.pem ] && [ -s /certs/privkey.pem ]; then
           echo "certgen: certs already exist"
@@ -46,7 +47,8 @@ services:
         DNS.1 = $${CERT_DNS}
         IP.1  = $${CERT_IP}
         EOF
-        openssl req -x509 -nodes -newkey rsa:2048 -days "$${CERT_DAYS}" \
+        rm -f /certs/fullchain.pem /certs/privkey.pem
+        retry openssl req -x509 -nodes -newkey rsa:2048 -days "$${CERT_DAYS}" \
           -keyout /certs/privkey.pem -out /certs/fullchain.pem \
           -config /tmp/openssl.cnf
 

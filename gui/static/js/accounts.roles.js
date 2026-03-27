@@ -401,6 +401,8 @@
         return perms.filter(p => p === 'reports.view');
       case 'accounts':
         return perms.filter(p => ['accounts.view', 'accounts.view_dashboard', 'groups.view', 'roles.view'].includes(p));
+      case 'accesses':
+        return perms.filter(p => p === 'accounts.view');
       case 'settings':
         return perms.filter(p => p === 'app.view');
       case 'backups':
@@ -438,6 +440,7 @@
         { key: 'incidents', labelKey: 'nav.incidents' },
         { key: 'reports', labelKey: 'nav.reports' },
         { key: 'accounts', labelKey: 'nav.accounts' },
+        { key: 'accesses', labelKey: 'nav.accesses' },
         { key: 'settings', labelKey: 'nav.settings' },
         { key: 'backups', labelKey: 'nav.backups' },
         { key: 'logs', labelKey: 'nav.logs' },

@@ -240,6 +240,7 @@ const SettingsPage = (() => {
     'settings-https': 'settings.advanced',
     'settings-hardening': 'settings.advanced',
     'settings-tags': 'settings.tags',
+    'settings-services': 'settings.tags',
     'settings-classifications': 'settings.tags',
     'settings-incidents': 'settings.incident_options',
     'settings-controls': 'settings.controls',
@@ -329,6 +330,7 @@ const SettingsPage = (() => {
       }
       if (canViewTab('settings-tags')) {
         bindTagSettings();
+        bindServiceSettings();
         bindClassificationSettings();
       }
       if (canViewTab('settings-incidents')) {
@@ -1223,6 +1225,52 @@ const SettingsPage = (() => {
       }
     });
     document.addEventListener('tags:changed', render);
+    render();
+  }
+
+  function bindServiceSettings() {
+    if (typeof ServiceDirectory === 'undefined') return;
+    const input = document.getElementById('settings-service-input');
+    const addBtn = document.getElementById('settings-service-add');
+    const list = document.getElementById('settings-services-list');
+    if (!input || !addBtn || !list) return;
+
+    const render = () => {
+      list.innerHTML = '';
+      const services = ServiceDirectory.all();
+      if (!services.length) {
+        const empty = document.createElement('div');
+        empty.className = 'muted';
+        empty.textContent = BerkutI18n.t('settings.services.empty');
+        list.appendChild(empty);
+        return;
+      }
+      services.forEach((service) => {
+        const badge = BerkutI18n.t('settings.tags.custom');
+        list.appendChild(buildPill(service.label, true, badge, () => {
+          ServiceDirectory.remove(service.code);
+        }));
+      });
+    };
+
+    const add = () => {
+      const val = (input.value || '').trim();
+      if (!val) return;
+      ServiceDirectory.add(val);
+      input.value = '';
+    };
+
+    addBtn.addEventListener('click', (e) => {
+      e.preventDefault();
+      add();
+    });
+    input.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        add();
+      }
+    });
+    document.addEventListener('services:changed', render);
     render();
   }
 

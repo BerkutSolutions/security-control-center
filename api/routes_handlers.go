@@ -24,6 +24,7 @@ type routeHandlers struct {
 	assets      *handlers.AssetsHandler
 	findings    *handlers.FindingsHandler
 	software    *handlers.SoftwareHandler
+	accesses    *handlers.AccessesHandler
 	logs        *handlers.LogsHandler
 	monitoring  *handlers.MonitoringHandler
 }
@@ -50,6 +51,7 @@ func (s *Server) newRouteHandlers() routeHandlers {
 		assets:      handlers.NewAssetsHandler(s.assetsStore, s.softwareStore, s.users, s.audits, s.policy),
 		findings:    handlers.NewFindingsHandler(s.findingsStore, s.entityLinksStore, s.users, s.assetsStore, s.controlsStore, s.softwareStore, s.audits, s.policy),
 		software:    handlers.NewSoftwareHandler(s.softwareStore, s.users, s.assetsStore, s.audits, s.policy),
+		accesses:    handlers.NewAccessesHandler(s.appModules, s.audits),
 		logs:        handlers.NewLogsHandler(s.audits),
 		monitoring:  handlers.NewMonitoringHandler(s.monitoringStore, s.users, s.audits, s.monitoringEngine, s.policy, s.incidentsSvc.Encryptor()),
 	}

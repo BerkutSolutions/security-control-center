@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.1.5`
+Documentation version baseline: `1.1.6`
 
 
 
@@ -109,4 +109,8 @@ Documentation is aligned with current runtime reality:
 - Upgrade: added admin preflight `GET /api/app/preflight` and optional backup-before-migrate.
 
 - Auth: added 2FA (TOTP + recovery codes), passkeys (WebAuthn), and a dedicated 2FA confirmation page `/login/2fa` for password manager compatibility.
+
+- Accesses: added `Accesses` tab (user cards, edit/supplement flow, change history, block/unblock status).
+
+- Settings: added `Services` tab (service catalog used by the `Accesses` tab).
 

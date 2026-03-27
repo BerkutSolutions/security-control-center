@@ -55,6 +55,8 @@ func (s *Server) registerCoreAPIRoutes(apiRouter chi.Router, h routeHandlers) {
 	apiRouter.MethodFunc("POST", "/app/jobs/{id}/cancel", s.withSession(s.requirePermission("app.compat.manage.partial")(h.jobs.Cancel)))
 	apiRouter.MethodFunc("GET", "/dashboard", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.Data)))
 	apiRouter.MethodFunc("POST", "/dashboard/layout", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.SaveLayout)))
+	apiRouter.MethodFunc("GET", "/accesses", s.withSession(s.requirePermission("accounts.view")(h.accesses.Get)))
+	apiRouter.MethodFunc("PUT", "/accesses", s.withSession(s.requirePermission("accounts.view")(h.accesses.Put)))
 }
 
 func (s *Server) registerPageRoutes(h routeHandlers) {

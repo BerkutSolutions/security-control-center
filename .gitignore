@@ -17,6 +17,9 @@ build/
 coverage/
 *.coverprofile
 coverage.out
+.cache/
+.gocache/
+.gomodcache/
 
 # IDE/editor
 .idea/
@@ -39,3 +42,4 @@ Thumbs.db
 docker-compose.local.yml
 LOCAL_RELEASE_RULES.md
 local_checks/
+stdout

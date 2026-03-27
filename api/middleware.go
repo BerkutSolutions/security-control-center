@@ -598,6 +598,8 @@ func (s *Server) requiredMenuKeys(path string) []string {
 		return []string{"controls", "findings"}
 	case strings.HasPrefix(p, "/accounts") || strings.HasPrefix(p, "/api/accounts"):
 		return []string{"accounts"}
+	case strings.HasPrefix(p, "/accesses") || strings.HasPrefix(p, "/api/accesses"):
+		return []string{"accesses"}
 	case strings.HasPrefix(p, "/settings") || strings.HasPrefix(p, "/api/settings"):
 		return []string{"settings"}
 	case strings.HasPrefix(p, "/logs") || strings.HasPrefix(p, "/api/logs"):

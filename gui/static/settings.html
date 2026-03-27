@@ -10,6 +10,7 @@
         <button class="tab-btn" data-tab="settings-https" data-i18n="settings.tabs.https">HTTPS</button>
         <button class="tab-btn" data-tab="settings-hardening" data-i18n="settings.tabs.hardening">Hardening</button>
         <button class="tab-btn" data-tab="settings-tags" data-i18n="settings.tabs.tags">Tags</button>
+        <button class="tab-btn" data-tab="settings-services" data-i18n="settings.tabs.services">Services</button>
         <button class="tab-btn" data-tab="settings-classifications" data-i18n="settings.tabs.classifications">Classifications</button>
         <button class="tab-btn" data-tab="settings-incidents" data-i18n="settings.tabs.incidents">Incidents</button>
         <button class="tab-btn" data-tab="settings-sources" data-i18n="settings.tabs.sources">Sources</button>
@@ -407,6 +408,24 @@
             </div>
             <div class="card-body">
               <div class="pill-list" id="settings-tags-list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="tab-panel settings-panel" id="settings-services" data-tab="settings-services" hidden>
+          <div class="card nested-card settings-card">
+            <div class="card-header settings-header">
+              <div>
+                <h3 data-i18n="settings.services.title">Services</h3>
+                <p class="muted" data-i18n="settings.services.subtitle">Manage service catalog for access control.</p>
+              </div>
+              <div class="form-inline add-row">
+                <input id="settings-service-input" data-i18n-placeholder="settings.services.placeholder" placeholder="New service">
+                <button class="btn primary" id="settings-service-add" data-i18n="settings.services.add">Add</button>
+              </div>
+            </div>
+            <div class="card-body">
+              <div class="pill-list" id="settings-services-list"></div>
             </div>
           </div>
         </div>

@@ -1,0 +1,719 @@
+const AccessesPage = (() => {
+  const STORAGE_KEY = 'berkut.accesses.users';
+  const API_ENDPOINT = '/api/accesses';
+  const state = {
+    rows: [],
+    activeViewId: '',
+    actor: 'system',
+  };
+
+  function init() {
+    const root = document.getElementById('accesses-page');
+    if (!root) return;
+    loadRows();
+    loadRowsRemote();
+    fetchActor();
+    bindActions();
+    bindCreateForm();
+    bindEditForm();
+    bindSupplementForm();
+    bindViewActions();
+    bindDirectoriesEvents();
+    renderCards();
+  }
+
+  function nowISO() {
+    return new Date().toISOString();
+  }
+
+  function formatDT(value) {
+    if (window.AppTime?.formatDateTime) return AppTime.formatDateTime(value);
+    return String(value || '-');
+  }
+
+  function cleanService(raw) {
+    return String(raw || '').trim().toUpperCase();
+  }
+
+  function cleanText(raw) {
+    return String(raw || '').trim();
+  }
+
+  function dedupeServices(list) {
+    return Array.from(new Set((list || []).map(cleanService).filter(Boolean)));
+  }
+
+  function normalizeEvent(event) {
+    if (!event || typeof event !== 'object') return null;
+    return {
+      at: event.at || nowISO(),
+      type: String(event.type || 'update'),
+      added: dedupeServices(event.added || []),
+      removed: dedupeServices(event.removed || []),
+      details: cleanText(event.details || ''),
+      by: cleanText(event.by || ''),
+    };
+  }
+
+  function normalizeRow(row) {
+    if (!row || typeof row !== 'object') return null;
+    const user = cleanText(row.user);
+    if (!user) return null;
+    const created = row.created_at || nowISO();
+    const updated = row.updated_at || created;
+    const services = dedupeServices(row.services || []);
+    const historyRaw = Array.isArray(row.history) ? row.history : [];
+    const history = historyRaw.map(normalizeEvent).filter(Boolean);
+    return {
+      id: String(row.id || `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`),
+      user,
+      services,
+      position: cleanText(row.position || ''),
+      department: cleanText(row.department || ''),
+      blocked: !!row.blocked,
+      created_at: created,
+      updated_at: updated,
+      history: history.length ? history : [{
+        at: created,
+        type: 'create',
+        added: services,
+        removed: [],
+        details: '',
+      }],
+    };
+  }
+
+  function loadRows() {
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      state.rows = Array.isArray(parsed) ? parsed.map(normalizeRow).filter(Boolean) : [];
+    } catch (err) {
+      state.rows = [];
+      console.warn('[accesses] load failed', err);
+    }
+  }
+
+  async function loadRowsRemote() {
+    if (!window.Api?.get) return;
+    try {
+      const payload = await Api.get(API_ENDPOINT);
+      const items = Array.isArray(payload?.items) ? payload.items : [];
+      state.rows = items.map(normalizeRow).filter(Boolean);
+      saveRowsLocalMirror();
+      renderCards();
+    } catch (err) {
+      console.warn('[accesses] remote load failed', err);
+    }
+  }
+
+  function saveRows() {
+    saveRowsLocalMirror();
+    saveRowsRemote();
+  }
+
+  function saveRowsLocalMirror() {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.rows));
+    } catch (err) {
+      console.warn('[accesses] save failed', err);
+    }
+  }
+
+  async function saveRowsRemote() {
+    if (!window.Api?.put) return;
+    try {
+      await Api.put(API_ENDPOINT, { items: state.rows });
+    } catch (err) {
+      console.warn('[accesses] remote save failed', err);
+    }
+  }
+
+  function getRowById(id) {
+    return state.rows.find(r => r.id === id) || null;
+  }
+
+  function serviceLabel(code) {
+    return window.ServiceDirectory?.label ? ServiceDirectory.label(code) : code;
+  }
+
+  function compareServices(prev, next) {
+    const a = new Set(dedupeServices(prev));
+    const b = new Set(dedupeServices(next));
+    return {
+      added: Array.from(b).filter(v => !a.has(v)),
+      removed: Array.from(a).filter(v => !b.has(v)),
+    };
+  }
+
+  function logEvent(row, event) {
+    const ev = normalizeEvent(event);
+    if (!ev) return;
+    if (!ev.by) ev.by = state.actor || 'system';
+    row.history = Array.isArray(row.history) ? row.history : [];
+    row.history.push(ev);
+    row.updated_at = ev.at;
+  }
+
+  async function fetchActor() {
+    try {
+      const res = await fetch('/api/auth/me', { credentials: 'include' });
+      if (!res.ok) return;
+      const data = await res.json();
+      const login = cleanText(
+        data?.user?.username ||
+        data?.user?.login ||
+        data?.username ||
+        data?.login ||
+        data?.user?.full_name ||
+        ''
+      );
+      if (!login) return;
+      state.actor = login;
+      migrateSystemActors(login);
+    } catch (_) {
+      // Keep fallback actor.
+    }
+  }
+
+  function migrateSystemActors(actor) {
+    if (!actor || actor === 'system') return;
+    let changed = false;
+    state.rows.forEach((row) => {
+      if (!Array.isArray(row.history)) return;
+      row.history = row.history.map((ev) => {
+        if (!ev || typeof ev !== 'object') return ev;
+        const by = cleanText(ev.by || '');
+        if (by && by.toLowerCase() !== 'system') return ev;
+        changed = true;
+        return { ...ev, by: actor };
+      });
+    });
+    if (changed) {
+      saveRows();
+      renderCards();
+      if (state.activeViewId) openViewModal(state.activeViewId);
+    }
+  }
+
+  function bindActions() {
+    const openBtn = document.getElementById('accesses-open-create');
+    if (openBtn) {
+      openBtn.addEventListener('click', () => {
+        renderServicesSelect('accesses-create-services', 'accesses-create-services-hint', []);
+        openModal('#accesses-create-modal');
+      });
+    }
+  }
+
+  function bindDirectoriesEvents() {
+    document.addEventListener('services:changed', () => {
+      const known = new Set((window.ServiceDirectory?.codes ? ServiceDirectory.codes() : []).map(cleanService));
+      state.rows.forEach((row) => {
+        const before = dedupeServices(row.services);
+        const after = before.filter(code => known.has(code));
+        const diff = compareServices(before, after);
+        if (!diff.removed.length) return;
+        row.services = after;
+        logEvent(row, {
+          at: nowISO(),
+          type: 'cleanup',
+          added: [],
+          removed: diff.removed,
+        });
+      });
+      saveRows();
+      renderCards();
+      if (state.activeViewId) openViewModal(state.activeViewId);
+    });
+  }
+
+  function selectedServices(selectId) {
+    const select = document.getElementById(selectId);
+    return dedupeServices(Array.from(select?.selectedOptions || []).map(o => o.value));
+  }
+
+  function renderServicesSelect(selectId, hintId, selectedValues, excludedValues = []) {
+    const select = document.getElementById(selectId);
+    const hint = document.getElementById(hintId);
+    if (!select) return;
+    const selected = new Set(dedupeServices(selectedValues || []));
+    const excluded = new Set(dedupeServices(excludedValues || []));
+    const options = (window.ServiceDirectory?.all ? ServiceDirectory.all() : []);
+    select.innerHTML = '';
+    options.forEach(item => {
+      const code = cleanService(item.code);
+      if (excluded.has(code)) return;
+      const opt = document.createElement('option');
+      opt.value = code;
+      opt.textContent = item.label;
+      opt.dataset.label = item.label;
+      opt.selected = selected.has(code);
+      select.appendChild(opt);
+    });
+    if (window.DocsPage?.enhanceMultiSelects && select.id) {
+      DocsPage.enhanceMultiSelects([select.id]);
+    } else {
+      enhanceMultiSelectLikeDocs(select);
+    }
+    if (window.DocsPage?.bindTagHint && hint) {
+      DocsPage.bindTagHint(select, hint);
+    } else {
+      bindTagHintLikeDocs(select, hint);
+    }
+    return select.options.length;
+  }
+
+  function bindCreateForm() {
+    const form = document.getElementById('accesses-create-form');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const user = cleanText(document.getElementById('accesses-create-user')?.value);
+      const services = selectedServices('accesses-create-services');
+      const position = cleanText(document.getElementById('accesses-create-position')?.value);
+      const department = cleanText(document.getElementById('accesses-create-department')?.value);
+      if (!user) return showAlert(BerkutI18n.t('accesses.errors.userRequired'));
+      if (!services.length) return showAlert(BerkutI18n.t('accesses.errors.servicesRequired'));
+
+      const existing = state.rows.find(r => r.user.toLowerCase() === user.toLowerCase());
+      if (existing) {
+        const diff = compareServices(existing.services, services);
+        existing.services = services;
+        existing.position = position;
+        existing.department = department;
+        logEvent(existing, {
+          at: nowISO(),
+          type: 'update',
+          added: diff.added,
+          removed: diff.removed,
+          details: buildProfileDetails(position, department),
+          by: state.actor,
+        });
+      } else {
+        const created = nowISO();
+        const row = normalizeRow({
+          id: `${Date.now()}_${Math.random().toString(16).slice(2, 8)}`,
+          user,
+          services,
+          position,
+          department,
+          blocked: false,
+          created_at: created,
+          updated_at: created,
+          history: [{
+            at: created,
+            type: 'create',
+            added: services,
+            removed: [],
+            details: buildProfileDetails(position, department),
+            by: state.actor,
+          }],
+        });
+        if (row) state.rows.unshift(row);
+      }
+      saveRows();
+      form.reset();
+      closeModal('#accesses-create-modal');
+      clearAlert();
+      renderCards();
+    });
+  }
+
+  function bindEditForm() {
+    const form = document.getElementById('accesses-edit-form');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = String(document.getElementById('accesses-edit-id')?.value || '');
+      const row = getRowById(id);
+      if (!row) return;
+      const nextUser = cleanText(document.getElementById('accesses-edit-user')?.value);
+      const nextServices = selectedServices('accesses-edit-services');
+      const position = cleanText(document.getElementById('accesses-edit-position')?.value);
+      const department = cleanText(document.getElementById('accesses-edit-department')?.value);
+      if (!nextUser) return showAlert(BerkutI18n.t('accesses.errors.userRequired'));
+      if (!nextServices.length) return showAlert(BerkutI18n.t('accesses.errors.servicesRequired'));
+
+      const diff = compareServices(row.services, nextServices);
+      const renamed = row.user !== nextUser;
+      row.user = nextUser;
+      row.services = nextServices;
+      row.position = position;
+      row.department = department;
+      logEvent(row, {
+        at: nowISO(),
+        type: 'edit',
+        added: diff.added,
+        removed: diff.removed,
+        details: (renamed ? `${BerkutI18n.t('accesses.history.rename')}: ${nextUser}; ` : '') + buildProfileDetails(position, department),
+        by: state.actor,
+      });
+      saveRows();
+      closeModal('#accesses-edit-modal');
+      clearAlert();
+      renderCards();
+      if (state.activeViewId === row.id) openViewModal(row.id);
+    });
+  }
+
+  function bindSupplementForm() {
+    const form = document.getElementById('accesses-supplement-form');
+    if (!form) return;
+    form.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const id = String(document.getElementById('accesses-supplement-id')?.value || '');
+      const row = getRowById(id);
+      if (!row) return;
+      const selected = selectedServices('accesses-supplement-services');
+      if (!selected.length) return showAlert(BerkutI18n.t('accesses.errors.servicesRequired'));
+      const merged = dedupeServices([...(row.services || []), ...selected]);
+      const diff = compareServices(row.services || [], merged);
+      row.services = merged;
+      logEvent(row, {
+        at: nowISO(),
+        type: 'supplement',
+        added: diff.added,
+        removed: diff.removed,
+        details: '',
+        by: state.actor,
+      });
+      saveRows();
+      closeModal('#accesses-supplement-modal');
+      clearAlert();
+      renderCards();
+      if (state.activeViewId === row.id) openViewModal(row.id);
+    });
+  }
+
+  function bindViewActions() {
+    const toggleBtn = document.getElementById('accesses-view-toggle-block');
+    if (!toggleBtn) return;
+    toggleBtn.addEventListener('click', () => {
+      const row = getRowById(state.activeViewId);
+      if (!row) return;
+      row.blocked = !row.blocked;
+      logEvent(row, {
+        at: nowISO(),
+        type: row.blocked ? 'blocked' : 'unblocked',
+        added: [],
+        removed: [],
+        by: state.actor,
+      });
+      saveRows();
+      renderCards();
+      openViewModal(row.id);
+    });
+  }
+
+  function showAlert(text) {
+    const box = document.getElementById('accesses-alert');
+    if (!box) return;
+    box.textContent = text || '';
+    box.hidden = !text;
+  }
+
+  function clearAlert() {
+    showAlert('');
+  }
+
+  function statusText(row) {
+    return row.blocked ? BerkutI18n.t('accesses.status.blocked') : BerkutI18n.t('accesses.status.active');
+  }
+
+  function buildProfileDetails(position, department) {
+    const parts = [];
+    if (position) parts.push(`${BerkutI18n.t('accesses.form.position')}: ${position}`);
+    if (department) parts.push(`${BerkutI18n.t('accesses.form.department')}: ${department}`);
+    return parts.join(' | ');
+  }
+
+  function changeSummary(row) {
+    const last = Array.isArray(row.history) && row.history.length ? row.history[row.history.length - 1] : null;
+    if (!last) return '-';
+    const plus = (last.added || []).map(serviceLabel).join(', ');
+    const minus = (last.removed || []).map(serviceLabel).join(', ');
+    const parts = [];
+    if (plus) parts.push(`+ ${plus}`);
+    if (minus) parts.push(`- ${minus}`);
+    if (last.details) parts.push(last.details);
+    if (!parts.length) {
+      const typeKey = `accesses.history.type.${last.type}`;
+      const txt = BerkutI18n.t(typeKey);
+      return txt && txt !== typeKey ? txt : last.type;
+    }
+    return parts.join(' | ');
+  }
+
+  function renderCards() {
+    const tbody = document.getElementById('accesses-rows');
+    if (!tbody) return;
+    tbody.innerHTML = '';
+    if (!state.rows.length) {
+      const tr = document.createElement('tr');
+      tr.className = 'placeholder';
+      tr.innerHTML = `<td colspan="7">${escapeHtml(BerkutI18n.t('accesses.empty'))}</td>`;
+      tbody.appendChild(tr);
+      return;
+    }
+    state.rows.forEach((row) => {
+      const tr = document.createElement('tr');
+      tr.className = `accesses-row ${row.blocked ? 'is-blocked' : ''}`;
+      tr.addEventListener('click', (e) => {
+        if (e.target.closest('button')) return;
+        openViewModal(row.id);
+      });
+
+      tr.innerHTML = `
+        <td><strong>${escapeHtml(row.user)}</strong></td>
+        <td>${escapeHtml(row.position || '-')}</td>
+        <td>${escapeHtml(row.department || '-')}</td>
+        <td>${servicesPills(row.services || [])}</td>
+        <td><span class="pill ${row.blocked ? 'pill-muted' : ''}">${escapeHtml(statusText(row))}</span></td>
+        <td>${escapeHtml(formatDT(row.updated_at))}</td>
+        <td class="actions"></td>
+      `;
+
+      const actions = tr.querySelector('.actions');
+      if (actions) {
+        actions.appendChild(actionButton('common.edit', () => openEditModal(row.id)));
+        actions.appendChild(actionButton('accesses.actions.supplement', () => openSupplementModal(row.id), 'primary'));
+        actions.appendChild(actionButton('common.delete', () => deleteRow(row.id), 'danger'));
+      }
+      tbody.appendChild(tr);
+    });
+  }
+
+  function servicesPills(services) {
+    const list = dedupeServices(services);
+    if (!list.length) return '-';
+    return list.map((code) => {
+      const label = serviceLabel(code);
+      const idx = Math.abs(hashString(code)) % 8;
+      return `<span class="accesses-service-pill tone-${idx}">${escapeHtml(label)}</span>`;
+    }).join('');
+  }
+
+  function hashString(input) {
+    let h = 0;
+    const s = String(input || '');
+    for (let i = 0; i < s.length; i += 1) h = ((h << 5) - h + s.charCodeAt(i)) | 0;
+    return h;
+  }
+
+  function actionButton(i18nKey, onClick, style = 'ghost') {
+    const btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = `btn ${style}`;
+    btn.textContent = BerkutI18n.t(i18nKey);
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      onClick();
+    });
+    return btn;
+  }
+
+  function openEditModal(id) {
+    const row = getRowById(id);
+    if (!row) return;
+    const idEl = document.getElementById('accesses-edit-id');
+    const userEl = document.getElementById('accesses-edit-user');
+    const posEl = document.getElementById('accesses-edit-position');
+    const depEl = document.getElementById('accesses-edit-department');
+    if (idEl) idEl.value = row.id;
+    if (userEl) userEl.value = row.user;
+    if (posEl) posEl.value = row.position || '';
+    if (depEl) depEl.value = row.department || '';
+    renderServicesSelect('accesses-edit-services', 'accesses-edit-services-hint', row.services);
+    openModal('#accesses-edit-modal');
+  }
+
+  function openSupplementModal(id) {
+    const row = getRowById(id);
+    if (!row) return;
+    const idEl = document.getElementById('accesses-supplement-id');
+    const submitBtn = document.getElementById('accesses-supplement-submit');
+    const hint = document.getElementById('accesses-supplement-services-hint');
+    if (idEl) idEl.value = row.id;
+    const available = renderServicesSelect('accesses-supplement-services', 'accesses-supplement-services-hint', [], row.services || []);
+    if (submitBtn) submitBtn.disabled = !available;
+    if (!available && hint) {
+      hint.textContent = BerkutI18n.t('accesses.supplement.noneLeft') || BerkutI18n.t('common.empty') || '-';
+    }
+    openModal('#accesses-supplement-modal');
+  }
+
+  function enhanceMultiSelectLikeDocs(sel) {
+    if (!sel) return;
+    sel.multiple = true;
+    sel.setAttribute('multiple', 'multiple');
+    if (!sel.size || sel.size < 2) sel.size = 6;
+    const refresh = () => {
+      Array.from(sel.options).forEach((opt) => {
+        const base = opt.dataset.label || opt.textContent;
+        opt.dataset.label = base;
+        opt.textContent = base;
+      });
+      sel.dispatchEvent(new Event('selectionrefresh', { bubbles: false }));
+    };
+    const toggle = (opt) => {
+      opt.selected = !opt.selected;
+      refresh();
+      sel.dispatchEvent(new Event('change', { bubbles: true }));
+    };
+    if (!sel.dataset.accessesEnhanced) {
+      sel.dataset.accessesEnhanced = '1';
+      sel.addEventListener('mousedown', (e) => {
+        const opt = e.target.closest('option');
+        if (!opt) return;
+        e.preventDefault();
+        toggle(opt);
+      });
+      sel.addEventListener('change', refresh);
+      sel.addEventListener('dblclick', (e) => {
+        const opt = e.target.closest('option');
+        if (!opt) return;
+        toggle(opt);
+      });
+    }
+    refresh();
+  }
+
+  function bindTagHintLikeDocs(selectEl, hintEl) {
+    if (!selectEl || !hintEl) return;
+    const render = () => {
+      const options = Array.from(selectEl.selectedOptions || []);
+      hintEl.innerHTML = '';
+      if (!options.length) {
+        hintEl.textContent = BerkutI18n.t('common.notSelected') || BerkutI18n.t('common.empty') || '-';
+        return;
+      }
+      options.forEach((opt) => {
+        const tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = opt.dataset.label || opt.textContent || opt.value;
+        const remove = document.createElement('button');
+        remove.type = 'button';
+        remove.className = 'tag-remove';
+        remove.textContent = 'x';
+        remove.addEventListener('click', () => {
+          opt.selected = false;
+          selectEl.dispatchEvent(new Event('change', { bubbles: true }));
+        });
+        tag.appendChild(remove);
+        hintEl.appendChild(tag);
+      });
+    };
+    if (!selectEl.dataset.accessesHintBound) {
+      selectEl.dataset.accessesHintBound = '1';
+      selectEl.addEventListener('change', render);
+      selectEl.addEventListener('selectionrefresh', render);
+    }
+    render();
+  }
+
+  function openViewModal(id) {
+    const row = getRowById(id);
+    if (!row) return;
+    state.activeViewId = row.id;
+    setText('accesses-view-user', row.user);
+    setText('accesses-view-position', row.position || '-');
+    setText('accesses-view-department', row.department || '-');
+    setText('accesses-view-services', (row.services || []).map(serviceLabel).join(', ') || '-');
+    setText('accesses-view-updated', formatDT(row.updated_at));
+    setText('accesses-view-status', statusText(row));
+    setText('accesses-view-created-by', createdBy(row));
+    const toggleBtn = document.getElementById('accesses-view-toggle-block');
+    if (toggleBtn) {
+      toggleBtn.textContent = row.blocked ? BerkutI18n.t('accesses.actions.unblock') : BerkutI18n.t('accesses.actions.block');
+      toggleBtn.classList.toggle('danger', !row.blocked);
+      toggleBtn.classList.toggle('primary', row.blocked);
+    }
+    renderHistory(row);
+    openModal('#accesses-view-modal');
+  }
+
+  function createdBy(row) {
+    const history = Array.isArray(row?.history) ? row.history : [];
+    const createEvent = history.find(ev => String(ev?.type || '') === 'create') || history[0];
+    const by = cleanText(createEvent?.by || '');
+    return by || '-';
+  }
+
+  function renderHistory(row) {
+    const list = document.getElementById('accesses-activity-list');
+    if (!list) return;
+    list.innerHTML = '';
+    const events = (row.history || []).slice().sort((a, b) => String(b.at).localeCompare(String(a.at)));
+    if (!events.length) {
+      const empty = document.createElement('div');
+      empty.className = 'muted';
+      empty.textContent = BerkutI18n.t('accesses.history.empty');
+      list.appendChild(empty);
+      return;
+    }
+    events.forEach((ev) => {
+      const typeKey = `accesses.history.type.${ev.type}`;
+      const typeLabel = BerkutI18n.t(typeKey) === typeKey ? ev.type : BerkutI18n.t(typeKey);
+      const lines = [];
+      if ((ev.added || []).length) lines.push(`+ ${(ev.added || []).map(serviceLabel).join(', ')}`);
+      if ((ev.removed || []).length) lines.push(`- ${(ev.removed || []).map(serviceLabel).join(', ')}`);
+      if (ev.details) lines.push(ev.details);
+      if (ev.by) lines.push(`${BerkutI18n.t('accesses.history.by')}: ${ev.by}`);
+      const item = document.createElement('div');
+      item.className = 'accesses-activity-item';
+      item.innerHTML = `
+        <div class="accesses-activity-head">
+          <strong>${escapeHtml(typeLabel)}</strong>
+          <span class="muted">${escapeHtml(formatDT(ev.at))}</span>
+        </div>
+        <div class="accesses-activity-body">${escapeHtml(lines.join(' | ') || '-')}</div>
+      `;
+      list.appendChild(item);
+    });
+  }
+
+  function deleteRow(id) {
+    if (!getRowById(id)) return;
+    const doDelete = () => {
+      state.rows = state.rows.filter(r => r.id !== id);
+      saveRows();
+      renderCards();
+      if (state.activeViewId === id) {
+        closeModal('#accesses-view-modal');
+        state.activeViewId = '';
+      }
+    };
+    if (window.AppConfirm?.ask) {
+      window.AppConfirm.ask(BerkutI18n.t('accesses.deleteConfirm'), {
+        title: BerkutI18n.t('common.confirm'),
+        confirmText: BerkutI18n.t('common.delete'),
+        cancelText: BerkutI18n.t('common.cancel'),
+        danger: true,
+      }).then(ok => { if (ok) doDelete(); });
+      return;
+    }
+    if (window.confirm(BerkutI18n.t('accesses.deleteConfirm'))) doDelete();
+  }
+
+  function openModal(selector) {
+    const el = document.querySelector(selector);
+    if (el) el.hidden = false;
+  }
+
+  function closeModal(selector) {
+    const el = document.querySelector(selector);
+    if (el) el.hidden = true;
+  }
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value || '-';
+  }
+
+  function escapeHtml(str) {
+    return (str || '').toString().replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  return { init };
+})();

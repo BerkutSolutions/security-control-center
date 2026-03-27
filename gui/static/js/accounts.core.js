@@ -38,6 +38,7 @@
     { value: 'incidents', labelKey: 'nav.incidents' },
     { value: 'reports', labelKey: 'nav.reports' },
     { value: 'accounts', labelKey: 'nav.accounts' },
+    { value: 'accesses', labelKey: 'nav.accesses' },
     { value: 'settings', labelKey: 'nav.settings' },
     { value: 'backups', labelKey: 'nav.backups' },
     { value: 'logs', labelKey: 'nav.logs' },

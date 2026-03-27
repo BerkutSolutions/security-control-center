@@ -63,6 +63,8 @@ func TestRequiredMenuKeysCoversShellTabsAndAPI(t *testing.T) {
 
 		{path: "/accounts", want: []string{"accounts"}},
 		{path: "/api/accounts/users", want: []string{"accounts"}},
+		{path: "/accesses", want: []string{"accesses"}},
+		{path: "/api/accesses/list", want: []string{"accesses"}},
 
 		{path: "/settings", want: []string{"settings"}},
 		{path: "/api/settings/runtime", want: []string{"settings"}},

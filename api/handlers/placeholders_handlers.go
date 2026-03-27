@@ -25,6 +25,7 @@ var pageFiles = map[string]string{
 	"incidents":  "incidents.html",
 	"reports":    "reports.html",
 	"monitoring": "monitoring.html",
+	"accesses":   "accesses.html",
 }
 
 type PlaceholderHandler struct{}
@@ -76,6 +77,8 @@ func RequiredPermission(name string) rbac.Permission {
 		return "reports.view"
 	case "monitoring":
 		return "monitoring.view"
+	case "accesses":
+		return "accounts.view"
 	case "logs":
 		return "logs.view"
 	default:

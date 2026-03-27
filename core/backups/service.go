@@ -524,6 +524,7 @@ func normalizedBackupScope(in []string) []string {
 		"reports":    {},
 		"monitoring": {},
 		"controls":   {},
+		"accesses":   {},
 		"accounts":   {},
 		"approvals":  {},
 	}

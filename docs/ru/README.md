@@ -2,7 +2,7 @@
 
 
 
-Актуальная версия документации: `1.1.6`
+Актуальная версия документации: `1.1.7`
 
 
 
@@ -101,4 +101,5 @@
 20. OSS: Contributing — `docs/ru/oss/CONTRIBUTING.md`
 21. OSS: Code of Conduct — `docs/ru/oss/CODE_OF_CONDUCT.md`
 22. OSS: Support — `docs/ru/oss/SUPPORT.md`
+
 

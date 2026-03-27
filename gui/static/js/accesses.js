@@ -5,6 +5,7 @@ const AccessesPage = (() => {
     rows: [],
     activeViewId: '',
     actor: 'system',
+    serviceFilter: '',
   };
 
   function init() {
@@ -19,6 +20,8 @@ const AccessesPage = (() => {
     bindSupplementForm();
     bindViewActions();
     bindDirectoriesEvents();
+    bindServiceFilter();
+    renderServiceFilterDatalist();
     renderCards();
   }
 
@@ -101,6 +104,7 @@ const AccessesPage = (() => {
       const items = Array.isArray(payload?.items) ? payload.items : [];
       state.rows = items.map(normalizeRow).filter(Boolean);
       saveRowsLocalMirror();
+      renderServiceFilterDatalist();
       renderCards();
     } catch (err) {
       console.warn('[accesses] remote load failed', err);
@@ -223,9 +227,28 @@ const AccessesPage = (() => {
         });
       });
       saveRows();
+      renderServiceFilterDatalist();
       renderCards();
       if (state.activeViewId) openViewModal(state.activeViewId);
     });
+  }
+
+  function bindServiceFilter() {
+    const input = document.getElementById('accesses-service-filter');
+    if (!input) return;
+    input.addEventListener('input', () => {
+      state.serviceFilter = String(input.value || '').trim().toLowerCase();
+      renderCards();
+    });
+  }
+
+  function renderServiceFilterDatalist() {
+    const list = document.getElementById('accesses-services-datalist');
+    if (!list) return;
+    const options = (window.ServiceDirectory?.all ? ServiceDirectory.all() : [])
+      .map((item) => String(item?.label || '').trim())
+      .filter(Boolean);
+    list.innerHTML = options.map((label) => `<option value="${escapeHtml(label)}"></option>`).join('');
   }
 
   function selectedServices(selectId) {
@@ -449,14 +472,16 @@ const AccessesPage = (() => {
     const tbody = document.getElementById('accesses-rows');
     if (!tbody) return;
     tbody.innerHTML = '';
-    if (!state.rows.length) {
+    const visibleRows = state.rows.filter(matchesServiceFilter);
+    if (!visibleRows.length) {
       const tr = document.createElement('tr');
       tr.className = 'placeholder';
-      tr.innerHTML = `<td colspan="7">${escapeHtml(BerkutI18n.t('accesses.empty'))}</td>`;
+      const emptyKey = state.serviceFilter ? 'accesses.emptyFiltered' : 'accesses.empty';
+      tr.innerHTML = `<td colspan="7">${escapeHtml(BerkutI18n.t(emptyKey))}</td>`;
       tbody.appendChild(tr);
       return;
     }
-    state.rows.forEach((row) => {
+    visibleRows.forEach((row) => {
       const tr = document.createElement('tr');
       tr.className = `accesses-row ${row.blocked ? 'is-blocked' : ''}`;
       tr.addEventListener('click', (e) => {
@@ -468,7 +493,7 @@ const AccessesPage = (() => {
         <td><strong>${escapeHtml(row.user)}</strong></td>
         <td>${escapeHtml(row.position || '-')}</td>
         <td>${escapeHtml(row.department || '-')}</td>
-        <td>${servicesPills(row.services || [])}</td>
+        <td class="accesses-services-count-cell">${escapeHtml(servicesCountLabel(row.services || []))}</td>
         <td><span class="pill ${row.blocked ? 'pill-muted' : ''}">${escapeHtml(statusText(row))}</span></td>
         <td>${escapeHtml(formatDT(row.updated_at))}</td>
         <td class="actions"></td>
@@ -492,6 +517,20 @@ const AccessesPage = (() => {
       const idx = Math.abs(hashString(code)) % 8;
       return `<span class="accesses-service-pill tone-${idx}">${escapeHtml(label)}</span>`;
     }).join('');
+  }
+
+  function servicesCountLabel(services) {
+    const count = dedupeServices(services).length;
+    return String(count);
+  }
+
+  function matchesServiceFilter(row) {
+    if (!state.serviceFilter) return true;
+    const q = state.serviceFilter;
+    return dedupeServices(row.services || []).some((code) => {
+      const label = String(serviceLabel(code) || '').toLowerCase();
+      return code.toLowerCase().includes(q) || label.includes(q);
+    });
   }
 
   function hashString(input) {
@@ -619,7 +658,7 @@ const AccessesPage = (() => {
     setText('accesses-view-user', row.user);
     setText('accesses-view-position', row.position || '-');
     setText('accesses-view-department', row.department || '-');
-    setText('accesses-view-services', (row.services || []).map(serviceLabel).join(', ') || '-');
+    setViewServices(row.services || []);
     setText('accesses-view-updated', formatDT(row.updated_at));
     setText('accesses-view-status', statusText(row));
     setText('accesses-view-created-by', createdBy(row));
@@ -709,6 +748,17 @@ const AccessesPage = (() => {
   function setText(id, value) {
     const el = document.getElementById(id);
     if (el) el.textContent = value || '-';
+  }
+
+  function setViewServices(services) {
+    const el = document.getElementById('accesses-view-services');
+    if (!el) return;
+    const html = servicesPills(services);
+    if (html === '-') {
+      el.textContent = '-';
+      return;
+    }
+    el.innerHTML = html;
   }
 
   function escapeHtml(str) {

@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.1.6`
+Documentation version baseline: `1.1.7`
 
 
 
@@ -113,4 +113,5 @@ Documentation is aligned with current runtime reality:
 - Accesses: added `Accesses` tab (user cards, edit/supplement flow, change history, block/unblock status).
 
 - Settings: added `Services` tab (service catalog used by the `Accesses` tab).
+
 

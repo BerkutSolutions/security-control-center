@@ -65,7 +65,7 @@ Notes:
 - The UI for entering TOTP/recovery code is at `/login/2fa` (so password managers can detect the `one-time-code` field).
 - Passkeys require HTTPS (or `localhost`) and a correct `security.webauthn.*` configuration.
 
-## Backups (v1.1.6)
+## Backups (v1.1.7)
 Primary endpoints:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -145,4 +145,5 @@ SLA specifics:
   - `violated` means SLA target missed;
   - `unknown` means insufficient coverage.
 - SLA incidents are created only on period close and only when the monitor policy enables it.
+
 

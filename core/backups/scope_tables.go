@@ -106,6 +106,9 @@ var scopeTables = map[string][]string{
 		"roles",
 		"app_module_state",
 	},
+	"accesses": {
+		"app_module_state",
+	},
 }
 
 func backupScopeIsAll(scope []string) bool {

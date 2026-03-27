@@ -11,6 +11,11 @@
       <div class="accesses-table-frame">
         <div class="accesses-toolbar">
           <button type="button" class="btn primary" id="accesses-open-create" data-i18n="common.add">Добавить</button>
+          <div class="form-field accesses-service-search-field">
+            <label for="accesses-service-filter" data-i18n="accesses.filters.service">Поиск по сервису</label>
+            <input id="accesses-service-filter" class="input" type="search" list="accesses-services-datalist" data-i18n-placeholder="accesses.filters.servicePlaceholder" placeholder="Введите сервис">
+            <datalist id="accesses-services-datalist"></datalist>
+          </div>
         </div>
         <div class="table-responsive">
           <table class="data-table accesses-table">
@@ -19,7 +24,7 @@
                 <th data-i18n="accesses.table.user">Пользователь</th>
                 <th data-i18n="accesses.form.position">Должность</th>
                 <th data-i18n="accesses.form.department">Отдел</th>
-                <th data-i18n="accesses.form.services">Сервисы</th>
+                <th class="accesses-col-services" data-i18n="accesses.form.services">Сервисы</th>
                 <th data-i18n="accesses.table.status">Статус</th>
                 <th data-i18n="accesses.table.updated">Изменено</th>
                 <th data-i18n="common.actions">Действия</th>
@@ -145,7 +150,7 @@
               <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.position">Должность</span><strong id="accesses-view-position">-</strong></div>
               <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.department">Отдел</span><strong id="accesses-view-department">-</strong></div>
               <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.status">Статус</span><strong id="accesses-view-status">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.services">Доступные сервисы</span><strong id="accesses-view-services">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.services">Доступные сервисы</span><div id="accesses-view-services" class="accesses-view-services-list">-</div></div>
               <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.updated">Изменено</span><strong id="accesses-view-updated">-</strong></div>
               <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.createdBy">Кто создал</span><strong id="accesses-view-created-by">-</strong></div>
             </div>

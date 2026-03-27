@@ -10964,3 +10964,60 @@ body.auth-locked #main-screen {
     grid-template-columns: 1fr;
   }
 }
+
+/* Accesses v1.1.7 overrides: compact services column + service filter + improved modal pills */
+#accesses-page .accesses-toolbar {
+  align-items: flex-end;
+  gap: 12px;
+  justify-content: space-between;
+  flex-wrap: wrap;
+}
+
+#accesses-page .accesses-service-search-field {
+  min-width: 260px;
+  max-width: 360px;
+  margin: 0;
+}
+
+#accesses-page .accesses-service-search-field label {
+  font-size: 12px;
+  color: rgba(176, 192, 232, 0.84);
+  margin-bottom: 6px;
+}
+
+#accesses-page .accesses-col-services,
+#accesses-page .accesses-services-count-cell {
+  width: 90px;
+  max-width: 90px;
+  text-align: center;
+  white-space: nowrap;
+}
+
+#accesses-page .accesses-services-count-cell {
+  font-weight: 700;
+  color: rgba(214, 224, 255, 0.96);
+}
+
+#accesses-page .accesses-view-services-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+#accesses-page .accesses-view-services-list .accesses-service-pill {
+  margin: 0;
+}
+
+#accesses-page .accesses-view-feed-frame .accesses-activity-list {
+  grid-template-columns: 1fr;
+  max-height: 396px;
+  overflow-y: auto;
+}
+
+@media (max-width: 900px) {
+  #accesses-page .accesses-service-search-field {
+    min-width: 0;
+    width: 100%;
+    max-width: 100%;
+  }
+}

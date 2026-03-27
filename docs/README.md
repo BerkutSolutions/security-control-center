@@ -1,6 +1,6 @@
 ﻿# Documentation
 
-Version baseline: `1.1.6`
+Version baseline: `1.1.7`
 
 This directory contains detailed technical documentation for the current runtime model.
 
@@ -51,4 +51,5 @@ Primary entry points:
 Root product overview:
 - `README.md`
 - `README.en.md`
+
 

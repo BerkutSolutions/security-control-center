@@ -55,8 +55,17 @@ func (s *Server) registerCoreAPIRoutes(apiRouter chi.Router, h routeHandlers) {
 	apiRouter.MethodFunc("POST", "/app/jobs/{id}/cancel", s.withSession(s.requirePermission("app.compat.manage.partial")(h.jobs.Cancel)))
 	apiRouter.MethodFunc("GET", "/dashboard", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.Data)))
 	apiRouter.MethodFunc("POST", "/dashboard/layout", s.withSession(s.requirePermission("dashboard.view")(h.dashboard.SaveLayout)))
-	apiRouter.MethodFunc("GET", "/accesses", s.withSession(s.requirePermission("accounts.view")(h.accesses.Get)))
-	apiRouter.MethodFunc("PUT", "/accesses", s.withSession(s.requirePermission("accounts.view")(h.accesses.Put)))
+	apiRouter.MethodFunc("GET", "/accesses", s.withSession(s.requireAnyPermission("accounts.view", "accounts.manage", "app.view")(h.accesses.Get)))
+	apiRouter.MethodFunc("PUT", "/accesses", s.withSession(s.requireAnyPermission("accounts.view", "accounts.manage", "app.view")(h.accesses.Put)))
+	apiRouter.MethodFunc("GET", "/services", s.withSession(s.requireAnyPermission("accounts.view", "accounts.manage", "settings.tags", "app.view")(h.servicesCatalog.Get)))
+	apiRouter.MethodFunc("PUT", "/services", s.withSession(s.requireAnyPermission("accounts.view", "accounts.manage", "settings.tags", "app.view")(h.servicesCatalog.Put)))
+	apiRouter.MethodFunc("GET", "/catalog/tags", s.withSession(s.requireAnyPermission("settings.tags", "app.view")(h.tagsCatalog.Get)))
+	apiRouter.MethodFunc("PUT", "/catalog/tags", s.withSession(s.requireAnyPermission("settings.tags", "app.view")(h.tagsCatalog.Put)))
+	apiRouter.MethodFunc("GET", "/catalog/classifications", s.withSession(s.requireAnyPermission("settings.tags", "app.view")(h.classificationsCatalog.Get)))
+	apiRouter.MethodFunc("PUT", "/catalog/classifications", s.withSession(s.requireAnyPermission("settings.tags", "app.view")(h.classificationsCatalog.Put)))
+	apiRouter.MethodFunc("GET", "/notifications/settings", s.withSession(s.requireAnyPermission("monitoring.notifications.view", "monitoring.settings.manage", "accounts.view")(h.notificationsSettings.Get)))
+	apiRouter.MethodFunc("PUT", "/notifications/settings", s.withSession(s.requireAnyPermission("monitoring.settings.manage", "accounts.view")(h.notificationsSettings.Put)))
+	apiRouter.MethodFunc("POST", "/notifications/accesses-event", s.withSession(s.requireAnyPermission("accounts.view", "accounts.manage", "monitoring.settings.manage", "monitoring.notifications.manage")(h.notificationsSettings.HandleAccessesEvent)))
 }
 
 func (s *Server) registerPageRoutes(h routeHandlers) {

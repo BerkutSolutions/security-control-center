@@ -24,6 +24,8 @@ func (s *Server) registerShellTabRoutes(appShell http.HandlerFunc) {
 	s.router.MethodFunc("GET", "/software/*", appShell)
 	s.router.MethodFunc("GET", "/monitoring", appShell)
 	s.router.MethodFunc("GET", "/monitoring/*", appShell)
+	s.router.MethodFunc("GET", "/notifications", appShell)
+	s.router.MethodFunc("GET", "/notifications/*", appShell)
 	s.router.MethodFunc("GET", "/reports", appShell)
 	s.router.MethodFunc("GET", "/reports/*", appShell)
 	s.router.MethodFunc("GET", "/backups", appShell)

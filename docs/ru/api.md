@@ -64,7 +64,7 @@ Session endpoints (нужна сессия + права вкладки):
 - UI для подтверждения TOTP/recovery находится на `/login/2fa` (чтобы менеджеры паролей подхватывали `one-time-code`).
 - Passkeys требуют HTTPS (или `localhost`) и корректной конфигурации `security.webauthn.*`.
 
-## Бэкапы (v1.1.7)
+## Бэкапы (v1.2.0)
 Основные endpoint:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -135,6 +135,18 @@ Session endpoints (нужна сессия + права вкладки):
   - `POST /api/monitoring/notifications/{id}/test`
   - `GET /api/monitoring/monitors/{id}/notifications`
   - `PUT /api/monitoring/monitors/{id}/notifications`
+- Настройки уведомлений:
+  - `GET /api/notifications/settings`
+  - `PUT /api/notifications/settings`
+  - `POST /api/notifications/accesses-event`
+- Каталог сервисов (для вкладки Доступы):
+  - `GET /api/services`
+  - `PUT /api/services`
+- Каталоги тегов и классификаций (для вкладок Настроек):
+  - `GET /api/catalog/tags`
+  - `PUT /api/catalog/tags`
+  - `GET /api/catalog/classifications`
+  - `PUT /api/catalog/classifications`
 
 SLA-особенности:
 - Закрытые периоды (`day/week/month`) рассчитываются фоновым evaluator (scheduler), а не кнопкой UI.
@@ -144,8 +156,9 @@ SLA-особенности:
   - `unknown` — недостаточно покрытия измерениями.
 - SLA-инцидент создается только при закрытии выбранного периода и только при включенной policy.
 
-## API update notes (1.1.7)
+## API update notes (1.2.0)
 - Critical endpoints require fresh step-up verification (15-minute window): log purge requests/approve, runtime/https updates, privileged account/group/role mutations.
 - `GET /api/monitoring/monitors/{id}/metrics` now includes forensic/debug fields: `final_url`, `remote_ip`, `response_headers`.
+
 
 

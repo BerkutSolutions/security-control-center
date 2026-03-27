@@ -520,15 +520,17 @@ func sanitizeRoles(in []string, fallback string) []string {
 
 var allowedMenuKeys = map[string]struct{}{
 	"dashboard": {}, "tasks": {}, "controls": {}, "monitoring": {}, "incidents": {}, "docs": {},
-	"reports": {}, "backups": {}, "accounts": {}, "accesses": {}, "settings": {}, "logs": {},
+	"reports": {}, "backups": {}, "accounts": {}, "accesses": {}, "notifications": {}, "settings": {}, "logs": {},
 }
 
 var menuKeyAliases = map[string]string{
-	"documents": "docs",
-	"document":  "docs",
-	"approvals": "docs",
-	"approval":  "docs",
-	"access":    "accesses",
+	"documents":    "docs",
+	"document":     "docs",
+	"approvals":    "docs",
+	"approval":     "docs",
+	"access":       "accesses",
+	"notify":       "notifications",
+	"notification": "notifications",
 }
 
 func sanitizeMenuPermissions(perms []string) []string {

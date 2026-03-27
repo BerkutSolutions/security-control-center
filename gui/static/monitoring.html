@@ -5,7 +5,6 @@
     <button class="tab-btn" data-tab="monitoring-tab-sla" data-i18n="monitoring.tabs.sla">SLA</button>
     <button class="tab-btn" data-tab="monitoring-tab-maintenance" data-i18n="monitoring.tabs.maintenance">Maintenance</button>
     <button class="tab-btn" data-tab="monitoring-tab-cert" data-i18n="monitoring.tabs.certificates">Certificates</button>
-    <button class="tab-btn" data-tab="monitoring-tab-notify" data-i18n="monitoring.tabs.notifications">Notifications</button>
     <button class="tab-btn" data-tab="monitoring-tab-settings" data-i18n="monitoring.tabs.settings">Settings</button>
   </div>
   <div class="tab-panels">
@@ -304,33 +303,6 @@
         </div>
       </div>
     </div>
-    <div class="tab-panel" id="monitoring-tab-notify" data-tab="monitoring-tab-notify" hidden>
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <h3 data-i18n="monitoring.notifications.title">Notifications</h3>
-            <p class="muted" data-i18n="monitoring.notifications.subtitle">Telegram channels for monitoring alerts</p>
-          </div>
-          <button class="btn primary" id="monitoring-notify-new" data-i18n="monitoring.notifications.new">+ New notification</button>
-        </div>
-        <div class="card-body">
-          <div class="alert" id="monitoring-notify-alert" hidden></div>
-          <div class="monitoring-table" id="monitoring-notify-list"></div>
-        </div>
-      </div>
-      <div class="card">
-        <div class="card-header">
-          <div>
-            <h3 data-i18n="monitoring.notifications.deliveryTitle">Delivery history</h3>
-            <p class="muted" data-i18n="monitoring.notifications.deliverySubtitle">Latest sent/failed/suppressed notifications</p>
-          </div>
-          <button class="btn ghost" id="monitoring-notify-delivery-refresh" data-i18n="common.refresh">Refresh</button>
-        </div>
-        <div class="card-body">
-          <div class="monitoring-table" id="monitoring-notify-delivery-list"></div>
-        </div>
-      </div>
-    </div>
     <div class="tab-panel" id="monitoring-tab-sla" data-tab="monitoring-tab-sla" hidden>
       <div class="card">
         <div class="card-header">
@@ -473,6 +445,12 @@
               <label class="checkbox">
                 <input type="checkbox" id="monitoring-notify-maintenance">
                 <span data-i18n="monitoring.settings.notifyMaintenance">Notify maintenance start/end</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="monitoring-notifications-enabled">
+                <span data-i18n="notifications.settings.monitoringEnabled">Enable notifications for monitoring</span>
               </label>
             </div>
             <div class="form-field">

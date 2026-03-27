@@ -121,6 +121,11 @@
       if (selected) MonitoringPage.loadDetail?.(selected.id);
       else if (!items.length) MonitoringPage.clearDetail?.();
     } catch (err) {
+      const status = Number(err?.status || 0);
+      const msg = String(err?.message || '').trim().toLowerCase();
+      if (status === 401 || status === 502 || status === 503 || status === 504 || msg === 'common.serviceunavailable' || msg.includes('failed to fetch') || msg.includes('network')) {
+        return;
+      }
       console.error('monitor list', err);
     }
   }

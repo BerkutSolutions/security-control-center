@@ -11,21 +11,22 @@ import (
 )
 
 var pageFiles = map[string]string{
-	"profile":    "profile.html",
-	"docs":       "docs.html",
-	"approvals":  "approvals.html",
-	"logs":       "logs.html",
-	"controls":   "controls.html",
-	"registry":   "controls.html",
-	"assets":     "assets.html",
-	"software":   "software.html",
-	"backups":    "backups.html",
-	"tasks":      "tasks.html",
-	"findings":   "findings.html",
-	"incidents":  "incidents.html",
-	"reports":    "reports.html",
-	"monitoring": "monitoring.html",
-	"accesses":   "accesses.html",
+	"profile":       "profile.html",
+	"docs":          "docs.html",
+	"approvals":     "approvals.html",
+	"logs":          "logs.html",
+	"controls":      "controls.html",
+	"registry":      "controls.html",
+	"assets":        "assets.html",
+	"software":      "software.html",
+	"backups":       "backups.html",
+	"tasks":         "tasks.html",
+	"findings":      "findings.html",
+	"incidents":     "incidents.html",
+	"reports":       "reports.html",
+	"monitoring":    "monitoring.html",
+	"notifications": "notifications.html",
+	"accesses":      "accesses.html",
 }
 
 type PlaceholderHandler struct{}
@@ -77,6 +78,8 @@ func RequiredPermission(name string) rbac.Permission {
 		return "reports.view"
 	case "monitoring":
 		return "monitoring.view"
+	case "notifications":
+		return "monitoring.notifications.view"
 	case "accesses":
 		return "accounts.view"
 	case "logs":

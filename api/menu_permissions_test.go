@@ -49,6 +49,9 @@ func TestRequiredMenuKeysCoversShellTabsAndAPI(t *testing.T) {
 
 		{path: "/monitoring", want: []string{"monitoring"}},
 		{path: "/api/monitoring/events", want: []string{"monitoring"}},
+		{path: "/api/monitoring/notifications", want: []string{"monitoring", "notifications"}},
+		{path: "/notifications", want: []string{"notifications"}},
+		{path: "/api/notifications/settings", want: []string{"notifications"}},
 
 		{path: "/reports", want: []string{"reports"}},
 		{path: "/api/reports/1/charts", want: []string{"reports"}},

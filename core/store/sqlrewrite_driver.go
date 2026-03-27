@@ -129,10 +129,72 @@ func (c *rewriteConn) wrapResultWithLastInsertID(ctx context.Context, query stri
 	if !isInsert {
 		return rewriteResult{base: res}, nil
 	}
-	_ = ctx
-	_ = query
+	lastID, ok := c.resolveLastInsertID(ctx, query)
+	if ok {
+		return rewriteResult{base: res, lastInsertID: lastID, hasLastID: true}, nil
+	}
 	_ = args
 	return rewriteResult{base: res}, nil
+}
+
+var reInsertIntoTable = regexp.MustCompile(`(?is)^\s*insert\s+into\s+("?[\w.]+"?)`)
+
+func (c *rewriteConn) resolveLastInsertID(ctx context.Context, query string) (int64, bool) {
+	table := extractInsertTable(query)
+	if table == "" {
+		return 0, false
+	}
+	const q = `SELECT currval(pg_get_serial_sequence($1, 'id'))`
+	args := []driver.NamedValue{{Ordinal: 1, Value: table}}
+	if qx, ok := c.Conn.(driver.QueryerContext); ok {
+		rows, err := qx.QueryContext(ctx, q, args)
+		if err != nil {
+			return 0, false
+		}
+		defer rows.Close()
+		cols := rows.Columns()
+		if len(cols) < 1 {
+			return 0, false
+		}
+		dest := make([]driver.Value, 1)
+		if err := rows.Next(dest); err != nil {
+			return 0, false
+		}
+		if id, ok := asInt64(dest[0]); ok {
+			return id, true
+		}
+		return 0, false
+	}
+	return 0, false
+}
+
+func extractInsertTable(query string) string {
+	m := reInsertIntoTable.FindStringSubmatch(query)
+	if len(m) < 2 {
+		return ""
+	}
+	return strings.TrimSpace(m[1])
+}
+
+func asInt64(v any) (int64, bool) {
+	switch t := v.(type) {
+	case int64:
+		return t, true
+	case int32:
+		return int64(t), true
+	case int:
+		return int64(t), true
+	case float64:
+		return int64(t), true
+	case []byte:
+		n, err := strconv.ParseInt(string(t), 10, 64)
+		return n, err == nil
+	case string:
+		n, err := strconv.ParseInt(t, 10, 64)
+		return n, err == nil
+	default:
+		return 0, false
+	}
 }
 
 var reInsertOrIgnore = regexp.MustCompile(`(?is)^\s*insert\s+or\s+ignore\s+into\s+`)

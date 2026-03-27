@@ -3,7 +3,7 @@
   let inactivityTimer;
   let autoLogoutHandler;
   let pingTimer;
-  const MENU_ORDER = ['dashboard', 'tasks', 'monitoring', 'docs', 'approvals', 'incidents', 'registry', 'reports', 'accounts', 'accesses', 'settings', 'backups', 'logs'];
+  const MENU_ORDER = ['dashboard', 'tasks', 'monitoring', 'notifications', 'docs', 'approvals', 'incidents', 'registry', 'reports', 'accounts', 'accesses', 'settings', 'backups', 'logs'];
   const lang = prefs.language || localStorage.getItem('berkut_lang') || 'ru';
   await BerkutI18n.load(lang);
   BerkutI18n.apply();
@@ -15,6 +15,7 @@
   let me;
   let pendingDocsTab = null;
   let appMetaTimer;
+  const SIDEBAR_COLLAPSE_KEY = 'berkut_sidebar_collapsed';
   try {
     me = await Api.get('/api/auth/me');
   } catch (err) {
@@ -47,6 +48,7 @@
   migrateLegacyHash(menuResp.menu);
   let currentPage = pickInitialPage(menuResp.menu);
   renderMenu(menuResp.menu, currentPage);
+  initSidebarCollapse();
   if (typeof AppNotifications !== 'undefined' && AppNotifications.init) {
     AppNotifications.init((menuResp.menu || []).map(i => i.path));
   }
@@ -119,6 +121,7 @@
     if (base === 'registry') return 'registry';
     if (base === 'controls') return 'registry';
     if (base === 'monitoring') return 'monitoring';
+    if (base === 'notifications') return 'notifications';
     if (base === 'backups') return 'backups';
     if (base === 'reports') return 'reports';
     if (base === 'assets') return 'assets';
@@ -233,6 +236,12 @@
       const link = document.createElement('a');
       link.className = 'sidebar-link';
       link.href = `/${item.path}`;
+      link.title = BerkutI18n.t(`nav.${item.name}`) || item.name;
+      link.setAttribute('aria-label', BerkutI18n.t(`nav.${item.name}`) || item.name);
+      const icon = document.createElement('span');
+      icon.className = 'sidebar-link-icon';
+      icon.innerHTML = menuIconSvg(item.path);
+      link.appendChild(icon);
       const label = document.createElement('span');
       label.className = 'sidebar-link-label';
       label.textContent = BerkutI18n.t(`nav.${item.name}`) || item.name;
@@ -250,6 +259,42 @@
     if (typeof AppNotifications !== 'undefined' && AppNotifications.onMenuRendered) {
       AppNotifications.onMenuRendered();
     }
+  }
+
+  function menuIconSvg(path) {
+    const icons = {
+      dashboard: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 13h8V3H3v10Zm10 8h8V11h-8v10ZM3 21h8v-6H3v6Zm10-10h8V3h-8v8Z"/></svg>',
+      tasks: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9 11H7v2h2v-2Zm0-4H7v2h2V7Zm0 8H7v2h2v-2Zm2 2h6v-2h-6v2Zm0-8v2h10V9H11Zm0-4v2h10V5H11Z"/></svg>',
+      monitoring: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 17h2.5l2.5-7 3.5 10 2.5-6H21v2h-5.5l-4 9-3.5-10-1.5 4H3v-2Z"/></svg>',
+      notifications: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2a5 5 0 0 0-5 5v2.2c0 .7-.2 1.4-.6 2L4.7 14a1 1 0 0 0 .8 1.5h13a1 1 0 0 0 .8-1.5l-1.7-2.8c-.4-.6-.6-1.3-.6-2V7a5 5 0 0 0-5-5Zm0 20a3 3 0 0 0 2.8-2H9.2A3 3 0 0 0 12 22Z"/></svg>',
+      docs: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M6 2h9l5 5v15a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2Zm8 1.5V8h4.5L14 3.5ZM8 12h8v-2H8v2Zm0 4h8v-2H8v2Z"/></svg>',
+      approvals: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M9.5 16.2 5.3 12l1.4-1.4 2.8 2.8 7.8-7.8 1.4 1.4-9.2 9.2Z"/></svg>',
+      incidents: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M1 21h22L12 2 1 21Zm12-3h-2v-2h2v2Zm0-4h-2v-4h2v4Z"/></svg>',
+      registry: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 4h16v4H4V4Zm0 6h16v4H4v-4Zm0 6h16v4H4v-4Z"/></svg>',
+      reports: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 3h18v18H3V3Zm4 12h2V9H7v6Zm4 0h2V7h-2v8Zm4 0h2v-4h-2v4Z"/></svg>',
+      accounts: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16 11c1.7 0 3-1.3 3-3S17.7 5 16 5s-3 1.3-3 3 1.3 3 3 3Zm-8 0c1.7 0 3-1.3 3-3S9.7 5 8 5 5 6.3 5 8s1.3 3 3 3Zm0 2c-2.3 0-7 1.2-7 3.5V19h14v-2.5C15 14.2 10.3 13 8 13Zm8 0c-.3 0-.7 0-1.1.1 1.2.9 2.1 2.1 2.1 3.4V19H24v-2.5c0-2.3-4.7-3.5-8-3.5Z"/></svg>',
+      accesses: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M12 2 4 5v6c0 5.5 3.8 10.6 8 12 4.2-1.4 8-6.5 8-12V5l-8-3Zm-1 14-4-4 1.4-1.4 2.6 2.6 4.6-4.6L17 10l-6 6Z"/></svg>',
+      settings: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19.14 12.94a7.96 7.96 0 0 0 .06-.94 7.96 7.96 0 0 0-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.48 7.48 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.5-.42h-3.84a.5.5 0 0 0-.5.42l-.36 2.54c-.58.22-1.12.53-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.7 8.84a.5.5 0 0 0 .12.64l2.03 1.58a7.96 7.96 0 0 0-.06.94c0 .32.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.41 1.05.73 1.63.94l.36 2.54c.04.24.25.42.5.42h3.84c.25 0 .46-.18.5-.42l.36-2.54c.58-.21 1.13-.53 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.6A3.6 3.6 0 1 1 12 8.4a3.6 3.6 0 0 1 0 7.2Z"/></svg>',
+      backups: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M20 8h-3V4H7v4H4l8 8 8-8Zm-2 10H6v2h12v-2Z"/></svg>',
+      logs: '<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M4 2h14l4 4v16H4V2Zm13 1.5V7h3.5L17 3.5ZM8 11h8V9H8v2Zm0 4h8v-2H8v2Zm0 4h8v-2H8v2Z"/></svg>'
+    };
+    return icons[path] || '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="6" fill="currentColor"/></svg>';
+  }
+
+  function initSidebarCollapse() {
+    const toggle = document.getElementById('sidebar-toggle');
+    if (!toggle) return;
+    const applyState = (collapsed) => {
+      document.body.classList.toggle('sidebar-collapsed', collapsed);
+      toggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+      localStorage.setItem(SIDEBAR_COLLAPSE_KEY, collapsed ? '1' : '0');
+    };
+    const savedCollapsed = localStorage.getItem(SIDEBAR_COLLAPSE_KEY) === '1';
+    applyState(savedCollapsed);
+    toggle.addEventListener('click', () => {
+      const collapsed = document.body.classList.contains('sidebar-collapsed');
+      applyState(!collapsed);
+    });
   }
 
   function initAppConfirm() {
@@ -344,7 +389,7 @@
     area.innerHTML = html;
     const titleEl = document.getElementById('page-title');
     const descEl = document.getElementById('page-desc');
-    if (path === 'docs' || path === 'accesses') {
+    if (path === 'docs') {
       if (titleEl) titleEl.textContent = '';
       if (descEl) descEl.textContent = '';
     } else {
@@ -415,6 +460,9 @@
     if (path === 'monitoring' && typeof MonitoringPage !== 'undefined') {
       MonitoringPage.init();
     }
+    if (path === 'notifications' && typeof NotificationsPage !== 'undefined') {
+      NotificationsPage.init();
+    }
     if (path === 'reports' && typeof ReportsPage !== 'undefined') {
       ReportsPage.init();
     }
@@ -472,9 +520,14 @@
     const intervalMs = 45000;
     const ping = async () => {
       try {
-        await Api.post('/api/app/ping');
+        await Api.post('/api/app/ping', {}, { headers: { 'X-Berkut-Background': '1' } });
       } catch (err) {
-        console.debug('ping failed', err);
+        const status = Number(err?.status || 0);
+        const msg = String(err?.message || '').toLowerCase();
+        if (status === 401 || msg.includes('failed to fetch') || msg.includes('network') || msg === 'common.serviceunavailable') {
+          clearInterval(pingTimer);
+          pingTimer = null;
+        }
       }
     };
     pingTimer = setInterval(ping, intervalMs);
@@ -504,8 +557,7 @@
     const versionEl = document.getElementById('app-version');
     const badgeEl = document.getElementById('app-update-badge');
     if (versionEl) {
-      const mode = meta?.is_home_mode ? 'HOME' : 'Enterprise';
-      versionEl.textContent = `${BerkutI18n.t('settings.version')}: ${meta?.app_version || '-'} | ${mode}`;
+      versionEl.textContent = `v${meta?.app_version || '-'}`;
     }
     if (!badgeEl) return;
     const update = meta?.update;
@@ -605,6 +657,8 @@
         return BerkutI18n.t('findings.subtitle');
       case 'monitoring':
         return BerkutI18n.t('monitoring.subtitle');
+      case 'notifications':
+        return BerkutI18n.t('notifications.subtitle');
       case 'logs':
         return BerkutI18n.t('logs.subtitle');
       case 'settings':

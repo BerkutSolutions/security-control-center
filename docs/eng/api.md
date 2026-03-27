@@ -1,4 +1,4 @@
-﻿# API
+# API
 
 Base path: `/api`
 
@@ -65,7 +65,7 @@ Notes:
 - The UI for entering TOTP/recovery code is at `/login/2fa` (so password managers can detect the `one-time-code` field).
 - Passkeys require HTTPS (or `localhost`) and a correct `security.webauthn.*` configuration.
 
-## Backups (v1.1.7)
+## Backups (v1.2.0)
 Primary endpoints:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -137,6 +137,18 @@ Primary endpoints:
   - `POST /api/monitoring/notifications/{id}/test`
   - `GET /api/monitoring/monitors/{id}/notifications`
   - `PUT /api/monitoring/monitors/{id}/notifications`
+- Notification settings:
+  - `GET /api/notifications/settings`
+  - `PUT /api/notifications/settings`
+  - `POST /api/notifications/accesses-event`
+- Services catalog (used by Accesses tab):
+  - `GET /api/services`
+  - `PUT /api/services`
+- Tags and classifications catalogs (used by Settings tabs):
+  - `GET /api/catalog/tags`
+  - `PUT /api/catalog/tags`
+  - `GET /api/catalog/classifications`
+  - `PUT /api/catalog/classifications`
 
 SLA specifics:
 - Closed periods (`day/week/month`) are calculated by background evaluator jobs, not by the UI save action.

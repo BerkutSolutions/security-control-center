@@ -28,7 +28,6 @@ Legacy маршруты `/controls/...` и прямые `/assets`, `/software`, 
 - `/monitoring/sla`
 - `/monitoring/maintenance`
 - `/monitoring/certs`
-- `/monitoring/notifications`
 - `/monitoring/settings`
 
 Кратко по SLA:
@@ -65,6 +64,11 @@ Builder, sections, charts, snapshots, templates, export.
 
 ## Settings
 General/Advanced/HTTPS/Tags/Incidents/Registries/About.
+
+## Уведомления
+Маршруты вкладок:
+- `/notifications/channels`
+- `/notifications/settings`
 
 ## Logs
 Просмотр аудита операций.

@@ -1,4 +1,8 @@
 const Api = (() => {
+  let bgBackoffUntil = 0;
+  let bgBackoffMessage = 'common.serviceUnavailable';
+  let bgBackoffStatus = 0;
+
   function shouldNotifyDataChanged(method, url) {
     if (!method || String(method).toUpperCase() === 'GET') return false;
     const path = String(url || '');
@@ -48,6 +52,13 @@ const Api = (() => {
   async function request(method, url, body, options = null) {
     const opts = { method, headers: {}, credentials: 'include' };
     const extraHeaders = options && options.headers && typeof options.headers === 'object' ? options.headers : null;
+    const isBackground = extraHeaders && `${extraHeaders['X-Berkut-Background'] || ''}` === '1';
+    if (isBackground && Date.now() < bgBackoffUntil) {
+      const bgErr = new Error(bgBackoffMessage || 'common.serviceUnavailable');
+      bgErr.status = Number(bgBackoffStatus || 0);
+      bgErr.path = String(url || '');
+      throw bgErr;
+    }
     const lang = (localStorage.getItem('berkut_lang') || '').trim();
     if (lang) opts.headers['Accept-Language'] = lang;
     if (extraHeaders) {
@@ -67,12 +78,30 @@ const Api = (() => {
     try {
       res = await fetch(url, opts);
     } catch (err) {
-      throw new Error((err && err.message ? String(err.message) : 'common.networkError').trim());
+      const message = (err && err.message ? String(err.message) : 'common.networkError').trim();
+      if (isBackground) {
+        bgBackoffUntil = Date.now() + 15000;
+        bgBackoffMessage = message || 'common.networkError';
+        bgBackoffStatus = 0;
+      }
+      throw new Error(message);
     }
     if (!res.ok) {
       const text = await res.text();
-      dispatchAuthChallenge(res.status, text);
+      if (isBackground && (res.status === 401 || res.status === 502 || res.status === 503 || res.status === 504)) {
+        bgBackoffUntil = Date.now() + (res.status === 401 ? 45000 : 20000);
+        bgBackoffMessage = String(text || '').trim() || (res.status === 401 ? 'unauthorized' : 'common.serviceUnavailable');
+        bgBackoffStatus = res.status;
+      }
+      if (!isBackground) {
+        dispatchAuthChallenge(res.status, text);
+      }
       throw buildHttpError(url, res, text);
+    }
+    if (isBackground) {
+      bgBackoffUntil = 0;
+      bgBackoffMessage = 'common.serviceUnavailable';
+      bgBackoffStatus = 0;
     }
     dispatchDataChanged(method, url);
     const ct = res.headers.get('content-type') || '';
@@ -95,7 +124,9 @@ const Api = (() => {
       }
       if (!res.ok) {
         const text = await res.text();
-        dispatchAuthChallenge(res.status, text);
+        if (`${opts.headers['X-Berkut-Background'] || ''}` !== '1') {
+          dispatchAuthChallenge(res.status, text);
+        }
         throw buildHttpError(url, res, text);
       }
       dispatchDataChanged('POST', url);

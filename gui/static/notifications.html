@@ -1,0 +1,187 @@
+<div class="page" id="notifications-page">
+  <div class="tabs browser-tabs" id="notifications-tabs">
+    <button class="tab-btn active" data-tab="notifications-tab-channels" data-i18n="notifications.tabs.channels">Каналы</button>
+    <button class="tab-btn" data-tab="notifications-tab-settings" data-i18n="notifications.tabs.settings">Настройки</button>
+  </div>
+
+  <div class="tab-panels">
+    <div class="tab-panel" id="notifications-tab-channels" data-tab="notifications-tab-channels">
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="notifications.channels.title">Каналы уведомлений</h3>
+            <p class="muted" data-i18n="notifications.channels.subtitle">Управление каналами доставки уведомлений.</p>
+          </div>
+          <button class="btn primary" id="notifications-channel-new" data-i18n="common.add">Добавить</button>
+        </div>
+        <div class="card-body">
+          <div class="alert" id="notifications-channel-alert" hidden></div>
+          <div class="notifications-channels-grid" id="notifications-channel-cards"></div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="monitoring.notifications.deliveryTitle">История доставок</h3>
+            <p class="muted" data-i18n="monitoring.notifications.deliverySubtitle">Последние отправки уведомлений</p>
+          </div>
+          <button class="btn ghost" id="notifications-delivery-refresh" data-i18n="common.refresh">Обновить</button>
+        </div>
+        <div class="card-body">
+          <div class="monitoring-table" id="notifications-delivery-list"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-panel" id="notifications-tab-settings" data-tab="notifications-tab-settings" hidden>
+      <div class="card">
+        <div class="card-header">
+          <div>
+            <h3 data-i18n="notifications.settings.title">Настройки уведомлений</h3>
+            <p class="muted" data-i18n="notifications.settings.subtitle">Глобальные переключатели уведомлений по модулям.</p>
+          </div>
+        </div>
+        <div class="card-body">
+          <div class="alert" id="notifications-settings-alert" hidden></div>
+          <form id="notifications-settings-form" class="form-grid two-column">
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notifications-settings-monitoring-enabled">
+                <span data-i18n="notifications.settings.monitoringEnabled">Включить уведомления для мониторинга</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notifications-settings-accesses-enabled">
+                <span data-i18n="notifications.settings.accessesEnabled">Включить уведомления для доступов</span>
+              </label>
+            </div>
+            <div class="form-field two-column-span">
+              <label for="notifications-settings-accesses-types" data-i18n="notifications.settings.accessesTypes">Типы событий для уведомлений доступов</label>
+              <select id="notifications-settings-accesses-types" class="select" multiple>
+                <option value="create" data-i18n="notifications.settings.accessesType.create">Создание</option>
+                <option value="edit" data-i18n="notifications.settings.accessesType.edit">Редактирование</option>
+                <option value="supplement" data-i18n="notifications.settings.accessesType.supplement">Дополнение сервисов</option>
+                <option value="blocked" data-i18n="notifications.settings.accessesType.blocked">Блокировка</option>
+                <option value="unblocked" data-i18n="notifications.settings.accessesType.unblocked">Разблокировка</option>
+                <option value="delete" data-i18n="notifications.settings.accessesType.delete">Удаление</option>
+                <option value="dismissal" data-i18n="notifications.settings.accessesType.dismissal">Увольнение</option>
+              </select>
+              <div class="selected-hint" id="notifications-settings-accesses-types-hint"></div>
+            </div>
+            <div class="form-field two-column-span">
+              <label for="notifications-settings-accesses-channel" data-i18n="notifications.settings.accessesChannel">Канал для уведомлений по доступам</label>
+              <select id="notifications-settings-accesses-channel" class="select">
+                <option value="" data-i18n="common.notSelected">Не выбрано</option>
+              </select>
+            </div>
+          </form>
+          <div class="form-actions">
+            <button class="btn primary" id="notifications-settings-save" data-i18n="common.save">Сохранить</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="notification-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 id="notification-modal-title" data-i18n="monitoring.notifications.createTitle">Notification</h3>
+        <button class="btn ghost" data-close="#notification-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <div class="alert" id="notification-modal-alert" hidden></div>
+        <form id="notification-form" class="form-grid two-column notification-form-grid">
+          <div class="notification-form-col">
+            <div class="form-field required">
+              <label data-i18n="monitoring.notifications.type">Type</label>
+              <select id="notification-type">
+                <option value="telegram">Telegram</option>
+              </select>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="monitoring.notifications.token">Bot token</label>
+              <div class="input-icon-field">
+                <input id="notification-token" type="password" autocomplete="new-password">
+                <button class="icon-btn input-icon-btn" type="button" id="notification-token-toggle" aria-label="Show token">&#128065;</button>
+              </div>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.notifications.thread">Thread ID</label>
+              <input id="notification-thread-id" type="number">
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.notifications.quietTz">Timezone</label>
+              <input id="notification-quiet-tz" class="input-compact" placeholder="UTC">
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-quiet-enabled">
+                <span data-i18n="monitoring.notifications.quietEnabled">Enable quiet hours</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.notifications.quietStart">Quiet start</label>
+              <input id="notification-quiet-start" class="input-compact" type="time">
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.notifications.quietEnd">Quiet end</label>
+              <input id="notification-quiet-end" class="input-compact" type="time">
+            </div>
+          </div>
+          <div class="notification-form-col">
+            <div class="form-field required">
+              <label data-i18n="monitoring.notifications.name">Name</label>
+              <input id="notification-name" required>
+            </div>
+            <div class="form-field required">
+              <label data-i18n="monitoring.notifications.chat">Chat ID</label>
+              <input id="notification-chat-id">
+            </div>
+            <div class="form-field">
+              <label data-i18n="monitoring.notifications.template">Template</label>
+              <textarea id="notification-template" rows="3" data-i18n-placeholder="monitoring.notifications.templatePlaceholder" placeholder="{message}"></textarea>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-silent">
+                <span data-i18n="monitoring.notifications.silent">Send silently</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-protect">
+                <span data-i18n="monitoring.notifications.protect">Protect content</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-default">
+                <span data-i18n="monitoring.notifications.defaultUse">Use as default</span>
+              </label>
+            </div>
+            <div class="form-field">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-active" checked>
+                <span data-i18n="monitoring.notifications.active">Active</span>
+              </label>
+            </div>
+            <div class="form-field" id="notification-apply-all-row">
+              <label class="checkbox">
+                <input type="checkbox" id="notification-apply-all">
+                <span data-i18n="monitoring.notifications.applyAll">Apply to all existing monitors</span>
+              </label>
+            </div>
+          </div>
+        </form>
+        <div class="form-actions">
+          <button class="btn primary" id="notification-save" data-i18n="common.save">Save</button>
+          <button class="btn ghost" type="button" data-close="#notification-modal" data-i18n="common.cancel">Cancel</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>

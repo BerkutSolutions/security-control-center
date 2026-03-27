@@ -57,7 +57,7 @@ func (s *monitoringStore) UpsertTLS(ctx context.Context, tls *MonitorTLS) error 
 
 func (s *monitoringStore) ListCerts(ctx context.Context, filter CertFilter) ([]MonitorCertSummary, error) {
 	query := `
-		SELECT m.id, m.name, m.url, m.tags_json, COALESCE(s.status, ''), t.checked_at, t.not_after, t.not_before, t.common_name, t.issuer, t.last_error
+		SELECT m.id, m.name, m.url, COALESCE(CAST(m.tags_json AS TEXT), ''), COALESCE(s.status, ''), t.checked_at, t.not_after, t.not_before, COALESCE(t.common_name, ''), COALESCE(t.issuer, ''), t.last_error
 		FROM monitors m
 		LEFT JOIN monitor_state s ON s.monitor_id=m.id
 		LEFT JOIN monitor_tls t ON t.monitor_id=m.id
@@ -66,7 +66,7 @@ func (s *monitoringStore) ListCerts(ctx context.Context, filter CertFilter) ([]M
 	var args []any
 	if len(filter.Tags) > 0 {
 		for _, tag := range normalizeMonitorTags(filter.Tags) {
-			clauses = append(clauses, "m.tags_json LIKE ?")
+			clauses = append(clauses, "CAST(m.tags_json AS TEXT) LIKE ?")
 			args = append(args, "%"+tag+"%")
 		}
 	}

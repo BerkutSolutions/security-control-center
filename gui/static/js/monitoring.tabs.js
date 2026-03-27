@@ -4,7 +4,6 @@
     'monitoring-tab-home': '/monitoring',
     'monitoring-tab-events': '/monitoring/events',
     'monitoring-tab-cert': '/monitoring/certs',
-    'monitoring-tab-notify': '/monitoring/notifications',
     'monitoring-tab-sla': '/monitoring/sla',
     'monitoring-tab-maintenance': '/monitoring/maintenance',
     'monitoring-tab-settings': '/monitoring/settings',
@@ -21,12 +20,6 @@
         btn.disabled = true;
       }
       if (btn.dataset.tab === 'monitoring-tab-events' && !MonitoringPage.hasPermission('monitoring.events.view')) {
-        btn.hidden = true;
-        btn.disabled = true;
-      }
-      const canNotifications = MonitoringPage.hasPermission('monitoring.notifications.view')
-        || MonitoringPage.hasPermission('monitoring.notifications.manage');
-      if (btn.dataset.tab === 'monitoring-tab-notify' && !canNotifications) {
         btn.hidden = true;
         btn.disabled = true;
       }
@@ -82,7 +75,6 @@
     const path = window.location.pathname.replace(/\/+$/, '');
     if (path === '/monitoring/events') return 'monitoring-tab-events';
     if (path === '/monitoring/certs') return 'monitoring-tab-cert';
-    if (path === '/monitoring/notifications') return 'monitoring-tab-notify';
     if (path === '/monitoring/sla') return 'monitoring-tab-sla';
     if (path === '/monitoring/maintenance') return 'monitoring-tab-maintenance';
     if (path === '/monitoring/settings') return 'monitoring-tab-settings';

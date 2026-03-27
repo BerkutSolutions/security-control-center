@@ -28,7 +28,6 @@ Tab routes:
 - `/monitoring/sla`
 - `/monitoring/maintenance`
 - `/monitoring/certs`
-- `/monitoring/notifications`
 - `/monitoring/settings`
 
 SLA tab summary:
@@ -65,6 +64,11 @@ Users, roles, groups, sessions, import.
 
 ## Settings
 General/Advanced/HTTPS/Tags/Incidents/Registries/About.
+
+## Notifications
+Tab routes:
+- `/notifications/channels`
+- `/notifications/settings`
 
 ## Logs
 Audit log viewer.

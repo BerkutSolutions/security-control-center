@@ -1,33 +1,29 @@
 <div class="page" id="accesses-page">
   <div class="card">
-    <div class="card-header">
-      <div>
-        <h3 data-i18n="accesses.title">Доступы</h3>
-        <p class="muted" data-i18n="accesses.subtitle">Управляйте, у кого есть доступ к сервисам.</p>
-      </div>
-    </div>
     <div class="card-body">
       <div class="alert" id="accesses-alert" hidden></div>
       <div class="accesses-table-frame">
         <div class="accesses-toolbar">
-          <button type="button" class="btn primary" id="accesses-open-create" data-i18n="common.add">Добавить</button>
+          <div class="accesses-toolbar-main">
+            <button type="button" class="btn primary" id="accesses-open-create" data-i18n="common.add">Add</button>
+          </div>
           <div class="form-field accesses-service-search-field">
-            <label for="accesses-service-filter" data-i18n="accesses.filters.service">Поиск по сервису</label>
-            <input id="accesses-service-filter" class="input" type="search" list="accesses-services-datalist" data-i18n-placeholder="accesses.filters.servicePlaceholder" placeholder="Введите сервис">
-            <datalist id="accesses-services-datalist"></datalist>
+            <label for="accesses-service-filter" data-i18n="accesses.filters.service">Search by service</label>
+            <input id="accesses-service-filter" class="input" type="search" autocomplete="off" data-i18n-placeholder="accesses.filters.servicePlaceholder" placeholder="Enter service">
+            <div class="accesses-service-search-dropdown" id="accesses-service-filter-dropdown" hidden></div>
           </div>
         </div>
         <div class="table-responsive">
           <table class="data-table accesses-table">
             <thead>
               <tr>
-                <th data-i18n="accesses.table.user">Пользователь</th>
-                <th data-i18n="accesses.form.position">Должность</th>
-                <th data-i18n="accesses.form.department">Отдел</th>
-                <th class="accesses-col-services" data-i18n="accesses.form.services">Сервисы</th>
-                <th data-i18n="accesses.table.status">Статус</th>
-                <th data-i18n="accesses.table.updated">Изменено</th>
-                <th data-i18n="common.actions">Действия</th>
+                <th data-i18n="accesses.table.user">User</th>
+                <th data-i18n="accesses.form.position">Position</th>
+                <th data-i18n="accesses.form.department">Department</th>
+                <th class="accesses-col-services" data-i18n="accesses.form.services">Services</th>
+                <th data-i18n="accesses.table.status">Status</th>
+                <th data-i18n="accesses.table.updated">Updated</th>
+                <th data-i18n="common.actions">Actions</th>
               </tr>
             </thead>
             <tbody id="accesses-rows"></tbody>
@@ -41,31 +37,31 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="accesses.create.title">Новый доступ</h3>
+        <h3 data-i18n="accesses.create.title">New access</h3>
         <button class="btn ghost" data-close="#accesses-create-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <form id="accesses-create-form" class="form-grid two-column">
           <div class="form-field required">
-            <label for="accesses-create-user" data-i18n="accesses.form.user">Пользователь</label>
-            <input id="accesses-create-user" type="text" data-i18n-placeholder="accesses.form.userPlaceholder" placeholder="Имя пользователя" required>
+            <label for="accesses-create-user" data-i18n="accesses.form.user">User</label>
+            <input id="accesses-create-user" type="text" data-i18n-placeholder="accesses.form.userPlaceholder" placeholder="User name" required>
           </div>
           <div class="form-field required">
-            <label for="accesses-create-services" data-i18n="accesses.form.services">Сервисы</label>
+            <label for="accesses-create-services" data-i18n="accesses.form.services">Services</label>
             <select id="accesses-create-services" multiple class="select"></select>
             <div class="selected-hint" id="accesses-create-services-hint"></div>
           </div>
           <div class="form-field">
-            <label for="accesses-create-position" data-i18n="accesses.form.position">Должность</label>
-            <input id="accesses-create-position" type="text" data-i18n-placeholder="accesses.form.positionPlaceholder" placeholder="Например, аналитик ИБ">
+            <label for="accesses-create-position" data-i18n="accesses.form.position">Position</label>
+            <input id="accesses-create-position" type="text" data-i18n-placeholder="accesses.form.positionPlaceholder" placeholder="Position">
           </div>
           <div class="form-field">
-            <label for="accesses-create-department" data-i18n="accesses.form.department">Отдел</label>
-            <input id="accesses-create-department" type="text" data-i18n-placeholder="accesses.form.departmentPlaceholder" placeholder="Например, SOC">
+            <label for="accesses-create-department" data-i18n="accesses.form.department">Department</label>
+            <input id="accesses-create-department" type="text" data-i18n-placeholder="accesses.form.departmentPlaceholder" placeholder="Department">
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn primary" data-i18n="common.add">Добавить</button>
-            <button type="button" class="btn ghost" data-close="#accesses-create-modal" data-i18n="common.cancel">Отмена</button>
+            <button type="submit" class="btn primary" data-i18n="common.add">Add</button>
+            <button type="button" class="btn ghost" data-close="#accesses-create-modal" data-i18n="common.cancel">Cancel</button>
           </div>
         </form>
       </div>
@@ -76,32 +72,32 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="accesses.edit.title">Редактирование доступа</h3>
+        <h3 data-i18n="accesses.edit.title">Edit access</h3>
         <button class="btn ghost" data-close="#accesses-edit-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <form id="accesses-edit-form" class="form-grid two-column">
           <input type="hidden" id="accesses-edit-id">
           <div class="form-field required">
-            <label for="accesses-edit-user" data-i18n="accesses.form.user">Пользователь</label>
+            <label for="accesses-edit-user" data-i18n="accesses.form.user">User</label>
             <input id="accesses-edit-user" type="text" required>
           </div>
           <div class="form-field required">
-            <label for="accesses-edit-services" data-i18n="accesses.form.services">Сервисы</label>
+            <label for="accesses-edit-services" data-i18n="accesses.form.services">Services</label>
             <select id="accesses-edit-services" multiple class="select"></select>
             <div class="selected-hint" id="accesses-edit-services-hint"></div>
           </div>
           <div class="form-field">
-            <label for="accesses-edit-position" data-i18n="accesses.form.position">Должность</label>
+            <label for="accesses-edit-position" data-i18n="accesses.form.position">Position</label>
             <input id="accesses-edit-position" type="text">
           </div>
           <div class="form-field">
-            <label for="accesses-edit-department" data-i18n="accesses.form.department">Отдел</label>
+            <label for="accesses-edit-department" data-i18n="accesses.form.department">Department</label>
             <input id="accesses-edit-department" type="text">
           </div>
           <div class="form-actions">
-            <button type="submit" class="btn primary" data-i18n="common.save">Сохранить</button>
-            <button type="button" class="btn ghost" data-close="#accesses-edit-modal" data-i18n="common.cancel">Отмена</button>
+            <button type="submit" class="btn primary" data-i18n="common.save">Save</button>
+            <button type="button" class="btn ghost" data-close="#accesses-edit-modal" data-i18n="common.cancel">Cancel</button>
           </div>
         </form>
       </div>
@@ -112,20 +108,46 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body">
       <div class="modal-header">
-        <h3 data-i18n="accesses.supplement.title">Дополнить профиль</h3>
+        <h3 data-i18n="accesses.supplement.title">Supplement access</h3>
         <button class="btn ghost" data-close="#accesses-supplement-modal" aria-label="Close">x</button>
       </div>
       <div class="modal-content">
         <form id="accesses-supplement-form" class="form-grid single-column">
           <input type="hidden" id="accesses-supplement-id">
           <div class="form-field required">
-            <label for="accesses-supplement-services" data-i18n="accesses.form.services">Сервисы</label>
+            <label for="accesses-supplement-services" data-i18n="accesses.form.services">Services</label>
             <select id="accesses-supplement-services" multiple class="select"></select>
             <div class="selected-hint" id="accesses-supplement-services-hint"></div>
           </div>
           <div class="form-actions accesses-supplement-actions">
-            <button type="submit" class="btn primary" id="accesses-supplement-submit" data-i18n="accesses.actions.supplement">Дополнить</button>
-            <button type="button" class="btn ghost" data-close="#accesses-supplement-modal" data-i18n="common.cancel">Отмена</button>
+            <button type="submit" class="btn primary" id="accesses-supplement-submit" data-i18n="accesses.actions.supplement">Supplement</button>
+            <button type="button" class="btn ghost" data-close="#accesses-supplement-modal" data-i18n="common.cancel">Cancel</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="accesses-dismissal-modal" hidden>
+    <div class="modal-backdrop"></div>
+    <div class="modal-body">
+      <div class="modal-header">
+        <h3 data-i18n="accesses.dismissal.title">Увольнение сотрудника</h3>
+        <button class="btn ghost" data-close="#accesses-dismissal-modal" aria-label="Close">x</button>
+      </div>
+      <div class="modal-content">
+        <form id="accesses-dismissal-form" class="form-grid single-column">
+          <input type="hidden" id="accesses-dismissal-id">
+          <div class="form-field required">
+            <label for="accesses-dismissal-date" data-i18n="accesses.dismissal.dateLabel">Дата увольнения</label>
+            <div class="datetime-field inline">
+              <input id="accesses-dismissal-date" type="date" class="input date-input">
+            </div>
+            <div class="selected-hint" id="accesses-dismissal-weekday">-</div>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn primary" data-i18n="accesses.actions.dismissal">Увольнение</button>
+            <button type="button" class="btn ghost" data-close="#accesses-dismissal-modal" data-i18n="common.cancel">Отмена</button>
           </div>
         </form>
       </div>
@@ -136,7 +158,7 @@
     <div class="modal-backdrop"></div>
     <div class="modal-body wide accesses-view-modal-body">
       <div class="modal-header accesses-view-header">
-        <h3 data-i18n="accesses.view.title">История доступов</h3>
+        <h3 data-i18n="accesses.view.title">Access history</h3>
         <div class="accesses-view-header-actions">
           <button type="button" class="btn danger" id="accesses-view-toggle-block"></button>
           <button class="btn ghost" data-close="#accesses-view-modal" aria-label="Close">x</button>
@@ -146,17 +168,17 @@
         <div class="accesses-view-layout">
           <section class="accesses-view-main-frame">
             <div class="accesses-view-lines">
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.user">Пользователь</span><strong id="accesses-view-user">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.position">Должность</span><strong id="accesses-view-position">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.department">Отдел</span><strong id="accesses-view-department">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.status">Статус</span><strong id="accesses-view-status">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.services">Доступные сервисы</span><div id="accesses-view-services" class="accesses-view-services-list">-</div></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.updated">Изменено</span><strong id="accesses-view-updated">-</strong></div>
-              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.createdBy">Кто создал</span><strong id="accesses-view-created-by">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.user">User</span><strong id="accesses-view-user">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.position">Position</span><strong id="accesses-view-position">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.form.department">Department</span><strong id="accesses-view-department">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.status">Status</span><strong id="accesses-view-status">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.services">Accessible services</span><div id="accesses-view-services" class="accesses-view-services-list">-</div></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.updated">Updated</span><strong id="accesses-view-updated">-</strong></div>
+              <div class="accesses-line"><span class="accesses-line-label" data-i18n="accesses.table.createdBy">Created by</span><strong id="accesses-view-created-by">-</strong></div>
             </div>
           </section>
           <aside class="accesses-view-feed-frame">
-            <div class="accesses-feed-title" data-i18n="accesses.history.title">Лента событий</div>
+            <div class="accesses-feed-title" data-i18n="accesses.history.title">Event feed</div>
             <div class="accesses-activity-list" id="accesses-activity-list"></div>
           </aside>
         </div>

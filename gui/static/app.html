@@ -15,10 +15,14 @@
   <div class="app-shell">
     <aside class="sidebar" id="sidebar">
       <div class="sidebar-header">
+        <img src="/static/logo.png" alt="Berkut SCC" class="sidebar-logo-collapsed" />
         <div class="brand-text no-select">
           <div class="brand-title">Berkut Solutions</div>
           <div class="brand-subtitle">Security Control Center</div>
         </div>
+        <button id="sidebar-toggle" class="sidebar-collapse-btn" type="button" aria-label="Toggle sidebar" aria-expanded="true">
+          <span aria-hidden="true">&gt;</span>
+        </button>
         <div class="sidebar-header-actions">
           <button id="notifications-btn" class="icon-btn" type="button" data-i18n-title="app.notifications" title="Notifications">
             <svg aria-hidden="true" viewBox="0 0 24 24" width="16" height="16">
@@ -34,7 +38,8 @@
             <div id="notifications-list" class="notifications-list"></div>
           </div>
         </div>
-      </div>      <div class="sidebar-content">
+      </div>
+      <div class="sidebar-content">
         <nav id="menu" class="sidebar-nav"></nav>
       </div>
       <div class="sidebar-footer">
@@ -171,6 +176,7 @@
   <script src="/static/js/monitoring.maintenance.js"></script>
   <script src="/static/js/monitoring.notifications.js"></script>
   <script src="/static/js/monitoring.sla.js"></script>
+  <script src="/static/js/notifications.js"></script>
   <script src="/static/js/reports.core.js"></script>
   <script src="/static/js/reports.list.js"></script>
   <script src="/static/js/reports.builder.js"></script>

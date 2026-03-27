@@ -1,6 +1,7 @@
 (async () => {
   const MIN_STEP_MS = 180;
   const PROBE_TIMEOUT_MS = 12_000;
+  const CHECKS_CONCURRENCY = 6;
 
   const escapeHtml = (str) =>
     String(str || '')
@@ -252,6 +253,7 @@
       { id: 'tab.dashboard', labelKey: 'healthcheck.step.tab.dashboard', menuKey: 'dashboard', run: page('dashboard') },
       { id: 'tab.tasks', labelKey: 'healthcheck.step.tab.tasks', menuKey: 'tasks', run: page('tasks') },
       { id: 'tab.monitoring', labelKey: 'healthcheck.step.tab.monitoring', menuKey: 'monitoring', run: page('monitoring') },
+      { id: 'tab.notifications', labelKey: 'healthcheck.step.tab.notifications', menuKey: 'notifications', run: page('notifications') },
       { id: 'tab.docs', labelKey: 'healthcheck.step.tab.docs', menuKey: 'docs', run: page('docs') },
       { id: 'tab.approvals', labelKey: 'healthcheck.step.tab.approvals', menuKey: 'approvals', run: page('approvals') },
       { id: 'tab.incidents', labelKey: 'healthcheck.step.tab.incidents', menuKey: 'incidents', run: page('incidents') },
@@ -267,8 +269,8 @@
       { id: 'monitoring.engine', labelKey: 'healthcheck.step.monitoring.engine', menuKey: 'monitoring', run: apiGet('/api/monitoring/engine/stats') },
       { id: 'monitoring.sla', labelKey: 'healthcheck.step.monitoring.sla', menuKey: 'monitoring', run: apiGet('/api/monitoring/sla/history?limit=1') },
       { id: 'monitoring.maintenance', labelKey: 'healthcheck.step.monitoring.maintenance', menuKey: 'monitoring', run: apiGet('/api/monitoring/maintenance') },
-      { id: 'monitoring.notifications', labelKey: 'healthcheck.step.monitoring.notifications', menuKey: 'monitoring', run: apiGet('/api/monitoring/notifications') },
-      { id: 'monitoring.deliveries', labelKey: 'healthcheck.step.monitoring.deliveries', menuKey: 'monitoring', run: apiGet('/api/monitoring/notifications/deliveries') },
+      { id: 'monitoring.notifications', labelKey: 'healthcheck.step.monitoring.notifications', menuKey: 'notifications', run: apiGet('/api/monitoring/notifications') },
+      { id: 'monitoring.deliveries', labelKey: 'healthcheck.step.monitoring.deliveries', menuKey: 'notifications', run: apiGet('/api/monitoring/notifications/deliveries') },
       { id: 'monitoring.certs', labelKey: 'healthcheck.step.monitoring.certs', menuKey: 'monitoring', run: apiGet('/api/monitoring/certs') },
       { id: 'monitoring.settings', labelKey: 'healthcheck.step.monitoring.settings', menuKey: 'monitoring', run: apiGet('/api/monitoring/settings') },
 
@@ -415,6 +417,7 @@
     }
 
     bindAccordion();
+    loadPreflightIfNeeded();
     // Open checks by default, keep tabs closed until compat is loaded.
     const checksPanel = document.getElementById('hc-checks');
     if (checksPanel) checksPanel.hidden = false;
@@ -448,14 +451,14 @@
     updatePreflightCount([]);
     updateChecksCount();
 
-    for (const spec of checks) {
+    const runStep = async (spec) => {
       const row = state.stepEls.get(spec.id) || null;
       const gated = menuGate(spec);
       if (gated) {
         state.steps.set(spec.id, { spec, status: gated.status, desc: gated.desc });
         updateRow(row, null, gated.desc, gated.status);
         updateChecksCount();
-        continue;
+        return { failedSession: false };
       }
 
       const startedAt = Date.now();
@@ -479,9 +482,35 @@
 
       if (spec.id === 'session' && result.status !== 'done') {
         setError(result.desc || t('common.serverError'));
-        return;
+        return { failedSession: true };
       }
+      return { failedSession: false };
+    };
+
+    const sessionSpec = checks.find((spec) => spec.id === 'session');
+    if (sessionSpec) {
+      const result = await runStep(sessionSpec);
+      if (result.failedSession) return;
     }
+    const menuSpec = checks.find((spec) => spec.id === 'menu');
+    if (menuSpec) {
+      await runStep(menuSpec);
+    }
+
+    const parallelChecks = checks.filter((spec) => spec.id !== 'session' && spec.id !== 'menu');
+    let cursor = 0;
+    const workers = Array.from({ length: Math.max(1, Math.min(CHECKS_CONCURRENCY, parallelChecks.length || 1)) }, () =>
+      (async () => {
+        while (cursor < parallelChecks.length) {
+          const index = cursor;
+          cursor += 1;
+          const spec = parallelChecks[index];
+          if (!spec) continue;
+          await runStep(spec);
+        }
+      })()
+    );
+    await Promise.all(workers);
 
     // Compat report is loaded after checks: shows tab/module states.
     setToggleStatus('hc-compat', 'running');

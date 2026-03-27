@@ -16,6 +16,13 @@ type AccessesHandler struct {
 	audits  store.AuditStore
 }
 
+type accessesAuditEvent struct {
+	Type     string   `json:"type"`
+	User     string   `json:"user"`
+	Services []string `json:"services"`
+	Details  string   `json:"details"`
+}
+
 func NewAccessesHandler(modules store.AppModuleStateStore, audits store.AuditStore) *AccessesHandler {
 	return &AccessesHandler{modules: modules, audits: audits}
 }
@@ -31,7 +38,8 @@ func (h *AccessesHandler) Get(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Items []map[string]any `json:"items"`
+		Items []map[string]any    `json:"items"`
+		Event *accessesAuditEvent `json:"event,omitempty"`
 	}
 	if err := json.Unmarshal([]byte(st.LastError), &payload); err != nil {
 		writeJSON(w, http.StatusOK, map[string]any{"items": []any{}})
@@ -46,7 +54,8 @@ func (h *AccessesHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var payload struct {
-		Items []map[string]any `json:"items"`
+		Items []map[string]any    `json:"items"`
+		Event *accessesAuditEvent `json:"event,omitempty"`
 	}
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
 		http.Error(w, "bad request", http.StatusBadRequest)
@@ -68,7 +77,42 @@ func (h *AccessesHandler) Put(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if h.audits != nil {
-		_ = h.audits.Log(r.Context(), currentUsername(r), "accesses.update", "items_count="+strconv.Itoa(len(payload.Items)))
+		action, details := formatAccessesAudit(payload.Event, len(payload.Items))
+		_ = h.audits.Log(r.Context(), currentUsername(r), action, details)
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func formatAccessesAudit(event *accessesAuditEvent, itemsCount int) (string, string) {
+	base := "items_count=" + strconv.Itoa(itemsCount)
+	if event == nil {
+		return "accesses.update", base
+	}
+	eventType := strings.ToLower(strings.TrimSpace(event.Type))
+	action := map[string]string{
+		"create":     "accesses.create",
+		"edit":       "accesses.edit",
+		"supplement": "accesses.supplement",
+		"blocked":    "accesses.blocked",
+		"unblocked":  "accesses.unblocked",
+		"delete":     "accesses.delete",
+		"dismissal":  "accesses.dismissal",
+		"test":       "accesses.test",
+		"cleanup":    "accesses.cleanup",
+	}[eventType]
+	if action == "" {
+		action = "accesses.update"
+	}
+	user := strings.TrimSpace(event.User)
+	if user != "" {
+		base += " user=" + user
+	}
+	if n := len(event.Services); n > 0 {
+		base += " services_count=" + strconv.Itoa(n)
+	}
+	details := strings.TrimSpace(event.Details)
+	if details != "" {
+		base += " details=" + details
+	}
+	return action, base
 }

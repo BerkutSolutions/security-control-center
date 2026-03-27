@@ -271,7 +271,7 @@ const SettingsPage = (() => {
     },
     reports: { keys: [], prefixes: ['reports.'], remoteCleanup: cleanupReportsRemote },
     docs: {
-      keys: ['berkut.tags'],
+      keys: ['berkut.tags', 'berkut.services', 'berkut.classifications', 'berkut.accesses.users'],
       prefixes: [],
       remoteCleanup: cleanupDocsRemote,
     },
@@ -1187,6 +1187,7 @@ const SettingsPage = (() => {
     const input = document.getElementById('settings-tag-input');
     const addBtn = document.getElementById('settings-tag-add');
     const list = document.getElementById('settings-tags-list');
+    const alertBox = document.getElementById('settings-alert');
     if (!input || !addBtn || !list) return;
 
     const render = () => {
@@ -1202,26 +1203,32 @@ const SettingsPage = (() => {
       tags.forEach(tag => {
         const badge = tag.builtIn ? BerkutI18n.t('settings.tags.standard') : BerkutI18n.t('settings.tags.custom');
         list.appendChild(buildPill(TagDirectory.label(tag.code), !tag.builtIn, badge, () => {
-          TagDirectory.remove(tag.code);
+          TagDirectory.remove(tag.code).catch((err) => {
+            showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+          });
         }));
       });
     };
 
-    const add = () => {
+    const add = async () => {
       const val = (input.value || '').trim();
       if (!val) return;
-      TagDirectory.add(val);
-      input.value = '';
+      try {
+        await TagDirectory.add(val);
+        input.value = '';
+      } catch (err) {
+        showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+      }
     };
 
     addBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      add();
+      add().catch(() => {});
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        add();
+        add().catch(() => {});
       }
     });
     document.addEventListener('tags:changed', render);
@@ -1248,26 +1255,36 @@ const SettingsPage = (() => {
       services.forEach((service) => {
         const badge = BerkutI18n.t('settings.tags.custom');
         list.appendChild(buildPill(service.label, true, badge, () => {
-          ServiceDirectory.remove(service.code);
+          ServiceDirectory.remove(service.code).catch((err) => {
+            if (window.AppToast?.show) {
+              AppToast.show(BerkutI18n.t(String(err?.message || 'common.serverError')), 'error', 5000, { source: 'settings-services' });
+            }
+          });
         }));
       });
     };
 
-    const add = () => {
+    const add = async () => {
       const val = (input.value || '').trim();
       if (!val) return;
-      ServiceDirectory.add(val);
-      input.value = '';
+      try {
+        await ServiceDirectory.add(val);
+        input.value = '';
+      } catch (err) {
+        if (window.AppToast?.show) {
+          AppToast.show(BerkutI18n.t(String(err?.message || 'common.serverError')), 'error', 5000, { source: 'settings-services' });
+        }
+      }
     };
 
     addBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      add();
+      add().catch(() => {});
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        add();
+        add().catch(() => {});
       }
     });
     document.addEventListener('services:changed', render);
@@ -1279,6 +1296,7 @@ const SettingsPage = (() => {
     const input = document.getElementById('settings-classification-input');
     const addBtn = document.getElementById('settings-classification-add');
     const list = document.getElementById('settings-classifications-list');
+    const alertBox = document.getElementById('settings-alert');
     if (!input || !addBtn || !list) return;
 
     const render = () => {
@@ -1323,20 +1341,38 @@ const SettingsPage = (() => {
           upBtn.className = 'btn ghost btn-sm';
           upBtn.textContent = BerkutI18n.t('settings.classifications.moveUp');
           upBtn.disabled = !levels[idx - 1];
-          upBtn.addEventListener('click', () => ClassificationDirectory.move(level.code, 'up'));
+          upBtn.addEventListener('click', async () => {
+            try {
+              await ClassificationDirectory.move(level.code, 'up');
+            } catch (err) {
+              showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+            }
+          });
 
           const downBtn = document.createElement('button');
           downBtn.type = 'button';
           downBtn.className = 'btn ghost btn-sm';
           downBtn.textContent = BerkutI18n.t('settings.classifications.moveDown');
           downBtn.disabled = !levels[idx + 1];
-          downBtn.addEventListener('click', () => ClassificationDirectory.move(level.code, 'down'));
+          downBtn.addEventListener('click', async () => {
+            try {
+              await ClassificationDirectory.move(level.code, 'down');
+            } catch (err) {
+              showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+            }
+          });
 
           const delBtn = document.createElement('button');
           delBtn.type = 'button';
           delBtn.className = 'btn danger btn-sm';
           delBtn.textContent = BerkutI18n.t('common.delete');
-          delBtn.addEventListener('click', () => ClassificationDirectory.remove(level.code));
+          delBtn.addEventListener('click', async () => {
+            try {
+              await ClassificationDirectory.remove(level.code);
+            } catch (err) {
+              showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+            }
+          });
 
           actions.appendChild(upBtn);
           actions.appendChild(downBtn);
@@ -1347,30 +1383,35 @@ const SettingsPage = (() => {
       });
     };
 
-    const add = () => {
+    const add = async () => {
       const val = (input.value || '').trim();
       if (!val) return;
-      const result = ClassificationDirectory.add(val);
+      let result = null;
+      try {
+        result = await ClassificationDirectory.add(val);
+      } catch (err) {
+        showSettingsAlert(alertBox, BerkutI18n.t(String(err?.message || 'common.serverError')));
+        return;
+      }
       if (!result.ok) {
         if (result.reason === 'limit') {
-          showSettingsAlert(document.getElementById('settings-alert'), BerkutI18n.t('settings.classifications.limit'));
+          showSettingsAlert(alertBox, BerkutI18n.t('settings.classifications.limit'));
         } else if (result.reason === 'duplicate') {
-          showSettingsAlert(document.getElementById('settings-alert'), BerkutI18n.t('settings.classifications.duplicate'));
+          showSettingsAlert(alertBox, BerkutI18n.t('settings.classifications.duplicate'));
         }
         return;
       }
       input.value = '';
-      render();
     };
 
     addBtn.addEventListener('click', (e) => {
       e.preventDefault();
-      add();
+      add().catch(() => {});
     });
     input.addEventListener('keydown', (e) => {
       if (e.key === 'Enter') {
         e.preventDefault();
-        add();
+        add().catch(() => {});
       }
     });
     document.addEventListener('classifications:changed', render);

@@ -169,12 +169,29 @@
       if (id && MonitoringPage.hasPermission('monitoring.notifications.manage')) {
         await saveMonitorNotifications(id);
       }
-      if (id && MonitoringPage.hasPermission('monitoring.view')) {
-        Promise.resolve(MonitoringPage.waitMonitorCheckedAfter?.(id, prevCheckedAt)).catch(() => {});
+      if (id && MonitoringPage.hasPermission('monitoring.manage')) {
+        try {
+          await Api.post(`/api/monitoring/monitors/${id}/check-now`, {});
+        } catch (_) {
+          // best effort: handler can return "busy" when worker is currently occupied.
+        }
       }
       els.modal.hidden = true;
       modalState.editingId = null;
       await MonitoringPage.loadMonitors?.();
+      if (id && MonitoringPage.hasPermission('monitoring.view')) {
+        MonitoringPage.state.selectedId = id;
+        MonitoringPage.setMonitorDeepLink?.(id);
+        await MonitoringPage.loadDetail?.(id);
+        Promise.resolve(MonitoringPage.waitMonitorCheckedAfter?.(id, prevCheckedAt, 12000))
+          .then((ok) => {
+            if (!ok) return;
+            if (MonitoringPage.state.selectedId !== id) return;
+            MonitoringPage.loadDetail?.(id);
+            MonitoringPage.loadMonitors?.();
+          })
+          .catch(() => {});
+      }
       await MonitoringPage.refreshSLA?.();
       await MonitoringPage.refreshMaintenanceList?.();
       MonitoringPage.refreshEventsFilters?.();

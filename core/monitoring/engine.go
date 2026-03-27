@@ -129,7 +129,7 @@ func (e *Engine) CheckNow(ctx context.Context, monitorID int64) error {
 	if !settings.EngineEnabled {
 		return errors.New("monitoring.error.engineDisabled")
 	}
-	if !e.acquireSlot(m.ID) {
+	if !e.acquireSlotWithWait(ctx, m.ID, 2500*time.Millisecond) {
 		return errors.New("monitoring.error.busy")
 	}
 	defer e.releaseSlot(m.ID)
@@ -158,11 +158,36 @@ func (e *Engine) manualCheckTimeout(m store.Monitor, settings store.MonitorSetti
 	if timeoutSec <= 0 {
 		timeoutSec = 20
 	}
-	if timeoutSec > 20 {
-		timeoutSec = 20
+	if timeoutSec > 8 {
+		timeoutSec = 8
 	}
 	// Small grace for network close/write and DB update.
 	return time.Duration(timeoutSec+2) * time.Second
+}
+
+func (e *Engine) acquireSlotWithWait(ctx context.Context, id int64, waitFor time.Duration) bool {
+	if e.acquireSlot(id) {
+		return true
+	}
+	if waitFor <= 0 {
+		return false
+	}
+	deadline := time.Now().Add(waitFor)
+	ticker := time.NewTicker(100 * time.Millisecond)
+	defer ticker.Stop()
+	for {
+		if e.acquireSlot(id) {
+			return true
+		}
+		if time.Now().After(deadline) {
+			return false
+		}
+		select {
+		case <-ctx.Done():
+			return false
+		case <-ticker.C:
+		}
+	}
 }
 
 func (e *Engine) loop(ctx context.Context) {

@@ -1,11 +1,9 @@
 const BackupsOverview = (() => {
-  let autoRefreshTimer = null;
   let integrityPollAbort = null;
 
   function init() {
     bindActions();
     bindScopeControls();
-    ensureAutoRefresh();
   }
 
   function bindActions() {
@@ -13,10 +11,10 @@ const BackupsOverview = (() => {
     const refreshBtn = document.getElementById('backups-overview-refresh');
     const emptyCreate = document.getElementById('backups-overview-empty-create');
     const runIntegrityBtn = document.getElementById('backups-overview-run-integrity');
-    if (createBtn) createBtn.addEventListener('click', createNow);
-    if (refreshBtn) refreshBtn.addEventListener('click', () => load(true));
-    if (emptyCreate) emptyCreate.addEventListener('click', createNow);
-    if (runIntegrityBtn) runIntegrityBtn.addEventListener('click', runIntegrityTest);
+    if (createBtn) createBtn.onclick = createNow;
+    if (refreshBtn) refreshBtn.onclick = () => load(true);
+    if (emptyCreate) emptyCreate.onclick = createNow;
+    if (runIntegrityBtn) runIntegrityBtn.onclick = runIntegrityTest;
   }
 
   async function createNow() {
@@ -41,9 +39,9 @@ const BackupsOverview = (() => {
 
   function bindScopeControls() {
     document.querySelectorAll('#backups-create-scope-list input[type="checkbox"]').forEach((el) => {
-      el.addEventListener('change', () => {
+      el.onchange = () => {
         syncScopeSelection(el.dataset.scope || '');
-      });
+      };
     });
     syncScopeSelection('all');
   }
@@ -99,15 +97,6 @@ const BackupsOverview = (() => {
     } finally {
       toggleLoading(false);
     }
-  }
-
-  function ensureAutoRefresh() {
-    if (autoRefreshTimer) return;
-    autoRefreshTimer = window.setInterval(() => {
-      const panel = document.querySelector('#backups-page .tab-panel[data-tab="backups-tab-overview"]');
-      if (panel && panel.hidden) return;
-      load(false);
-    }, 5000);
   }
 
   function render(items, integrity) {

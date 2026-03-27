@@ -1,5 +1,9 @@
 (() => {
   const els = {};
+  const runtime = {
+    engineStatsTimer: null,
+  };
+  const bgOpts = { headers: { 'X-Berkut-Background': '1' } };
 
   function bindSettings() {
     els.alert = document.getElementById('monitoring-settings-alert');
@@ -26,6 +30,7 @@
     els.notifySuppress = document.getElementById('monitoring-notify-suppress');
     els.notifyRepeat = document.getElementById('monitoring-notify-repeat');
     els.notifyMaintenance = document.getElementById('monitoring-notify-maintenance');
+    els.monitoringNotificationsEnabled = document.getElementById('monitoring-notifications-enabled');
     els.logDnsEvents = document.getElementById('monitoring-log-dns-events');
     els.autoTLSIncident = document.getElementById('monitoring-auto-tls-incident');
     els.autoTLSIncidentDays = document.getElementById('monitoring-auto-tls-incident-days');
@@ -49,6 +54,7 @@
       });
     }
     if (canManage) loadSettings();
+    loadNotificationsSettings();
 
     bindEngineStats();
   }
@@ -56,6 +62,10 @@
   function bindEngineStats() {
     if (!MonitoringPage.hasPermission('monitoring.view')) {
       if (els.engineStatsCard) els.engineStatsCard.hidden = true;
+      if (runtime.engineStatsTimer) {
+        clearInterval(runtime.engineStatsTimer);
+        runtime.engineStatsTimer = null;
+      }
       return;
     }
     if (els.engineStatsRefresh) {
@@ -64,7 +74,15 @@
       });
     }
     loadEngineStats();
-    setInterval(() => {
+    if (runtime.engineStatsTimer) {
+      clearInterval(runtime.engineStatsTimer);
+    }
+    runtime.engineStatsTimer = setInterval(() => {
+      if (!window.location.pathname.startsWith('/monitoring')) {
+        clearInterval(runtime.engineStatsTimer);
+        runtime.engineStatsTimer = null;
+        return;
+      }
       loadEngineStats();
     }, 15000);
   }
@@ -108,16 +126,72 @@
     if (els.incidentScoreConfirmations) els.incidentScoreConfirmations.value = (settings.incident_score_open_confirmations ?? 2);
   }
 
+  async function loadNotificationsSettings() {
+    if (!els.monitoringNotificationsEnabled) return;
+    if (els.monitoringNotificationsEnabled.dataset.bound === '1') return;
+    els.monitoringNotificationsEnabled.dataset.bound = '1';
+    try {
+      const settings = await Api.get('/api/notifications/settings');
+      els.monitoringNotificationsEnabled.checked = !!settings.monitoring_enabled;
+    } catch (_) {
+      els.monitoringNotificationsEnabled.checked = true;
+    }
+    els.monitoringNotificationsEnabled.addEventListener('change', () => {
+      saveNotificationsSettings();
+    });
+    document.addEventListener('notifications:settings-changed', (event) => {
+      if (!els.monitoringNotificationsEnabled) return;
+      els.monitoringNotificationsEnabled.checked = !!event?.detail?.monitoring_enabled;
+    });
+  }
+
+  async function saveNotificationsSettings() {
+    if (!els.monitoringNotificationsEnabled) return;
+    try {
+      const current = await Api.get('/api/notifications/settings').catch(() => ({
+        monitoring_enabled: !!els.monitoringNotificationsEnabled.checked,
+        accesses_enabled: true,
+      }));
+      const payload = {
+        monitoring_enabled: !!els.monitoringNotificationsEnabled.checked,
+        accesses_enabled: !!current?.accesses_enabled,
+        accesses_types: Array.isArray(current?.accesses_types) ? current.accesses_types : [],
+      };
+      await Api.put('/api/notifications/settings', payload);
+      document.dispatchEvent(new CustomEvent('notifications:settings-changed', { detail: payload }));
+    } catch (_) {
+      // soft fail
+    }
+  }
+
   async function loadEngineStats() {
     if (!MonitoringPage.hasPermission('monitoring.view')) return;
+    if (!document.getElementById('monitoring-page')) return;
     try {
-      const stats = await Api.get('/api/monitoring/engine/stats');
+      const stats = await Api.get('/api/monitoring/engine/stats', bgOpts);
       renderEngineStats(stats);
     } catch (err) {
+      if (isExpectedBackgroundError(err)) {
+        if (runtime.engineStatsTimer) {
+          clearInterval(runtime.engineStatsTimer);
+          runtime.engineStatsTimer = null;
+        }
+        MonitoringPage.hideAlert(els.engineStatsAlert);
+        return;
+      }
       if (els.engineStatsAlert) {
         MonitoringPage.showAlert(els.engineStatsAlert, MonitoringPage.sanitizeErrorMessage(err.message || err), false);
       }
     }
+  }
+
+  function isExpectedBackgroundError(err) {
+    const status = Number(err?.status || 0);
+    const msg = String(err?.message || '').trim().toLowerCase();
+    if (status === 401 || status === 502 || status === 503 || status === 504) return true;
+    if (msg === 'unauthorized' || msg === 'common.serviceunavailable') return true;
+    if (msg.includes('failed to fetch') || msg.includes('network')) return true;
+    return false;
   }
 
   function renderEngineStats(stats) {

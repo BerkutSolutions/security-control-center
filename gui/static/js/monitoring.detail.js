@@ -1,5 +1,6 @@
 (() => {
   const els = {};
+  const bgOpts = { headers: { 'X-Berkut-Background': '1' } };
   const HOST_TARGET_TYPES = new Set(['tcp', 'ping', 'dns', 'docker', 'steam', 'gamedig', 'mqtt', 'kafka_producer', 'mssql', 'mysql', 'mongodb', 'radius', 'redis', 'tailscale_ping']);
   const detailState = {
     metricsRange: '1h',
@@ -104,19 +105,23 @@
 
   async function loadDetail(id) {
     if (!id) return;
+    if (!window.location.pathname.startsWith('/monitoring') || !document.getElementById('monitoring-page')) {
+      stopDetailRefresh();
+      return null;
+    }
     renderChartLoading();
     try {
       const canEvents = MonitoringPage.hasPermission('monitoring.events.view');
       const canMaintenance = MonitoringPage.hasPermission('monitoring.maintenance.view');
       const requests = [
-        Api.get(`/api/monitoring/monitors/${id}`),
-        Api.get(`/api/monitoring/monitors/${id}/state`),
-        Api.get(`/api/monitoring/monitors/${id}/metrics?range=${detailState.metricsRange}`),
+        Api.get(`/api/monitoring/monitors/${id}`, bgOpts),
+        Api.get(`/api/monitoring/monitors/${id}/state`, bgOpts),
+        Api.get(`/api/monitoring/monitors/${id}/metrics?range=${detailState.metricsRange}`, bgOpts),
         canEvents
-          ? Api.get(`/api/monitoring/monitors/${id}/events?range=${detailState.eventsRange}`)
+          ? Api.get(`/api/monitoring/monitors/${id}/events?range=${detailState.eventsRange}`, bgOpts)
           : Promise.resolve({ items: [] }),
         canMaintenance
-          ? Api.get(`/api/monitoring/maintenance?active=true&monitor_id=${id}`)
+          ? Api.get(`/api/monitoring/maintenance?active=true&monitor_id=${id}`, bgOpts)
           : Promise.resolve({ items: [] }),
       ];
       const [mon, state, metrics, events, maintenance] = await Promise.all(requests);
@@ -129,6 +134,10 @@
       });
       return { mon, state, metrics: metricsItems, events: events.items || [], maintenance: maintenance.items || [] };
     } catch (err) {
+      if (isExpectedPollingError(err)) {
+        stopDetailRefresh();
+        return null;
+      }
       console.error('monitor detail', err);
       const msg = (err?.message || '').trim();
       if (msg === 'common.notFound' || msg === 'not found') {
@@ -143,6 +152,15 @@
       if (fallback) scheduleDetailRefresh(fallback);
       return null;
     }
+  }
+
+  function isExpectedPollingError(err) {
+    const status = Number(err?.status || 0);
+    const msg = String(err?.message || '').trim().toLowerCase();
+    if (status === 401 || status === 502 || status === 503 || status === 504) return true;
+    if (msg === 'unauthorized' || msg === 'common.serviceunavailable') return true;
+    if (msg.includes('failed to fetch') || msg.includes('network')) return true;
+    return false;
   }
 
   function renderDetail(mon, state, metrics, events, maintenance, metricsMeta) {
@@ -486,10 +504,30 @@
   function moveChartTooltip(evt) {
     if (!els.chartTip || els.chartTip.hidden || !els.chart) return;
     const rect = els.chart.getBoundingClientRect();
-    const x = Math.max(8, Math.min(rect.width - 8, evt.clientX - rect.left + 10));
-    const y = Math.max(8, Math.min(rect.height - 8, evt.clientY - rect.top + 10));
-    els.chartTip.style.left = `${x}px`;
-    els.chartTip.style.top = `${y}px`;
+    const margin = 8;
+    const offset = 12;
+    const tipWidth = Math.max(0, els.chartTip.offsetWidth || 0);
+    const tipHeight = Math.max(0, els.chartTip.offsetHeight || 0);
+    const mouseX = evt.clientX - rect.left;
+    const mouseY = evt.clientY - rect.top;
+
+    // Prefer right/bottom placement, but flip when space is not enough.
+    let x = mouseX + offset;
+    if ((x + tipWidth + margin) > rect.width) {
+      x = mouseX - offset - tipWidth;
+    }
+    let y = mouseY + offset;
+    if ((y + tipHeight + margin) > rect.height) {
+      y = mouseY - offset - tipHeight;
+    }
+
+    const maxX = Math.max(margin, rect.width - tipWidth - margin);
+    const maxY = Math.max(margin, rect.height - tipHeight - margin);
+    x = Math.max(margin, Math.min(maxX, x));
+    y = Math.max(margin, Math.min(maxY, y));
+
+    els.chartTip.style.left = `${Math.round(x)}px`;
+    els.chartTip.style.top = `${Math.round(y)}px`;
   }
 
   function hideChartTooltip() {
@@ -826,6 +864,10 @@
     const intervalSec = Number(mon.interval_sec) || 30;
     const waitMs = Math.min(Math.max(intervalSec * 1000, 3000), 60000);
     detailState.pollTimer = window.setTimeout(async () => {
+      if (!window.location.pathname.startsWith('/monitoring') || !document.getElementById('monitoring-page')) {
+        stopDetailRefresh();
+        return;
+      }
       if (document.hidden) {
         scheduleDetailRefresh(mon);
         return;

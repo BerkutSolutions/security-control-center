@@ -44,6 +44,8 @@ func (h *ReportsHandler) buildReportSections(ctx context.Context, doc *store.Doc
 			continue
 		case "incidents":
 			res = h.buildIncidentsSection(ctx, sec, user, roles, eff, periodFrom, periodTo, totals)
+		case "accesses":
+			res = h.buildAccessesSection(ctx, sec, user, roles, periodFrom, periodTo, totals)
 		case "tasks":
 			res = h.buildTasksSection(ctx, sec, user, roles, groups, periodFrom, periodTo, totals)
 		case "docs":

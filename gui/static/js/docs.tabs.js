@@ -61,9 +61,15 @@
       panel.hidden = panel.dataset.tab !== tabId;
     });
     if (target.type === 'doc') {
+      const content = document.getElementById('content');
+      if (content) content.classList.add('no-page-scroll');
+      if (document.body) document.body.classList.add('no-page-scroll');
       openDocPanel(target);
       DocsPage.updateDocsPath(target.docId, target.mode || 'view');
     } else {
+      const content = document.getElementById('content');
+      if (content) content.classList.remove('no-page-scroll');
+      if (document.body) document.body.classList.remove('no-page-scroll');
       DocsPage.updateDocsPath(null, 'list');
       DocEditor.close({ silent: true });
       if (DocsPage.loadDocs && hasPermission('docs.view')) {

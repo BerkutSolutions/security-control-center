@@ -155,10 +155,35 @@
     }
   }
 
-  function exportReport(id) {
+  function exportReport(id, formatHint) {
     if (!id) return;
-    const fmt = prompt(BerkutI18n.t('reports.exportPrompt'), 'pdf') || 'pdf';
-    window.open(`/api/reports/${id}/export?format=${encodeURIComponent(fmt)}`, '_blank');
+    const format = String(formatHint || 'pdf').trim().toLowerCase() || 'pdf';
+    fetch(`/api/reports/${id}/export?format=${encodeURIComponent(format)}`, {
+      method: 'GET',
+      credentials: 'include'
+    }).then(async (res) => {
+      if (!res.ok) {
+        const text = (await res.text()).trim();
+        throw new Error(text || `status_${res.status}`);
+      }
+      const blob = await res.blob();
+      const cd = res.headers.get('Content-Disposition') || '';
+      const m = /filename=\"?([^\";]+)\"?/i.exec(cd);
+      const filename = (m && m[1]) ? m[1] : `report-${id}.${format}`;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }).catch((err) => {
+      const text = err?.message || BerkutI18n.t('common.error');
+      if (window.AppToast?.show) {
+        window.AppToast.show(text, 'error');
+      }
+    });
   }
 
   async function deleteReport(id) {
@@ -232,10 +257,11 @@
       });
     }
     if (ReportsPage.hasPermission('reports.export')) {
-      actions.push({
-        label: BerkutI18n.t('docs.menu.export') || BerkutI18n.t('reports.action.export'),
-        handler: () => ReportsPage.exportReport(docId)
-      });
+      const exportLabel = BerkutI18n.t('docs.menu.export') || BerkutI18n.t('reports.action.export');
+      actions.push({ label: `${exportLabel} PDF`, handler: () => ReportsPage.exportReport(docId, 'pdf') });
+      actions.push({ label: `${exportLabel} DOCX`, handler: () => ReportsPage.exportReport(docId, 'docx') });
+      actions.push({ label: `${exportLabel} MD`, handler: () => ReportsPage.exportReport(docId, 'md') });
+      actions.push({ label: `${exportLabel} TXT`, handler: () => ReportsPage.exportReport(docId, 'txt') });
     }
     if (ReportsPage.hasPermission('docs.approval.start') && typeof DocsPage !== 'undefined' && DocsPage.openApprovalModal) {
       actions.push({

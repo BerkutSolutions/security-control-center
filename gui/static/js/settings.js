@@ -710,6 +710,11 @@ const SettingsPage = (() => {
     const refreshBtn = document.getElementById('settings-hardening-refresh');
     const saveBtn = document.getElementById('settings-hardening-save');
     const behaviorModelEl = document.getElementById('settings-behavior-model-enabled');
+    const copyProtectEl = document.getElementById('settings-hardening-copy-protect');
+    const screenshotBlockEl = document.getElementById('settings-hardening-screenshot-block');
+    const adminExportBypassEl = document.getElementById('settings-hardening-admin-export-bypass');
+    const applyModeEl = document.getElementById('settings-hardening-apply-mode');
+    const scopeEl = document.getElementById('settings-hardening-scope');
     const activityBtn = document.getElementById('settings-behavior-activity-btn');
     const scoreEl = document.getElementById('settings-hardening-score');
     const statusEl = document.getElementById('settings-hardening-status');
@@ -762,6 +767,25 @@ const SettingsPage = (() => {
     const load = async () => {
       try {
         const data = await Api.get('/api/settings/hardening');
+        const dlp = data?.dlp || {};
+        if (copyProtectEl) {
+          copyProtectEl.checked = dlp.protect_clipboard_and_print !== false;
+        }
+        if (screenshotBlockEl) {
+          screenshotBlockEl.checked = dlp.block_screenshots !== false;
+        }
+        if (adminExportBypassEl) {
+          adminExportBypassEl.checked = dlp.admin_export_without_approval !== false;
+        }
+        if (applyModeEl) {
+          applyModeEl.value = (dlp.apply_mode || 'protected_only') === 'all' ? 'all' : 'protected_only';
+        }
+        if (scopeEl) {
+          const scope = Array.isArray(dlp.scope) && dlp.scope.length ? dlp.scope : ['docs', 'reports'];
+          Array.from(scopeEl.options || []).forEach((opt) => {
+            opt.selected = scope.includes(opt.value);
+          });
+        }
         render(data || {});
       } catch (err) {
         showSettingsAlert(alertBox, err.message || BerkutI18n.t('common.error'));
@@ -777,6 +801,29 @@ const SettingsPage = (() => {
             update_checks_enabled: !!runtime?.update_checks_enabled,
             behavior_model_enabled: !!(behaviorModelEl && behaviorModelEl.checked),
           });
+          const selectedScope = scopeEl
+            ? Array.from(scopeEl.selectedOptions || []).map((opt) => String(opt.value || '').trim()).filter(Boolean)
+            : ['docs', 'reports'];
+          await Api.put('/api/settings/hardening', {
+            dlp: {
+              protect_clipboard_and_print: !!(copyProtectEl && copyProtectEl.checked),
+              block_screenshots: !!(screenshotBlockEl && screenshotBlockEl.checked),
+              admin_export_without_approval: !!(adminExportBypassEl && adminExportBypassEl.checked),
+              apply_mode: (applyModeEl && applyModeEl.value === 'all') ? 'all' : 'protected_only',
+              scope: selectedScope.length ? selectedScope : ['docs', 'reports'],
+            },
+          });
+          if (typeof window !== 'undefined') {
+            if (!window.__APP_CONFIG__) window.__APP_CONFIG__ = {};
+            if (!window.__APP_CONFIG__.docs) window.__APP_CONFIG__.docs = {};
+            window.__APP_CONFIG__.docs.dlp = {
+              protect_clipboard_and_print: !!(copyProtectEl && copyProtectEl.checked),
+              block_screenshots: !!(screenshotBlockEl && screenshotBlockEl.checked),
+              admin_export_without_approval: !!(adminExportBypassEl && adminExportBypassEl.checked),
+              apply_mode: (applyModeEl && applyModeEl.value === 'all') ? 'all' : 'protected_only',
+              scope: selectedScope.length ? selectedScope : ['docs', 'reports'],
+            };
+          }
           showSettingsAlert(alertBox, BerkutI18n.t('settings.saved'), true);
           await load();
         } catch (err) {
@@ -810,13 +857,15 @@ const SettingsPage = (() => {
       if (text && window.AppToast?.show) AppToast.show(text, 'error', 5000, { source: 'settings-behavior-activity' });
     };
 
-    const metricRows = (metrics) => ([
+    const metricRows = (metrics, signatures) => ([
       ['SensitiveViews5m', metrics?.SensitiveViews5m ?? metrics?.sensitive_views5m ?? 0],
       ['Exports30m', metrics?.Exports30m ?? metrics?.exports30m ?? 0],
       ['Denied10m', metrics?.Denied10m ?? metrics?.denied10m ?? 0],
       ['Mutations5m', metrics?.Mutations5m ?? metrics?.mutations5m ?? 0],
       ['Requests1m', metrics?.Requests1m ?? metrics?.requests1m ?? 0],
       ['HistoryEvents', metrics?.HistoryEvents ?? metrics?.history_events ?? 0],
+      [BerkutI18n.t('settings.hardening.activity.metricDlpCopy'), signatures?.copy_blocked_10m ?? 0],
+      [BerkutI18n.t('settings.hardening.activity.metricDlpScreenshot'), signatures?.screenshot_attempts_10m ?? 0],
     ]);
 
     const reasonLabel = (key) => {
@@ -826,6 +875,8 @@ const SettingsPage = (() => {
         z_denied: 'settings.hardening.activity.reasonDenied',
         z_mutations: 'settings.hardening.activity.reasonMutations',
         z_requests: 'settings.hardening.activity.reasonRequests',
+        dlp_copy: 'settings.hardening.activity.reasonDlpCopy',
+        dlp_screenshot: 'settings.hardening.activity.reasonDlpScreenshot',
       };
       const i18nKey = map[key] || '';
       return i18nKey ? BerkutI18n.t(i18nKey) : key;
@@ -870,7 +921,7 @@ const SettingsPage = (() => {
         if (scoreEl) scoreEl.textContent = `${Number(data.score || 0).toFixed(4)} (${String(data.risk_level || '').toUpperCase() || '-'})`;
 
         metricsBody.innerHTML = '';
-        metricRows(data.metrics).forEach(([name, val]) => {
+        metricRows(data.metrics, data.dlp_signatures).forEach(([name, val]) => {
           const tr = document.createElement('tr');
           tr.innerHTML = `<td>${name}</td><td>${val}</td>`;
           metricsBody.appendChild(tr);

@@ -3,6 +3,7 @@
   const SECTION_DEFS = [
     { type: 'summary', titleKey: 'reports.sections.summary' },
     { type: 'incidents', titleKey: 'reports.sections.incidents' },
+    { type: 'accesses', titleKey: 'reports.sections.accesses' },
     { type: 'tasks', titleKey: 'reports.sections.tasks' },
     { type: 'docs', titleKey: 'reports.sections.docs' },
     { type: 'controls', titleKey: 'reports.sections.controls' },
@@ -121,6 +122,17 @@
           </div>
           <div class="form-field"><label>${t('reports.sections.filters.limit')}</label>
             <input type="number" class="input" data-field="limit" value="${cfg.limit || 20}">
+          </div>`;
+      case 'accesses':
+        return `
+          <div class="form-field"><label>${t('reports.sections.filters.eventType')}</label>
+            <input class="input" data-field="event_type" value="${escapeAttr(cfg.event_type || '')}">
+          </div>
+          <div class="form-field"><label>${t('reports.sections.filters.actor')}</label>
+            <input class="input" data-field="actor" value="${escapeAttr(cfg.actor || '')}">
+          </div>
+          <div class="form-field"><label>${t('reports.sections.filters.limit')}</label>
+            <input type="number" class="input" data-field="limit" value="${cfg.limit || 100}">
           </div>`;
       case 'docs':
         return `

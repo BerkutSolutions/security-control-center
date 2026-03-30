@@ -2,9 +2,12 @@ package handlers
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"sort"
 	"strings"
 	"time"
+	"unicode"
 
 	"berkut-scc/core/store"
 )
@@ -255,6 +258,291 @@ func (h *ReportsHandler) buildMonitoringSection(ctx context.Context, sec store.R
 	return res
 }
 
+func (h *ReportsHandler) buildAccessesSection(ctx context.Context, sec store.ReportSection, _ *store.User, roles []string, fallbackFrom, fallbackTo *time.Time, totals map[string]int) reportSectionResult {
+	res := reportSectionResult{Section: sec}
+	lang := sectionLang(sec)
+	isRu := lang == "ru"
+	canViewAccesses := h.policy.Allowed(roles, "accesses.view") ||
+		h.policy.Allowed(roles, "accounts.view") ||
+		h.policy.Allowed(roles, "accounts.manage") ||
+		h.policy.Allowed(roles, "app.view")
+	if !canViewAccesses {
+		res.Denied = true
+		if isRu {
+			res.Markdown = fmt.Sprintf("## %s\n\n_Нет доступа._", sectionTitle(sec, "Доступы"))
+		} else {
+			res.Markdown = fmt.Sprintf("## %s\n\n_No access._", sectionTitle(sec, "Accesses"))
+		}
+		return res
+	}
+	if h.modules == nil {
+		res.Error = "accesses unavailable"
+		return res
+	}
+	limit := configInt(sec.Config, "limit", 200)
+	if limit <= 0 {
+		limit = 200
+	}
+	topLimit := configInt(sec.Config, "top_limit", 10)
+	if topLimit <= 0 {
+		topLimit = 10
+	}
+	from, to := periodOverride(sec.Config, fallbackFrom, fallbackTo)
+	statusFilter := strings.ToLower(strings.TrimSpace(configString(sec.Config, "status")))
+	userFilter := strings.ToLower(strings.TrimSpace(configString(sec.Config, "user")))
+	serviceFilter := splitCSV(configString(sec.Config, "service"))
+	serviceNeed := make(map[string]struct{}, len(serviceFilter))
+	for _, svc := range serviceFilter {
+		serviceNeed[strings.ToUpper(strings.TrimSpace(svc))] = struct{}{}
+	}
+	st, err := h.modules.Get(ctx, accessesModuleID)
+	if err != nil || st == nil || strings.TrimSpace(st.LastError) == "" {
+		if isRu {
+			res.Markdown = fmt.Sprintf("## %s\n\n_Нет данных по доступам._", sectionTitle(sec, "Доступы"))
+		} else {
+			res.Markdown = fmt.Sprintf("## %s\n\n_No accesses data available._", sectionTitle(sec, "Accesses"))
+		}
+		return res
+	}
+	var raw struct {
+		Items []map[string]any `json:"items"`
+	}
+	if err := json.Unmarshal([]byte(st.LastError), &raw); err != nil {
+		res.Error = "load failed"
+		return res
+	}
+	type accessRow struct {
+		User       string
+		Position   string
+		Department string
+		Services   []string
+		Blocked    bool
+		CreatedAt  time.Time
+		UpdatedAt  time.Time
+	}
+	parseTime := func(v any) time.Time {
+		s := strings.TrimSpace(fmt.Sprintf("%v", v))
+		if s == "" {
+			return time.Time{}
+		}
+		if ts, err := time.Parse(time.RFC3339, s); err == nil {
+			return ts.UTC()
+		}
+		return time.Time{}
+	}
+	parseServices := func(v any) []string {
+		var out []string
+		switch t := v.(type) {
+		case []any:
+			for _, item := range t {
+				val := strings.ToUpper(strings.TrimSpace(fmt.Sprintf("%v", item)))
+				if val != "" {
+					out = append(out, val)
+				}
+			}
+		case []string:
+			for _, item := range t {
+				val := strings.ToUpper(strings.TrimSpace(item))
+				if val != "" {
+					out = append(out, val)
+				}
+			}
+		}
+		sort.Strings(out)
+		return out
+	}
+	var rows []accessRow
+	for _, item := range raw.Items {
+		user := strings.TrimSpace(fmt.Sprintf("%v", item["user"]))
+		if user == "" {
+			continue
+		}
+		row := accessRow{
+			User:       user,
+			Position:   strings.TrimSpace(fmt.Sprintf("%v", item["position"])),
+			Department: strings.TrimSpace(fmt.Sprintf("%v", item["department"])),
+			Services:   parseServices(item["services"]),
+			Blocked:    strings.EqualFold(strings.TrimSpace(fmt.Sprintf("%v", item["blocked"])), "true"),
+			CreatedAt:  parseTime(item["created_at"]),
+			UpdatedAt:  parseTime(item["updated_at"]),
+		}
+		if row.UpdatedAt.IsZero() {
+			row.UpdatedAt = row.CreatedAt
+		}
+		if from != nil && !row.UpdatedAt.IsZero() && row.UpdatedAt.Before(*from) {
+			continue
+		}
+		if to != nil && !row.UpdatedAt.IsZero() && row.UpdatedAt.After(*to) {
+			continue
+		}
+		if statusFilter != "" {
+			switch statusFilter {
+			case "active":
+				if row.Blocked {
+					continue
+				}
+			case "blocked":
+				if !row.Blocked {
+					continue
+				}
+			}
+		}
+		if userFilter != "" && !strings.Contains(strings.ToLower(row.User), userFilter) {
+			continue
+		}
+		if len(serviceNeed) > 0 {
+			matched := false
+			for _, svc := range row.Services {
+				if _, ok := serviceNeed[svc]; ok {
+					matched = true
+					break
+				}
+			}
+			if !matched {
+				continue
+			}
+		}
+		rows = append(rows, row)
+	}
+	sort.Slice(rows, func(i, j int) bool {
+		if rows[i].User == rows[j].User {
+			return rows[i].UpdatedAt.After(rows[j].UpdatedAt)
+		}
+		return strings.ToLower(rows[i].User) < strings.ToLower(rows[j].User)
+	})
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+	serviceCounts := map[string]int{}
+	activeCount := 0
+	blockedCount := 0
+	for _, row := range rows {
+		if row.Blocked {
+			blockedCount++
+		} else {
+			activeCount++
+		}
+		for _, svc := range row.Services {
+			serviceCounts[svc]++
+		}
+	}
+	type serviceStat struct {
+		Name  string
+		Count int
+	}
+	stats := make([]serviceStat, 0, len(serviceCounts))
+	for name, count := range serviceCounts {
+		stats = append(stats, serviceStat{Name: name, Count: count})
+	}
+	sort.Slice(stats, func(i, j int) bool {
+		if stats[i].Count == stats[j].Count {
+			return stats[i].Name < stats[j].Name
+		}
+		return stats[i].Count > stats[j].Count
+	})
+	if len(stats) > topLimit {
+		stats = stats[:topLimit]
+	}
+	res.ItemCount = len(rows)
+	res.Summary = map[string]any{
+		"accesses_users":        len(rows),
+		"accesses_active":       activeCount,
+		"accesses_blocked":      blockedCount,
+		"accesses_top_services": len(stats),
+	}
+	totals["accesses_users"] += len(rows)
+	totals["accesses_active"] += activeCount
+	totals["accesses_blocked"] += blockedCount
+	sectionName := "Accesses"
+	usersInScopeLabel := "Users in scope"
+	activeLabel := "Active"
+	blockedLabel := "Blocked"
+	noRowsText := "_No accesses for selected period._"
+	topServicesTitle := "Top services"
+	serviceCol := "Service"
+	usersCol := "Users"
+	usersAndServicesTitle := "Users and services"
+	userCol := "User"
+	statusCol := "Status"
+	positionCol := "Position"
+	departmentCol := "Department"
+	servicesCol := "Services"
+	updatedCol := "Updated"
+	activeStatusLabel := "Active"
+	blockedStatusLabel := "Blocked"
+	if isRu {
+		sectionName = "Доступы"
+		usersInScopeLabel = "Пользователей в выборке"
+		activeLabel = "Активных"
+		blockedLabel = "Заблокированных"
+		noRowsText = "_Нет доступов за выбранный период._"
+		topServicesTitle = "Топ сервисов"
+		serviceCol = "Сервис"
+		usersCol = "Пользователей"
+		usersAndServicesTitle = "Пользователи и сервисы"
+		userCol = "Пользователь"
+		statusCol = "Статус"
+		positionCol = "Должность"
+		departmentCol = "Отдел"
+		servicesCol = "Сервисы"
+		updatedCol = "Обновлено"
+		activeStatusLabel = "Активен"
+		blockedStatusLabel = "Заблокирован"
+	}
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("## %s\n\n", sectionTitle(sec, sectionName)))
+	b.WriteString(fmt.Sprintf("- %s: %d\n", usersInScopeLabel, len(rows)))
+	b.WriteString(fmt.Sprintf("- %s: %d\n", activeLabel, activeCount))
+	b.WriteString(fmt.Sprintf("- %s: %d\n", blockedLabel, blockedCount))
+	if len(rows) == 0 {
+		b.WriteString("\n" + noRowsText + "\n")
+		res.Markdown = b.String()
+		return res
+	}
+	if len(stats) > 0 {
+		b.WriteString(fmt.Sprintf("\n### %s\n\n", topServicesTitle))
+		b.WriteString(fmt.Sprintf("| %s | %s |\n|---|---|\n", serviceCol, usersCol))
+		for _, st := range stats {
+			b.WriteString(fmt.Sprintf("| %s | %d |\n", escapePipes(st.Name), st.Count))
+		}
+	}
+	b.WriteString(fmt.Sprintf("\n### %s\n\n", usersAndServicesTitle))
+	b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n|---|---|---|---|---|---|\n", userCol, statusCol, positionCol, departmentCol, servicesCol, updatedCol))
+	for _, row := range rows {
+		status := activeStatusLabel
+		if row.Blocked {
+			status = blockedStatusLabel
+		}
+		updated := "-"
+		if !row.UpdatedAt.IsZero() {
+			updated = row.UpdatedAt.UTC().Format("2006-01-02 15:04")
+		}
+		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s | %s | %s |\n",
+			escapePipes(row.User),
+			escapePipes(status),
+			escapePipes(emptyDash(row.Position)),
+			escapePipes(emptyDash(row.Department)),
+			escapePipes(strings.Join(row.Services, ", ")),
+			escapePipes(updated),
+		))
+		res.Items = append(res.Items, store.ReportSnapshotItem{
+			EntityType: "access_user",
+			EntityID:   row.User,
+			Entity: map[string]any{
+				"user":       row.User,
+				"position":   row.Position,
+				"department": row.Department,
+				"services":   row.Services,
+				"blocked":    row.Blocked,
+				"created_at": row.CreatedAt.UTC().Format(time.RFC3339),
+				"updated_at": row.UpdatedAt.UTC().Format(time.RFC3339),
+			},
+		})
+	}
+	res.Markdown = b.String()
+	return res
+}
+
 func (h *ReportsHandler) buildAuditSection(ctx context.Context, sec store.ReportSection, user *store.User, roles []string, fallbackFrom, fallbackTo *time.Time, totals map[string]int) reportSectionResult {
 	res := reportSectionResult{Section: sec}
 	if !h.policy.Allowed(roles, "logs.view") {
@@ -277,10 +565,29 @@ func (h *ReportsHandler) buildAuditSection(ctx context.Context, sec store.Report
 		res.Error = "load failed"
 		return res
 	}
+	lang := sectionLang(sec)
 	importantOnly := configBool(sec.Config, "important_only")
+	relatedTo := strings.ToLower(strings.TrimSpace(configString(sec.Config, "related_to")))
+	if relatedTo == "" {
+		relatedTo = strings.ToLower(strings.TrimSpace(configString(sec.Config, "scope")))
+	}
+	actionContains := strings.ToLower(strings.TrimSpace(configString(sec.Config, "action")))
+	actorFilter := strings.ToLower(strings.TrimSpace(configString(sec.Config, "actor")))
 	var rows []store.AuditRecord
 	for _, rec := range records {
 		if importantOnly && !isImportantAudit(rec.Action) {
+			continue
+		}
+		if actorFilter != "" && !strings.Contains(strings.ToLower(rec.Username), actorFilter) {
+			continue
+		}
+		if actionContains != "" && !strings.Contains(strings.ToLower(rec.Action), actionContains) {
+			continue
+		}
+		if isNoisyAuditEvent(rec.Action) {
+			continue
+		}
+		if relatedTo == "accesses" && !isAccessRelatedAuditAction(rec.Action) {
 			continue
 		}
 		rows = append(rows, rec)
@@ -301,26 +608,175 @@ func (h *ReportsHandler) buildAuditSection(ctx context.Context, sec store.Report
 	}
 	b.WriteString("\n| Time | User | Action | Details |\n|---|---|---|---|\n")
 	for _, rec := range rows {
+		actionLabel := localizedAuditActionLabel(lang, rec.Action)
+		details := localizedAuditDetails(lang, rec.Action, rec.Details)
 		b.WriteString(fmt.Sprintf("| %s | %s | %s | %s |\n",
 			rec.CreatedAt.UTC().Format("2006-01-02 15:04"),
 			escapePipes(rec.Username),
-			escapePipes(rec.Action),
-			escapePipes(rec.Details),
+			escapePipes(actionLabel),
+			escapePipes(details),
 		))
 		res.Items = append(res.Items, store.ReportSnapshotItem{
 			EntityType: "audit",
 			EntityID:   fmt.Sprintf("%d", rec.ID),
 			Entity: map[string]any{
-				"id":         rec.ID,
-				"username":   rec.Username,
-				"action":     rec.Action,
-				"details":    rec.Details,
-				"created_at": rec.CreatedAt.UTC().Format(time.RFC3339),
+				"id":           rec.ID,
+				"username":     rec.Username,
+				"action":       rec.Action,
+				"action_label": actionLabel,
+				"details":      details,
+				"created_at":   rec.CreatedAt.UTC().Format(time.RFC3339),
 			},
 		})
 	}
 	res.Markdown = b.String()
 	return res
+}
+
+func sectionLang(sec store.ReportSection) string {
+	lang := strings.ToLower(strings.TrimSpace(configString(sec.Config, "lang")))
+	if lang == "ru" || lang == "en" {
+		return lang
+	}
+	title := strings.TrimSpace(sec.Title)
+	if title == "" {
+		return "en"
+	}
+	for _, r := range title {
+		if unicode.Is(unicode.Cyrillic, r) {
+			return "ru"
+		}
+	}
+	return "en"
+}
+
+func isNoisyAuditEvent(action string) bool {
+	act := strings.ToLower(strings.TrimSpace(action))
+	noisy := map[string]struct{}{
+		"report.list":          {},
+		"report.template.list": {},
+		"report.settings.view": {},
+		"doc.list":             {},
+		"folder.list":          {},
+		"auth.login_success":   {},
+	}
+	_, exists := noisy[act]
+	return exists
+}
+
+func isAccessRelatedAuditAction(action string) bool {
+	act := strings.ToLower(strings.TrimSpace(action))
+	if strings.HasPrefix(act, "accesses.") {
+		return true
+	}
+	if strings.HasPrefix(act, "notifications.accesses.") {
+		return true
+	}
+	if act == "services.catalog.update" {
+		return true
+	}
+	return false
+}
+
+func localizedAuditActionLabel(lang, action string) string {
+	act := strings.TrimSpace(action)
+	key := strings.ToLower(act)
+	ru := map[string]string{
+		"accesses.create":             "Доступы: создание",
+		"accesses.edit":               "Доступы: редактирование",
+		"accesses.supplement":         "Доступы: дополнение",
+		"accesses.blocked":            "Доступы: блокировка",
+		"accesses.unblocked":          "Доступы: разблокировка",
+		"accesses.delete":             "Доступы: удаление",
+		"accesses.dismissal":          "Доступы: увольнение",
+		"accesses.cleanup":            "Доступы: синхронизация",
+		"notifications.accesses.send": "Уведомления: отправка события по доступам",
+		"services.catalog.update":     "Справочник сервисов: обновление",
+	}
+	en := map[string]string{
+		"accesses.create":             "Accesses: create",
+		"accesses.edit":               "Accesses: edit",
+		"accesses.supplement":         "Accesses: supplement",
+		"accesses.blocked":            "Accesses: block",
+		"accesses.unblocked":          "Accesses: unblock",
+		"accesses.delete":             "Accesses: delete",
+		"accesses.dismissal":          "Accesses: dismissal",
+		"accesses.cleanup":            "Accesses: sync",
+		"notifications.accesses.send": "Notifications: access event sent",
+		"services.catalog.update":     "Services catalog: updated",
+	}
+	if lang == "ru" {
+		if v, ok := ru[key]; ok {
+			return v
+		}
+	}
+	if v, ok := en[key]; ok {
+		return v
+	}
+	return act
+}
+
+func localizedAuditDetails(lang, action, details string) string {
+	trimmed := strings.TrimSpace(details)
+	if trimmed == "" {
+		return ""
+	}
+	act := strings.ToLower(strings.TrimSpace(action))
+	if act == "notifications.accesses.send" {
+		return localizedAccessDetails(lang, trimmed)
+	}
+	if strings.HasPrefix(act, "accesses.") {
+		return localizedAccessDetails(lang, trimmed)
+	}
+	return trimmed
+}
+
+func localizedAccessDetails(lang, details string) string {
+	dictRu := map[string]string{
+		"items_count":    "Записей",
+		"user":           "Пользователь",
+		"services_count": "Сервисов",
+		"event":          "Событие",
+		"status":         "Статус",
+	}
+	dictEn := map[string]string{
+		"items_count":    "Items",
+		"user":           "User",
+		"services_count": "Services",
+		"event":          "Event",
+		"status":         "Status",
+	}
+	dict := dictEn
+	if lang == "ru" {
+		dict = dictRu
+	}
+	parts := strings.Fields(details)
+	out := make([]string, 0, len(parts))
+	for _, part := range parts {
+		eq := strings.Index(part, "=")
+		if eq <= 0 {
+			out = append(out, part)
+			continue
+		}
+		key := strings.TrimSpace(part[:eq])
+		val := strings.TrimSpace(part[eq+1:])
+		if key == "" {
+			continue
+		}
+		label := dict[key]
+		if label == "" {
+			label = key
+		}
+		out = append(out, fmt.Sprintf("%s: %s", label, val))
+	}
+	return strings.Join(out, " | ")
+}
+
+func emptyDash(v string) string {
+	if strings.TrimSpace(v) == "" {
+		return "-"
+	}
+	return strings.TrimSpace(v)
 }
 
 func (h *ReportsHandler) buildSummarySection(sec store.ReportSection, totals map[string]int, now time.Time) reportSectionResult {
@@ -366,6 +822,15 @@ func (h *ReportsHandler) buildSummarySection(sec store.ReportSection, totals map
 	if v := totals["audit_events"]; v > 0 {
 		b.WriteString(fmt.Sprintf("- Audit events: %d\n", v))
 	}
+	if v := totals["accesses_users"]; v > 0 {
+		b.WriteString(fmt.Sprintf("- Access users: %d\n", v))
+	}
+	if v := totals["accesses_active"]; v > 0 {
+		b.WriteString(fmt.Sprintf("- Active accesses: %d\n", v))
+	}
+	if v := totals["accesses_blocked"]; v > 0 {
+		b.WriteString(fmt.Sprintf("- Blocked accesses: %d\n", v))
+	}
 	res.Markdown = b.String()
 	return res
 }
@@ -377,7 +842,7 @@ func isImportantAudit(action string) bool {
 	}
 	importantPrefixes := []string{
 		"incident.", "incidents.", "report.", "reports.", "docs.", "tasks.",
-		"controls.", "monitoring.", "accounts.", "approval.", "auth.",
+		"controls.", "monitoring.", "accounts.", "accesses.", "approval.", "auth.",
 	}
 	for _, prefix := range importantPrefixes {
 		if strings.HasPrefix(action, prefix) {

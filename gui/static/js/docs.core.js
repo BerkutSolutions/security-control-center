@@ -244,6 +244,9 @@ const DocsPage = (() => {
     const page = document.getElementById('docs-page');
     if (!page) return;
     const initialRoute = parseDocsRoute();
+    if (!initialRoute?.docId) {
+      state.activeTabId = 'list';
+    }
     const dir = (typeof window !== 'undefined' && window.UserDirectory)
       ? window.UserDirectory
       : (typeof UserDirectory !== 'undefined' ? UserDirectory : null);

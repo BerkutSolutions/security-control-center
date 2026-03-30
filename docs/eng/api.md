@@ -10,6 +10,8 @@ Base path: `/api`
 - Incidents: `/api/incidents/*`
 - Tasks: `/api/tasks/*`
 - Monitoring: `/api/monitoring/*`
+- Registry: `/api/controls/*`, `/api/assets/*`, `/api/software/*`, `/api/findings/*`
+- Accesses: `/api/accesses`, `/api/services`, `/api/notifications/accesses-event`
 - Backups: `/api/backups/*`
 - Logs: `/api/logs`, `/api/logs/export`, `/api/logs/export/package`
 - HTTPS settings: `GET/PUT /api/settings/https`
@@ -65,7 +67,7 @@ Notes:
 - The UI for entering TOTP/recovery code is at `/login/2fa` (so password managers can detect the `one-time-code` field).
 - Passkeys require HTTPS (or `localhost`) and a correct `security.webauthn.*` configuration.
 
-## Backups (v1.2.0)
+## Backups (v1.2.1)
 Primary endpoints:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -149,6 +151,19 @@ Primary endpoints:
   - `PUT /api/catalog/tags`
   - `GET /api/catalog/classifications`
   - `PUT /api/catalog/classifications`
+
+## Accesses
+Primary endpoints:
+- `GET /api/accesses`
+- `PUT /api/accesses`
+- `POST /api/notifications/accesses-event`
+
+## Registry (Controls/Assets/Software/Findings)
+Base endpoint prefixes:
+- `/api/controls/*`
+- `/api/assets/*`
+- `/api/software/*`
+- `/api/findings/*`
 
 SLA specifics:
 - Closed periods (`day/week/month`) are calculated by background evaluator jobs, not by the UI save action.

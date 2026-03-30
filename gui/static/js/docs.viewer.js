@@ -395,8 +395,39 @@
 
   function renderMarkdown(md) {
     const esc = (str) => (str || '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+    const splitMarkdownTableRow = (line) => {
+      const src = String(line || '').trim();
+      if (!src) return [];
+      let row = src;
+      if (row.startsWith('|')) row = row.slice(1);
+      if (row.endsWith('|')) row = row.slice(0, -1);
+      const out = [];
+      let cur = '';
+      for (let i = 0; i < row.length; i += 1) {
+        const ch = row[i];
+        if (ch === '\\') {
+          const next = row[i + 1];
+          if (next === '|' || next === '\\') {
+            cur += next;
+            i += 1;
+            continue;
+          }
+          cur += ch;
+          continue;
+        }
+        if (ch === '|') {
+          out.push(cur.trim());
+          cur = '';
+          continue;
+        }
+        cur += ch;
+      }
+      out.push(cur.trim());
+      return out;
+    };
+    const clearMarkers = (md || '').replace(/<!--\s*(SECTION:[\s\S]*?|ENDSECTION)\s*-->/gi, '');
     const codeBlocks = [];
-    const mdWithoutCodes = (md || '').replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
+    const mdWithoutCodes = clearMarkers.replace(/```(\w+)?\n([\s\S]*?)```/g, (_, lang, code) => {
       const idx = codeBlocks.length;
       codeBlocks.push({ code: code || '', lang: lang || '' });
       return `@@CODE${idx}@@`;
@@ -406,8 +437,25 @@
       const lines = b.trim().split('\n');
       if (lines.length >= 2 && lines.every(l => l.trim().startsWith('|'))) {
         const [header, separator, ...rows] = lines;
-        const headers = header.split('|').filter(Boolean).map(c => esc(c.trim()));
-        const body = rows.map(r => r.split('|').filter(Boolean).map(c => esc(c.trim())));
+        const headersRaw = splitMarkdownTableRow(header);
+        const sepRaw = splitMarkdownTableRow(separator);
+        const looksLikeSeparator = sepRaw.length === headersRaw.length && sepRaw.every(c => /^:?-{3,}:?$/.test(c));
+        if (!looksLikeSeparator || !headersRaw.length) {
+          return esc(b);
+        }
+        const headers = headersRaw.map(c => esc(c));
+        const body = rows.map((r) => {
+          const cells = splitMarkdownTableRow(r);
+          if (cells.length > headers.length) {
+            const head = cells.slice(0, headers.length - 1);
+            head.push(cells.slice(headers.length - 1).join(' | '));
+            return head.map(c => esc(c));
+          }
+          if (cells.length < headers.length) {
+            return cells.concat(Array(headers.length - cells.length).fill('')).map(c => esc(c));
+          }
+          return cells.map(c => esc(c));
+        });
         const headHtml = `<tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>`;
         const bodyHtml = body.map(r => `<tr>${r.map(c => `<td>${c}</td>`).join('')}</tr>`).join('');
         return `<table class="md-table"><thead>${headHtml}</thead><tbody>${bodyHtml}</tbody></table>`;
@@ -448,7 +496,7 @@
       const code = esc(block.code);
       return `<div class="code-block"><div class="code-block-bar"><span class="code-lang">${esc(block.lang || 'code')}</span><button type="button" class="btn ghost icon-btn copy-code-btn" data-code-idx="${i}">Copy</button></div><pre><code>${code}</code></pre></div>`;
     });
-    return { html: `<div class="md-view"><p>${html}</p></div>`, codeBlocks };
+    return { html: `<div class="md-view">${html}</div>`, codeBlocks };
   }
 
   function resolveLinkHref(type, id) {

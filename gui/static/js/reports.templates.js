@@ -31,12 +31,13 @@
     if (!list) return;
     list.innerHTML = '';
     state.templates.forEach(tpl => {
+      const displayName = templateDisplayName(tpl);
       const card = document.createElement('div');
       card.className = 'template-card';
       card.innerHTML = `
         <div class="template-head">
           <div>
-            <div class="template-name">${escapeHtml(tpl.name)}</div>
+            <div class="template-name">${escapeHtml(displayName)}</div>
             <p class="muted">${escapeHtml(tpl.description || '')}</p>
           </div>
           <div class="template-actions">
@@ -65,10 +66,25 @@
       state.templates.forEach(t => {
         const opt = document.createElement('option');
         opt.value = t.id;
-        opt.textContent = t.name;
+        opt.textContent = templateDisplayName(t);
         sel.appendChild(opt);
       });
     });
+  }
+
+  function templateDisplayName(tpl) {
+    const tag = String(tpl?.description || '').split(':')[0].trim().toUpperCase();
+    const lang = (typeof BerkutI18n !== 'undefined' && BerkutI18n.currentLang && BerkutI18n.currentLang() === 'en') ? 'en' : 'ru';
+    const map = {
+      EXECUTIVE_RU: lang === 'en' ? 'reports.template.alias.executive_ru.en' : 'reports.template.alias.executive_ru.ru',
+      EXECUTIVE_EN: lang === 'en' ? 'reports.template.alias.executive_en.en' : 'reports.template.alias.executive_en.ru',
+      ACCESS_RU: lang === 'en' ? 'reports.template.alias.access_ru.en' : 'reports.template.alias.access_ru.ru',
+      ACCESS_EN: lang === 'en' ? 'reports.template.alias.access_en.en' : 'reports.template.alias.access_en.ru',
+    };
+    const key = map[tag];
+    if (!key) return tpl?.name || '';
+    const localized = BerkutI18n.t(key);
+    return localized && localized !== key ? localized : (tpl?.name || '');
   }
 
   function openTemplateForm(tpl) {

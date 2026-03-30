@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -37,9 +38,11 @@ type accessesEventPayload struct {
 	Position      string   `json:"position"`
 	Department    string   `json:"department"`
 	Services      []string `json:"services"`
+	AddedServices []string `json:"added_services"`
 	Actor         string   `json:"actor"`
 	OccurredAt    string   `json:"occurred_at"`
 	DismissalDate string   `json:"dismissal_date"`
+	Lang          string   `json:"lang,omitempty"`
 }
 
 var allowedAccessesNotificationTypes = map[string]struct{}{
@@ -170,6 +173,7 @@ func (h *NotificationsSettingsHandler) HandleAccessesEvent(w http.ResponseWriter
 		ChatID:         ch.TelegramChatID,
 		ThreadID:       ch.TelegramThreadID,
 		Text:           text,
+		ParseMode:      "Markdown",
 		Silent:         ch.Silent,
 		ProtectContent: ch.ProtectContent,
 	}
@@ -286,54 +290,218 @@ func isAccessesTypeEnabled(selected []string, eventType string) bool {
 }
 
 func buildAccessesNotificationText(payload accessesEventPayload) string {
+	lang := normalizeNotificationLang(payload.Lang)
+	labels := accessesNotificationLabels(lang)
+	formatCode := func(v string) string {
+		return "`" + tgEscapeMarkdown(v) + "`"
+	}
+	formatLine := func(label, value string) string {
+		return fmt.Sprintf("▫️ *%s:* %s", label, formatCode(value))
+	}
+	formatListLine := func(label string, values []string) string {
+		if len(values) == 0 {
+			return fmt.Sprintf("▫️ *%s:* %s", label, formatCode("-"))
+		}
+		escaped := make([]string, 0, len(values))
+		for _, v := range values {
+			escaped = append(escaped, tgEscapeMarkdown(v))
+		}
+		return fmt.Sprintf("▫️ *%s:* `%s`", label, strings.Join(escaped, ", "))
+	}
+
+	eventTitle := accessesEventTitle(payload.EventType, lang)
 	lines := []string{
-		fmt.Sprintf("Доступы: %s", accessesEventTitle(payload.EventType)),
-		fmt.Sprintf("Сотрудник: %s", fallbackText(payload.User)),
+		fmt.Sprintf("*%s: %s*", labels["module"], tgEscapeMarkdown(eventTitle)),
+		"",
+		formatLine(labels["employee"], fallbackText(payload.User)),
+		formatLine(labels["access"], accessCardLabel(payload)),
 	}
-	if strings.TrimSpace(payload.Position) != "" {
-		lines = append(lines, fmt.Sprintf("Должность: %s", strings.TrimSpace(payload.Position)))
+	if strings.TrimSpace(payload.Position) != "" || strings.TrimSpace(payload.Department) != "" {
+		lines = append(lines, formatLine(labels["profile"], accessProfileLabel(payload, lang)))
 	}
-	if strings.TrimSpace(payload.Department) != "" {
-		lines = append(lines, fmt.Sprintf("Отдел: %s", strings.TrimSpace(payload.Department)))
+	addedServices := normalizeServices(payload.AddedServices)
+	if strings.EqualFold(strings.TrimSpace(payload.EventType), "supplement") {
+		if len(addedServices) > 0 {
+			lines = append(lines, formatLine(labels["addedCount"], strconv.Itoa(len(addedServices))))
+			lines = append(lines, formatListLine(labels["added"], addedServices))
+		} else {
+			lines = append(lines, formatLine(labels["added"], labels["none"]))
+		}
 	}
 	services := normalizeServices(payload.Services)
 	if len(services) > 0 {
-		lines = append(lines, fmt.Sprintf("Сервисы: %s", strings.Join(services, ", ")))
+		lines = append(lines, formatLine(labels["servicesTotal"], strconv.Itoa(len(services))))
+		lines = append(lines, formatListLine(labels["services"], services))
 	}
 	if dt, ok := parseDismissalDate(payload.DismissalDate); ok {
-		lines = append(lines, fmt.Sprintf("Дата увольнения: %s (%s)", dt.Format("02.01.2006"), russianWeekday(dt.Weekday())))
+		lines = append(lines, "")
+		lines = append(lines, fmt.Sprintf("*%s*", labels["dismissal"]))
+		lines = append(lines, formatLine(labels["date"], fmt.Sprintf("%s (%s)", dt.Format("02.01.2006"), weekdayLabel(dt.Weekday(), lang))))
+		lines = append(lines, formatLine(labels["status"], labels["dismissalStatus"]))
 	}
 	occurredAt := parseOccurredAt(payload.OccurredAt)
-	lines = append(lines, fmt.Sprintf("Время: %s", formatMoscowTime(occurredAt)))
+	lines = append(lines, formatLine(labels["time"], formatMoscowTime(occurredAt)))
 	if actor := strings.TrimSpace(payload.Actor); actor != "" {
-		lines = append(lines, fmt.Sprintf("Инициатор: %s", actor))
+		lines = append(lines, formatLine(labels["actor"], actor))
 	}
 	return strings.Join(lines, "\n")
 }
 
-func accessesEventTitle(eventType string) string {
+func accessesEventTitle(eventType, lang string) string {
+	en := lang == "en"
 	switch strings.ToLower(strings.TrimSpace(eventType)) {
 	case "test":
+		if en {
+			return "Access notification test"
+		}
 		return "Тест уведомления по доступам"
 	case "create":
+		if en {
+			return "Access created"
+		}
 		return "Создан доступ"
 	case "edit":
-		return "Отредактирован доступ"
+		if en {
+			return "Access updated"
+		}
+		return "Изменен доступ"
 	case "supplement":
-		return "Дополнены сервисы"
+		if en {
+			return "Access supplemented"
+		}
+		return "Дополнен доступ"
 	case "blocked":
+		if en {
+			return "Access blocked"
+		}
 		return "Доступ заблокирован"
 	case "unblocked":
+		if en {
+			return "Access unblocked"
+		}
 		return "Доступ разблокирован"
 	case "delete":
+		if en {
+			return "Access deleted"
+		}
 		return "Доступ удален"
 	case "dismissal":
+		if en {
+			return "Employee dismissal"
+		}
 		return "Увольнение сотрудника"
 	default:
+		if en {
+			return "Access update"
+		}
 		return "Обновление доступа"
 	}
 }
 
+func accessCardLabel(payload accessesEventPayload) string {
+	user := fallbackText(payload.User)
+	department := strings.TrimSpace(payload.Department)
+	position := strings.TrimSpace(payload.Position)
+	parts := make([]string, 0, 3)
+	if user != "-" {
+		parts = append(parts, user)
+	}
+	if department != "" {
+		parts = append(parts, department)
+	}
+	if position != "" {
+		parts = append(parts, position)
+	}
+	if len(parts) == 0 {
+		return "-"
+	}
+	return strings.Join(parts, " | ")
+}
+
+func accessProfileLabel(payload accessesEventPayload, lang string) string {
+	position := strings.TrimSpace(payload.Position)
+	department := strings.TrimSpace(payload.Department)
+	if position == "" && department == "" {
+		return "-"
+	}
+	isEn := lang == "en"
+	if position == "" {
+		if isEn {
+			return fmt.Sprintf("department: %s", department)
+		}
+		return fmt.Sprintf("отдел: %s", department)
+	}
+	if department == "" {
+		if isEn {
+			return fmt.Sprintf("position: %s", position)
+		}
+		return fmt.Sprintf("должность: %s", position)
+	}
+	return fmt.Sprintf("%s, %s", position, department)
+}
+
+func normalizeNotificationLang(raw string) string {
+	val := strings.ToLower(strings.TrimSpace(raw))
+	if strings.HasPrefix(val, "en") {
+		return "en"
+	}
+	return "ru"
+}
+
+func accessesNotificationLabels(lang string) map[string]string {
+	if lang == "en" {
+		return map[string]string{
+			"module":          "Accesses",
+			"employee":        "Employee",
+			"access":          "Access",
+			"profile":         "Profile",
+			"addedCount":      "Added services",
+			"added":           "Added",
+			"servicesTotal":   "Services (total)",
+			"services":        "Services",
+			"dismissal":       "Dismissal",
+			"date":            "Date",
+			"status":          "Status",
+			"dismissalStatus": "dismissal procedure initiated",
+			"time":            "Time",
+			"actor":           "Initiator",
+			"none":            "not provided",
+		}
+	}
+	return map[string]string{
+		"module":          "Доступы",
+		"employee":        "Сотрудник",
+		"access":          "Доступ",
+		"profile":         "Профиль",
+		"addedCount":      "Добавлено сервисов",
+		"added":           "Добавлено",
+		"servicesTotal":   "Сервисов (итого)",
+		"services":        "Сервисы",
+		"dismissal":       "Увольнение",
+		"date":            "Дата",
+		"status":          "Статус",
+		"dismissalStatus": "инициирована процедура увольнения",
+		"time":            "Время",
+		"actor":           "Инициатор",
+		"none":            "список не передан",
+	}
+}
+
+func tgEscapeMarkdown(raw string) string {
+	text := strings.TrimSpace(raw)
+	if text == "" {
+		return "-"
+	}
+	replacer := strings.NewReplacer(
+		"\\", "\\\\",
+		"`", "\\`",
+		"*", "\\*",
+		"_", "\\_",
+		"[", "\\[",
+		"]", "\\]",
+	)
+	return replacer.Replace(text)
+}
 func fallbackText(raw string) string {
 	v := strings.TrimSpace(raw)
 	if v == "" {
@@ -413,6 +581,31 @@ func russianWeekday(day time.Weekday) string {
 	default:
 		return "воскресенье"
 	}
+}
+func englishWeekday(day time.Weekday) string {
+	switch day {
+	case time.Monday:
+		return "Monday"
+	case time.Tuesday:
+		return "Tuesday"
+	case time.Wednesday:
+		return "Wednesday"
+	case time.Thursday:
+		return "Thursday"
+	case time.Friday:
+		return "Friday"
+	case time.Saturday:
+		return "Saturday"
+	default:
+		return "Sunday"
+	}
+}
+
+func weekdayLabel(day time.Weekday, lang string) string {
+	if lang == "en" {
+		return englishWeekday(day)
+	}
+	return russianWeekday(day)
 }
 
 func previewText(text string) string {

@@ -60,6 +60,7 @@ func RegisterReports(apiRouter chi.Router, g Guards, reports *handlers.ReportsHa
 		reportsRouter.MethodFunc("DELETE", "/{id:[0-9]+}", g.SessionPerm("reports.delete", reports.Delete))
 		reportsRouter.MethodFunc("GET", "/{id:[0-9]+}/content", g.SessionPerm("reports.view", reports.GetContent))
 		reportsRouter.MethodFunc("PUT", "/{id:[0-9]+}/content", g.SessionPerm("reports.edit", reports.UpdateContent))
+		reportsRouter.MethodFunc("POST", "/{id:[0-9]+}/security-events", g.SessionPerm("reports.view", reports.LogSecurityEvent))
 		reportsRouter.MethodFunc("GET", "/{id:[0-9]+}/export", g.SessionPerm("reports.export", reports.Export))
 		reportsRouter.MethodFunc("GET", "/{id:[0-9]+}/sections", g.SessionPerm("reports.view", reports.ListSections))
 		reportsRouter.MethodFunc("PUT", "/{id:[0-9]+}/sections", g.SessionPerm("reports.edit", reports.UpdateSections))

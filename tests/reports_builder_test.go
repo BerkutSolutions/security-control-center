@@ -89,6 +89,7 @@ func setupReportsBuilder(t *testing.T) reportEnv {
 	u.ID = uid
 	docsStore := store.NewDocsStore(db)
 	reportsStore := store.NewReportsStore(db)
+	modulesStore := store.NewAppModuleStateStore(db)
 	incStore := store.NewIncidentsStore(db)
 	ctrlStore := store.NewControlsStore(db)
 	monStore := store.NewMonitoringStore(db)
@@ -103,7 +104,7 @@ func setupReportsBuilder(t *testing.T) reportEnv {
 		t.Fatalf("inc svc: %v", err)
 	}
 	taskSvc := tasks.NewService(taskstore.NewStore(db))
-	handler := handlers.NewReportsHandler(cfg, docsStore, reportsStore, users, policy, docsSvc, incStore, incSvc, ctrlStore, monStore, taskSvc, audits, logger)
+	handler := handlers.NewReportsHandler(cfg, modulesStore, docsStore, reportsStore, users, policy, docsSvc, incStore, incSvc, ctrlStore, monStore, taskSvc, nil, audits, logger)
 	return reportEnv{
 		cfg:        cfg,
 		user:       u,

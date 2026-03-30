@@ -1,8 +1,8 @@
-﻿# Berkut SCC Documentation (EN)
+# Berkut SCC Documentation (EN)
 
 
 
-Documentation version baseline: `1.2.0`
+Documentation version baseline: `1.2.1`
 
 
 
@@ -13,6 +13,7 @@ Documentation version baseline: `1.2.0`
 2. API: `docs/eng/api.md`
 
 3. Security: `docs/eng/security.md`
+3.1 DLP system: `docs/eng/dlp.md`
 
 4. Tab compatibility (Compat): `docs/eng/compatibility.md` (cheatsheet: `docs/eng/compatibility_cheatsheet.md`)
 

@@ -1,4 +1,4 @@
-﻿package store
+package store
 
 import (
 	"context"
@@ -19,36 +19,36 @@ type ReportMeta struct {
 }
 
 type ReportTemplate struct {
-	ID              int64     `json:"id"`
-	Name            string    `json:"name"`
-	Description     string    `json:"description"`
-	TemplateMarkdown string   `json:"template_markdown"`
-	CreatedBy       int64     `json:"created_by"`
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
+	ID               int64     `json:"id"`
+	Name             string    `json:"name"`
+	Description      string    `json:"description"`
+	TemplateMarkdown string    `json:"template_markdown"`
+	CreatedBy        int64     `json:"created_by"`
+	CreatedAt        time.Time `json:"created_at"`
+	UpdatedAt        time.Time `json:"updated_at"`
 }
 
 type ReportSettings struct {
-	ID                   int64      `json:"id"`
-	DefaultClassification string     `json:"default_classification"`
-	DefaultTemplateID     *int64     `json:"default_template_id,omitempty"`
-	HeaderEnabled         bool       `json:"header_enabled"`
-	HeaderLogoPath        string     `json:"header_logo_path"`
-	HeaderTitle           string     `json:"header_title"`
-	WatermarkThreshold    string     `json:"watermark_threshold"`
-	UpdatedAt             time.Time  `json:"updated_at"`
+	ID                    int64     `json:"id"`
+	DefaultClassification string    `json:"default_classification"`
+	DefaultTemplateID     *int64    `json:"default_template_id,omitempty"`
+	HeaderEnabled         bool      `json:"header_enabled"`
+	HeaderLogoPath        string    `json:"header_logo_path"`
+	HeaderTitle           string    `json:"header_title"`
+	WatermarkThreshold    string    `json:"watermark_threshold"`
+	UpdatedAt             time.Time `json:"updated_at"`
 }
 
 type ReportFilter struct {
-	Search             string
-	MineUserID         int64
-	Status             string
+	Search              string
+	MineUserID          int64
+	Status              string
 	ClassificationLevel int
-	Tags               []string
-	DateFrom           *time.Time
-	DateTo             *time.Time
-	Limit              int
-	Offset             int
+	Tags                []string
+	DateFrom            *time.Time
+	DateTo              *time.Time
+	Limit               int
+	Offset              int
 }
 
 type ReportRecord struct {
@@ -277,29 +277,40 @@ func (s *reportsStore) EnsureDefaultReportTemplates(ctx context.Context) error {
 	now := time.Now().UTC()
 	seed := []ReportTemplate{
 		{
-			Name: "Ежемесячный отчёт ИБ",
-			Description: "Структурированный ежемесячный отчёт по ИБ",
+			Name:             "Ежемесячный отчёт ИБ",
+			Description:      "Структурированный ежемесячный отчёт по ИБ",
 			TemplateMarkdown: "## Резюме\n\n## Область отчёта\n\n## Наблюдения\n\n## Метрики\n\n## Риски и рекомендации\n",
 		},
 		{
-			Name: "Отчёт руководству (кратко)",
-			Description: "EXECUTIVE_RU: Короткий отчёт для руководства",
+			Name:             "Отчёт руководству (кратко)",
+			Description:      "EXECUTIVE_RU: Короткий отчёт для руководства",
 			TemplateMarkdown: "## Ключевые KPI\n\n## Основные риски\n\n## Графики\n\n## Рекомендации\n",
 		},
 		{
-			Name: "Executive brief report",
-			Description: "EXECUTIVE_EN: Short management report",
+			Name:             "Executive brief report",
+			Description:      "EXECUTIVE_EN: Short management report",
 			TemplateMarkdown: "## Key KPIs\n\n## Top risks\n\n## Charts\n\n## Recommendations\n",
 		},
 		{
-			Name: "Отчёт по контролям (квартал)",
-			Description: "Отчёт по эффективности контролей за квартал",
+			Name:             "Отчёт по доступам",
+			Description:      "ACCESS_RU: Отчёт по изменениям доступов и действиям пользователей",
+			TemplateMarkdown: "## Сводка по доступам\n\n<!-- SECTION: accesses -->\n<!-- ENDSECTION -->\n\n## Связанные аудиты\n\n<!-- SECTION: audit -->\n<!-- ENDSECTION -->\n\n## Рекомендации\n",
+		},
+		{
+			Name:             "Access review report",
+			Description:      "ACCESS_EN: Access changes and user activity report",
+			TemplateMarkdown: "## Access summary\n\n<!-- SECTION: accesses -->\n<!-- ENDSECTION -->\n\n## Related audits\n\n<!-- SECTION: audit -->\n<!-- ENDSECTION -->\n\n## Recommendations\n",
+		},
+		{
+			Name:             "Отчёт по контролям (квартал)",
+			Description:      "Отчёт по эффективности контролей за квартал",
 			TemplateMarkdown: "## Обзор контролей\n\n## Выполнение и отклонения\n\n## План действий\n",
 		},
 	}
 	if count > 0 {
 		for _, tpl := range seed {
-			if !strings.Contains(strings.ToUpper(tpl.Description), "EXECUTIVE_") {
+			descTag := strings.ToUpper(tpl.Description)
+			if !strings.Contains(descTag, "EXECUTIVE_") && !strings.Contains(descTag, "ACCESS_") {
 				continue
 			}
 			if err := s.ensureTemplateByTag(ctx, tpl, now); err != nil {
@@ -443,4 +454,3 @@ func scanReportMeta(row interface {
 	}
 	return &meta, nil
 }
-

@@ -323,7 +323,7 @@ const NotificationsPage = (() => {
           <div class="notifications-channel-head">
             <div>
               <strong>${escapeHtml(item.name || '-')}</strong>
-              <div class="muted">${escapeHtml(item.type || 'telegram')}</div>
+              <div class="muted">${escapeHtml(formatChannelType(item.type || 'telegram'))}</div>
             </div>
             <span class="pill ${item.is_active ? '' : 'pill-muted'}">${escapeHtml(status)}</span>
           </div>
@@ -400,8 +400,8 @@ const NotificationsPage = (() => {
     const rows = items.map((item) => `
       <tr>
         <td>${formatDate(item.created_at)}</td>
-        <td>${escapeHtml(item.event_type || '')}</td>
-        <td>${escapeHtml(item.status || '')}</td>
+        <td>${escapeHtml(formatDeliveryEventType(item.event_type || ''))}</td>
+        <td>${escapeHtml(formatDeliveryStatus(item.status || ''))}</td>
         <td>${escapeHtml(item.error || '')}</td>
         <td>${escapeHtml(item.body_preview || '')}</td>
       </tr>
@@ -571,6 +571,39 @@ const NotificationsPage = (() => {
 
   function escapeHtml(str) {
     return (str || '').toString().replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function translateKey(key, fallback) {
+    const translated = t(key);
+    if (translated === key) return fallback;
+    return translated;
+  }
+
+  function formatChannelType(rawType) {
+    const type = String(rawType || '').trim().toLowerCase();
+    if (!type) return '-';
+    return translateKey(`notifications.channels.type.${type}`, rawType);
+  }
+
+  function formatDeliveryEventType(rawType) {
+    const type = String(rawType || '').trim().toLowerCase();
+    if (!type) return '';
+    if (type === 'tls_expiring') {
+      return translateKey('monitoring.event.tlsExpiring', rawType);
+    }
+    if (type.startsWith('accesses.')) {
+      const eventType = type.slice('accesses.'.length);
+      return translateKey(`accesses.history.type.${eventType}`, rawType);
+    }
+    const monitoringStatus = translateKey(`monitoring.status.${type}`, '');
+    if (monitoringStatus) return monitoringStatus;
+    return translateKey(`notifications.delivery.event.${type}`, rawType);
+  }
+
+  function formatDeliveryStatus(rawStatus) {
+    const status = String(rawStatus || '').trim().toLowerCase();
+    if (!status) return '';
+    return translateKey(`notifications.delivery.status.${status}`, rawStatus);
   }
 
   return { init };

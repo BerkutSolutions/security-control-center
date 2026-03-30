@@ -321,12 +321,26 @@
         ? `${labels.document} ${docCode}`
         : `${labels.document} #${docCode}`;
       if (parts.length <= 1) return base;
-      const detailMap = labels?.doc || {};
+      const detailMap = act.startsWith('doc.security.')
+        ? (labels?.security || {})
+        : (labels?.doc || {});
       const extra = parts.slice(1).map((part) => detailMap[part] || part);
       return `${base} | ${extra.join(' | ')}`;
     };
 
     if (act.startsWith('doc.')) return formatDocDetails(details);
+    if (act.startsWith('report.security.')) {
+      if (!details) return '';
+      const parts = String(details).split('|').map((part) => part.trim()).filter(Boolean);
+      const reportCode = parts[0] || '';
+      const base = reportCode
+        ? `${BerkutI18n.t('nav.reports') || 'Reports'} ${reportCode}`
+        : `${BerkutI18n.t('nav.reports') || 'Reports'}`;
+      if (parts.length <= 1) return base;
+      const detailMap = labels?.security || {};
+      const extra = parts.slice(1).map((part) => detailMap[part] || part);
+      return `${base} | ${extra.join(' | ')}`;
+    }
     if (act === 'settings.updates.check') {
       return formatUpdateCheckDetails(details, labels);
     }
@@ -567,6 +581,8 @@
       'doc.classification.change': 'Документы: смена грифа',
       'doc.security.copy_blocked': 'Документы: блокировка копирования',
       'doc.security.screenshot_attempt': 'Документы: попытка скриншота',
+      'report.security.copy_blocked': 'Отчеты: блокировка копирования',
+      'report.security.screenshot_attempt': 'Отчеты: попытка скриншота',
       'folder.list': 'Папки: просмотр списка',
       'folder.create': 'Папки: создание',
       'folder.update': 'Папки: обновление',
@@ -862,6 +878,7 @@
       'settings.updates.toggle': 'Настройки: автопроверка обновлений',
       'settings.behavior_model.toggle': 'Настройки: поведенческая модель',
       'settings.hardening.read': 'Настройки: hardening-проверка',
+      'settings.hardening.dlp.update': 'Настройки: DLP обновлен',
       'security.behavior.stepup_required': 'Безопасность: требуется step-up',
       'security.behavior.stepup_password_ok': 'Безопасность: пароль step-up подтвержден',
       'security.behavior.stepup_failed': 'Безопасность: step-up не пройден',
@@ -910,6 +927,8 @@
       'doc.classification.change': 'Documents: classification change',
       'doc.security.copy_blocked': 'Documents: copy blocked',
       'doc.security.screenshot_attempt': 'Documents: screenshot attempt',
+      'report.security.copy_blocked': 'Reports: copy blocked',
+      'report.security.screenshot_attempt': 'Reports: screenshot attempt',
       'folder.list': 'Folders: list view',
       'folder.create': 'Folders: create',
       'folder.update': 'Folders: update',
@@ -1205,6 +1224,7 @@
       'settings.updates.toggle': 'Settings: update checks toggled',
       'settings.behavior_model.toggle': 'Settings: behavioral model toggle',
       'settings.hardening.read': 'Settings: hardening read',
+      'settings.hardening.dlp.update': 'Settings: DLP updated',
       'security.behavior.stepup_required': 'Security: step-up required',
       'security.behavior.stepup_password_ok': 'Security: step-up password confirmed',
       'security.behavior.stepup_failed': 'Security: step-up failed',
@@ -1238,6 +1258,20 @@
       },
       doc: {
         approval_required: 'требуется согласование экспорта',
+      },
+      security: {
+        copy: 'копирование',
+        cut: 'вырезание',
+        context_menu: 'контекстное меню',
+        key_c: 'горячая клавиша C',
+        key_x: 'горячая клавиша X',
+        key_a: 'горячая клавиша A',
+        key_insert: 'горячая клавиша Insert',
+        ctrl_c: 'Ctrl/Cmd + C',
+        print_screen_key: 'PrintScreen',
+        print_screen_keydown: 'PrintScreen (keydown)',
+        print_screen_keyup: 'PrintScreen (keyup)',
+        visibility_hidden: 'скрытие вкладки/окна',
       },
       backups: {
         result: 'Результат',
@@ -1301,6 +1335,20 @@
       },
       doc: {
         approval_required: 'export approval required',
+      },
+      security: {
+        copy: 'copy action',
+        cut: 'cut action',
+        context_menu: 'context menu',
+        key_c: 'hotkey C',
+        key_x: 'hotkey X',
+        key_a: 'hotkey A',
+        key_insert: 'hotkey Insert',
+        ctrl_c: 'Ctrl/Cmd + C',
+        print_screen_key: 'PrintScreen',
+        print_screen_keydown: 'PrintScreen (keydown)',
+        print_screen_keyup: 'PrintScreen (keyup)',
+        visibility_hidden: 'tab/window hidden',
       },
       backups: {
         result: 'Result',

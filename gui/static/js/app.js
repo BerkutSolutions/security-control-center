@@ -554,6 +554,18 @@
   }
 
   function renderAppMeta(meta) {
+    const docsCfg = meta?.docs || {};
+    const dlpCfg = docsCfg?.dlp || {};
+    if (typeof window !== 'undefined') {
+      if (!window.__APP_CONFIG__) window.__APP_CONFIG__ = {};
+      if (!window.__APP_CONFIG__.docs) window.__APP_CONFIG__.docs = {};
+      window.__APP_CONFIG__.docs.dlp = {
+        protect_clipboard_and_print: dlpCfg.protect_clipboard_and_print !== false,
+        block_screenshots: dlpCfg.block_screenshots !== false,
+        apply_mode: (dlpCfg.apply_mode || 'protected_only') === 'all' ? 'all' : 'protected_only',
+        scope: Array.isArray(dlpCfg.scope) && dlpCfg.scope.length ? dlpCfg.scope.slice() : ['docs', 'reports'],
+      };
+    }
     const versionEl = document.getElementById('app-version');
     const badgeEl = document.getElementById('app-update-badge');
     if (versionEl) {

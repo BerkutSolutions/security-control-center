@@ -21,6 +21,7 @@ import (
 
 type ReportsHandler struct {
 	cfg          *config.AppConfig
+	modules      store.AppModuleStateStore
 	docs         store.DocsStore
 	reports      store.ReportsStore
 	users        store.UsersStore
@@ -31,13 +32,15 @@ type ReportsHandler struct {
 	controls     store.ControlsStore
 	monitoring   store.MonitoringStore
 	tasksSvc     *tasks.Service
+	behavior     store.BehaviorRiskStore
 	audits       store.AuditStore
 	logger       *utils.Logger
 }
 
-func NewReportsHandler(cfg *config.AppConfig, ds store.DocsStore, rs store.ReportsStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, incidents store.IncidentsStore, incidentsSvc *incidents.Service, controls store.ControlsStore, monitoring store.MonitoringStore, tasksSvc *tasks.Service, audits store.AuditStore, logger *utils.Logger) *ReportsHandler {
+func NewReportsHandler(cfg *config.AppConfig, modules store.AppModuleStateStore, ds store.DocsStore, rs store.ReportsStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, incidents store.IncidentsStore, incidentsSvc *incidents.Service, controls store.ControlsStore, monitoring store.MonitoringStore, tasksSvc *tasks.Service, behavior store.BehaviorRiskStore, audits store.AuditStore, logger *utils.Logger) *ReportsHandler {
 	return &ReportsHandler{
 		cfg:          cfg,
+		modules:      modules,
 		docs:         ds,
 		reports:      rs,
 		users:        us,
@@ -48,6 +51,7 @@ func NewReportsHandler(cfg *config.AppConfig, ds store.DocsStore, rs store.Repor
 		controls:     controls,
 		monitoring:   monitoring,
 		tasksSvc:     tasksSvc,
+		behavior:     behavior,
 		audits:       audits,
 		logger:       logger,
 	}

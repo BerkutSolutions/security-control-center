@@ -19,6 +19,7 @@ type TelegramMessage struct {
 	ChatID         string
 	ThreadID       *int64
 	Text           string
+	ParseMode      string
 	Silent         bool
 	ProtectContent bool
 }
@@ -48,6 +49,9 @@ func (s *HTTPTelegramSender) Send(ctx context.Context, msg TelegramMessage) erro
 		"text":                 msg.Text,
 		"disable_notification": msg.Silent,
 		"protect_content":      msg.ProtectContent,
+	}
+	if strings.TrimSpace(msg.ParseMode) != "" {
+		body["parse_mode"] = strings.TrimSpace(msg.ParseMode)
 	}
 	if msg.ThreadID != nil {
 		body["message_thread_id"] = *msg.ThreadID

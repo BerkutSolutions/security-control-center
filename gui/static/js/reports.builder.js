@@ -1,5 +1,7 @@
 (() => {
   const state = ReportsPage.state;
+  const securityEventCooldown = Object.create(null);
+  const REPORT_TAB_PREFIX = 'report-tab-';
   const exportModulePerms = {
     tasks: 'tasks.view',
     controls: 'controls.view',
@@ -33,7 +35,14 @@
     const createModal = document.getElementById('report-create-modal');
     if (createModal) createModal.hidden = true;
     const closeBtn = document.getElementById('report-editor-close');
-    if (closeBtn) closeBtn.onclick = () => closeEditor();
+    if (closeBtn) closeBtn.onclick = () => {
+      const tabId = state.editor && state.editor.tabId ? state.editor.tabId : '';
+      if (tabId && typeof ReportsPage.closeReportTab === 'function') {
+        ReportsPage.closeReportTab(tabId);
+        return;
+      }
+      closeEditor();
+    };
     const saveBtn = document.getElementById('report-editor-save');
     if (saveBtn) saveBtn.onclick = () => saveContent();
     const metaSaveBtn = document.getElementById('report-editor-meta-save');
@@ -171,13 +180,16 @@
       state.editor.id = id;
       state.editor.meta = metaRes;
       state.editor.content = contentRes.content || '';
+      const doc = metaRes.doc || metaRes.document || {};
+      const mode = opts.mode === 'view' ? 'view' : 'edit';
+      state.editor.tabId = ensureReportTab(doc, mode);
       const reason = document.getElementById('report-editor-reason');
       if (reason) reason.value = '';
       renderEditor(metaRes, contentRes.content || '');
-      setEditorMode(opts.mode === 'view' ? 'view' : 'edit');
+      setEditorMode(mode);
       document.getElementById('report-editor')?.removeAttribute('hidden');
       if (!opts.skipRoute && ReportsPage.updateReportsPath) {
-        ReportsPage.updateReportsPath(id, 'edit');
+        ReportsPage.updateReportsPath(id, mode);
       }
       if (ReportsPage.loadSections) await ReportsPage.loadSections(id);
       if (ReportsPage.loadCharts) await ReportsPage.loadCharts(id);
@@ -261,21 +273,39 @@
     const textarea = document.getElementById('report-editor-content');
     const preview = document.getElementById('report-editor-preview');
     const toolbar = document.getElementById('report-editor-toolbar');
+    const meta = panel ? panel.querySelector('.editor-meta') : null;
     const viewOnly = mode === 'view';
     if (panel) panel.classList.toggle('view-only', viewOnly);
     if (toolbar) toolbar.hidden = viewOnly;
     if (textarea) textarea.hidden = viewOnly;
+    setMetaReadOnly(meta, viewOnly);
     if (preview && viewOnly) {
       togglePreview(true);
     } else if (preview && !viewOnly) {
       preview.hidden = true;
     }
+    bindSecurityGuards(panel);
+  }
+
+  function setMetaReadOnly(metaContainer, readOnly) {
+    if (!metaContainer) return;
+    const fields = metaContainer.querySelectorAll('input, textarea, select, button');
+    fields.forEach((el) => {
+      const tag = (el.tagName || '').toUpperCase();
+      if (tag === 'INPUT' || tag === 'TEXTAREA') {
+        if (readOnly) {
+          el.setAttribute('readonly', 'readonly');
+        } else {
+          el.removeAttribute('readonly');
+        }
+      }
+      if (tag === 'SELECT' || tag === 'BUTTON') {
+        el.disabled = !!readOnly;
+      }
+    });
   }
 
   async function openViewer(id) {
-    if (ReportsPage.switchTab) {
-      ReportsPage.switchTab('reports-tab-home', { skipRoute: true });
-    }
     await openEditor(id, { mode: 'view', skipRoute: true });
     if (ReportsPage.updateReportsPath) {
       ReportsPage.updateReportsPath(id, 'view');
@@ -293,11 +323,279 @@
   function closeEditor() {
     const panel = document.getElementById('report-editor');
     if (panel) panel.hidden = true;
+    detachEditorToRoot();
     state.editor.id = null;
     state.editor.meta = null;
     state.editor.content = '';
+    state.editor.tabId = null;
     if (ReportsPage.updateReportsPath) {
       ReportsPage.updateReportsPath(null, ReportsPage.state?.activeTabId || 'reports-tab-home');
+    }
+  }
+
+  function ensureReportTab(doc, mode) {
+    const id = Number(doc && doc.id);
+    if (!id) return '';
+    const tabId = `${REPORT_TAB_PREFIX}${id}`;
+    const tabs = document.getElementById('reports-tabs');
+    const panels = document.querySelector('#reports-page .reports-panels');
+    const editor = document.getElementById('report-editor');
+    if (!tabs || !panels || !editor) return '';
+
+    let btn = tabs.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+    if (!btn) {
+      btn = document.createElement('button');
+      btn.type = 'button';
+      btn.className = 'tab-btn';
+      btn.dataset.tab = tabId;
+      const title = document.createElement('span');
+      title.className = 'tab-title';
+      btn.appendChild(title);
+      const close = document.createElement('span');
+      close.className = 'tab-close';
+      close.textContent = 'x';
+      close.setAttribute('role', 'button');
+      close.setAttribute('aria-label', BerkutI18n.t('common.close') || 'Close');
+      close.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        closeReportTab(tabId);
+      });
+      btn.appendChild(close);
+      btn.addEventListener('click', () => {
+        const currentMode = (btn.dataset.mode === 'edit') ? 'edit' : 'view';
+        openEditor(id, { mode: currentMode, skipRoute: false });
+      });
+      tabs.appendChild(btn);
+    }
+    btn.dataset.mode = mode === 'edit' ? 'edit' : 'view';
+    const titleEl = btn.querySelector('.tab-title');
+    if (titleEl) titleEl.textContent = formatReportTabTitle(doc);
+
+    let panel = panels.querySelector(`.reports-panel[data-tab="${tabId}"]`);
+    if (!panel) {
+      panel = document.createElement('div');
+      panel.className = 'tab-panel reports-panel reports-doc-panel';
+      panel.dataset.tab = tabId;
+      panel.hidden = true;
+      panels.appendChild(panel);
+    }
+    if (editor.parentElement !== panel) {
+      panel.appendChild(editor);
+    }
+    if (ReportsPage.switchTab) {
+      ReportsPage.switchTab(tabId, { skipRoute: true });
+    }
+    return tabId;
+  }
+
+  function formatReportTabTitle(doc) {
+    const title = String((doc && doc.title) || '').trim();
+    const reg = String((doc && doc.reg_number) || '').trim();
+    if (title && reg) return `${title} (${reg})`;
+    return title || reg || '#';
+  }
+
+  function closeReportTab(tabId) {
+    const tabs = document.getElementById('reports-tabs');
+    const panel = document.querySelector(`#reports-page .reports-panels .reports-panel[data-tab="${tabId}"]`);
+    const btn = tabs ? tabs.querySelector(`.tab-btn[data-tab="${tabId}"]`) : null;
+    const editor = document.getElementById('report-editor');
+    if (panel && editor && panel.contains(editor)) {
+      detachEditorToRoot();
+      editor.hidden = true;
+    }
+    if (panel) panel.remove();
+    if (btn) btn.remove();
+    if (state.editor && state.editor.tabId === tabId) {
+      state.editor.id = null;
+      state.editor.meta = null;
+      state.editor.content = '';
+      state.editor.tabId = null;
+    }
+    if (ReportsPage.state.activeTabId === tabId && ReportsPage.switchTab) {
+      ReportsPage.switchTab('reports-tab-home', { skipRoute: true });
+      if (ReportsPage.updateReportsPath) {
+        ReportsPage.updateReportsPath(null, 'reports-tab-home');
+      }
+    } else if (ReportsPage.updateReportsPath) {
+      ReportsPage.updateReportsPath(null, ReportsPage.state.activeTabId || 'reports-tab-home');
+    }
+  }
+
+  function detachEditorToRoot() {
+    const editor = document.getElementById('report-editor');
+    const host = document.getElementById('reports-page');
+    if (!editor || !host) return;
+    if (editor.parentElement !== host) {
+      host.appendChild(editor);
+    }
+  }
+
+  function dlpConfig() {
+    const cfg = (window.__APP_CONFIG__ && window.__APP_CONFIG__.docs && window.__APP_CONFIG__.docs.dlp) || {};
+    return cfg || {};
+  }
+
+  function isDlpScopeEnabled() {
+    const cfg = dlpConfig();
+    const scope = Array.isArray(cfg.scope) && cfg.scope.length ? cfg.scope : ['docs', 'reports'];
+    return scope.includes('reports');
+  }
+
+  function isProtectedReport() {
+    if (!isDlpScopeEnabled()) return false;
+    const cfg = dlpConfig();
+    if ((cfg.apply_mode || 'protected_only') === 'all') {
+      return true;
+    }
+    const doc = state.editor?.meta?.doc || state.editor?.meta?.document || {};
+    const level = Number(doc.classification_level || 0);
+    const tags = Array.isArray(doc.classification_tags) ? doc.classification_tags : [];
+    return level >= 2 || tags.length > 0;
+  }
+
+  function canProtectClipboardAndPrint() {
+    const cfg = dlpConfig();
+    if (cfg && cfg.protect_clipboard_and_print === false) return false;
+    return true;
+  }
+
+  function canBlockScreenshots() {
+    const cfg = dlpConfig();
+    if (cfg && cfg.block_screenshots === false) return false;
+    return true;
+  }
+
+  function isGuardTarget(panel, target) {
+    if (!panel || panel.hidden) return false;
+    if (!target) return true;
+    if (target === panel) return true;
+    if (typeof target.closest === 'function') {
+      if (target.closest('#report-editor-content')) return true;
+      if (target.closest('#report-editor-preview')) return true;
+      if (target.closest('#report-editor')) return true;
+    }
+    return !!(panel.contains && panel.contains(target));
+  }
+
+  function isSelectionInGuardedArea(panel) {
+    if (typeof window.getSelection !== 'function') return false;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const node = sel.anchorNode || sel.focusNode;
+    if (!node) return false;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    return isGuardTarget(panel, el);
+  }
+
+  function bindSecurityGuards(panel) {
+    if (!panel) return;
+    panel.classList.toggle('no-copy', canProtectClipboardAndPrint() && isProtectedReport());
+    const block = (event, eventType, details) => {
+      if (!isProtectedReport()) return;
+      if (event && event.preventDefault) event.preventDefault();
+      if (event && event.stopPropagation) event.stopPropagation();
+      flashPrivacyShield(panel);
+      if (eventType === 'screenshot_attempt') {
+        showCaptureMask();
+      }
+      if (canProtectClipboardAndPrint() && eventType === 'copy_blocked' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
+      logSecurityEvent(eventType, details);
+    };
+    if (!panel.__securityBound) {
+      panel.addEventListener('contextmenu', (e) => {
+        if (!canProtectClipboardAndPrint()) return;
+        if (!isGuardTarget(panel, e.target)) return;
+        block(e, 'copy_blocked', 'context_menu');
+      }, true);
+      panel.__securityBound = true;
+    }
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.reportsSecurityBound !== '1') {
+      document.documentElement.dataset.reportsSecurityBound = '1';
+      document.addEventListener('copy', (e) => {
+        if (!canProtectClipboardAndPrint()) return;
+        if (!isGuardTarget(panel, e.target) && !isSelectionInGuardedArea(panel)) return;
+        block(e, 'copy_blocked', 'copy');
+      }, true);
+      document.addEventListener('cut', (e) => {
+        if (!canProtectClipboardAndPrint()) return;
+        if (!isGuardTarget(panel, e.target) && !isSelectionInGuardedArea(panel)) return;
+        block(e, 'copy_blocked', 'cut');
+      }, true);
+      document.addEventListener('keydown', (event) => {
+        if (!isProtectedReport()) return;
+        const key = String(event.key || '').toLowerCase();
+        const hasMod = !!(event.ctrlKey || event.metaKey);
+        if (hasMod && (key === 'c' || key === 'x' || key === 'a' || key === 'insert')) {
+          if (!canProtectClipboardAndPrint()) return;
+          if (!isGuardTarget(panel, event.target) && !isSelectionInGuardedArea(panel)) return;
+          block(event, 'copy_blocked', `key_${key}`);
+          return;
+        }
+        if (key === 'printscreen') {
+          if (!canBlockScreenshots()) return;
+          block(event, 'screenshot_attempt', 'print_screen_keydown');
+        }
+      }, true);
+      window.addEventListener('keyup', (event) => {
+        if (!isProtectedReport() || !canBlockScreenshots()) return;
+        const key = String(event.key || '').toLowerCase();
+        if (key !== 'printscreen') return;
+        block(event, 'screenshot_attempt', 'print_screen_keyup');
+      }, true);
+      document.addEventListener('visibilitychange', () => {
+        if (!isProtectedReport() || !canBlockScreenshots()) return;
+        if (document.visibilityState === 'hidden') {
+          flashPrivacyShield(panel);
+          logSecurityEvent('screenshot_attempt', 'visibility_hidden');
+        }
+      }, true);
+    }
+  }
+
+  function flashPrivacyShield(panel) {
+    if (!panel) return;
+    panel.classList.add('reports-privacy-shield');
+    setTimeout(() => panel && panel.classList.remove('reports-privacy-shield'), 800);
+  }
+
+  function showCaptureMask() {
+    if (typeof document === 'undefined') return;
+    let mask = document.getElementById('privacy-capture-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'privacy-capture-mask';
+      mask.className = 'privacy-capture-mask';
+      document.body.appendChild(mask);
+    }
+    document.body.classList.add('privacy-mask-active');
+    const prevTimer = window.__privacyMaskTimer;
+    if (prevTimer) {
+      window.clearTimeout(prevTimer);
+    }
+    window.__privacyMaskTimer = window.setTimeout(() => {
+      document.body.classList.remove('privacy-mask-active');
+      window.__privacyMaskTimer = null;
+    }, 1200);
+  }
+
+  async function logSecurityEvent(eventType, details) {
+    if (!state.editor.id) return;
+    const now = Date.now();
+    const key = String(eventType || 'copy_blocked').trim().toLowerCase() || 'copy_blocked';
+    const last = Number(securityEventCooldown[key] || 0);
+    if (now - last < 1200) return;
+    securityEventCooldown[key] = now;
+    try {
+      await Api.post(`/api/reports/${state.editor.id}/security-events`, {
+        event_type: key,
+        details: details || '',
+      });
+    } catch (_) {
+      // ignore telemetry errors
     }
   }
 
@@ -470,6 +768,7 @@
   ReportsPage.openViewer = openViewer;
   ReportsPage.openCreateModal = openCreateModal;
   ReportsPage.closeCreateModal = closeCreateModal;
+  ReportsPage.closeReportTab = closeReportTab;
   ReportsPage.applySettingsToBuilder = (settings) => {
     if (!settings) return;
     const cls = document.getElementById('report-classification');

@@ -18,6 +18,7 @@
     docs: 0,
     approvals: 0,
     incidents: 0,
+    reports: 0,
     tasks: 0,
     monitoring: 0,
   };
@@ -75,6 +76,7 @@
       if (menuPaths.has('docs')) jobs.push(loadDocsCount(list));
       if (menuPaths.has('approvals')) jobs.push(loadApprovalsCount(list));
       if (menuPaths.has('incidents')) jobs.push(loadIncidentsCount(list));
+      if (menuPaths.has('reports')) jobs.push(loadReportsCount(list));
       if (menuPaths.has('tasks')) jobs.push(loadTasksCount(list));
       if (menuPaths.has('monitoring')) jobs.push(loadMonitoringDownCount(list));
       await Promise.all(jobs);
@@ -190,6 +192,35 @@
     }
   }
 
+  async function loadReportsCount(list) {
+    try {
+      const res = await Api.get('/api/reports?mine=1&status=draft&limit=200', bgOpts);
+      const rows = Array.isArray(res.items) ? res.items : [];
+      const drafts = rows.filter((row) => {
+        const meta = row && row.meta ? row.meta : {};
+        const status = normalizeStatus(meta.report_status || meta.status);
+        return status === 'draft';
+      });
+      counts.reports = drafts.length;
+      drafts.slice(0, MAX_ITEMS_PER_SOURCE).forEach((row) => {
+        const doc = row && row.document ? row.document : {};
+        const id = Number(doc.id || 0);
+        const status = normalizeStatus((row && row.meta && (row.meta.report_status || row.meta.status)) || 'draft');
+        list.push({
+          key: `report:${id || 'unknown'}:${status}`,
+          section: 'reports',
+          path: '/reports',
+          target: '/reports',
+          title: String(doc.title || `#${id || ''}`).trim(),
+          message: i18n('reports.status.draft'),
+          ts: new Date(doc.updated_at || doc.created_at || 0).getTime() || 0,
+        });
+      });
+    } catch (_) {
+      counts.reports = 0;
+    }
+  }
+
   function isActiveTaskStatus(status) {
     const s = normalizeStatus(status);
     if (!s) return true;
@@ -269,6 +300,7 @@
     renderBadge('docs', counts.docs);
     renderBadge('approvals', counts.approvals);
     renderBadge('incidents', counts.incidents);
+    renderBadge('reports', counts.reports);
     renderBadge('tasks', counts.tasks);
     renderBadge('monitoring', counts.monitoring);
   }

@@ -1,4 +1,4 @@
-﻿# API
+# API
 
 Base path: `/api`
 
@@ -10,6 +10,8 @@ Base path: `/api`
 - Incidents: `/api/incidents/*`
 - Tasks: `/api/tasks/*`
 - Monitoring: `/api/monitoring/*`
+- Registry: `/api/controls/*`, `/api/assets/*`, `/api/software/*`, `/api/findings/*`
+- Accesses: `/api/accesses`, `/api/services`, `/api/notifications/accesses-event`
 - Backups: `/api/backups/*`
 - Logs: `/api/logs`, `/api/logs/export`, `/api/logs/export/package`
 - HTTPS settings: `GET/PUT /api/settings/https`
@@ -64,7 +66,7 @@ Session endpoints (нужна сессия + права вкладки):
 - UI для подтверждения TOTP/recovery находится на `/login/2fa` (чтобы менеджеры паролей подхватывали `one-time-code`).
 - Passkeys требуют HTTPS (или `localhost`) и корректной конфигурации `security.webauthn.*`.
 
-## Бэкапы (v1.2.0)
+## Бэкапы (v1.2.1)
 Основные endpoint:
 - `GET /api/backups`
 - `GET /api/backups/{id}`
@@ -148,6 +150,19 @@ Session endpoints (нужна сессия + права вкладки):
   - `GET /api/catalog/classifications`
   - `PUT /api/catalog/classifications`
 
+## Доступы
+Основные endpoint:
+- `GET /api/accesses`
+- `PUT /api/accesses`
+- `POST /api/notifications/accesses-event`
+
+## Registry (Контроли/Активы/ПО/Находки)
+Базовые префиксы endpoint:
+- `/api/controls/*`
+- `/api/assets/*`
+- `/api/software/*`
+- `/api/findings/*`
+
 SLA-особенности:
 - Закрытые периоды (`day/week/month`) рассчитываются фоновым evaluator (scheduler), а не кнопкой UI.
 - Статус периода:
@@ -156,7 +171,7 @@ SLA-особенности:
   - `unknown` — недостаточно покрытия измерениями.
 - SLA-инцидент создается только при закрытии выбранного периода и только при включенной policy.
 
-## API update notes (1.2.0)
+## API update notes (1.2.1)
 - Critical endpoints require fresh step-up verification (15-minute window): log purge requests/approve, runtime/https updates, privileged account/group/role mutations.
 - `GET /api/monitoring/monitors/{id}/metrics` now includes forensic/debug fields: `final_url`, `remote_ip`, `response_headers`.
 

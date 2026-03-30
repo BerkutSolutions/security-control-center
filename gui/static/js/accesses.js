@@ -289,13 +289,15 @@ const AccessesPage = (() => {
 
   function bindDirectoriesEvents() {
     document.addEventListener('services:changed', async () => {
-      const before = cloneRows();
+      const beforeRows = cloneRows();
       const known = new Set((window.ServiceDirectory?.codes ? ServiceDirectory.codes() : []).map(cleanService));
+      let changed = false;
       state.rows.forEach((row) => {
-        const before = dedupeServices(row.services);
-        const after = before.filter(code => known.has(code));
-        const diff = compareServices(before, after);
+        const prev = dedupeServices(row.services);
+        const after = prev.filter(code => known.has(code));
+        const diff = compareServices(prev, after);
         if (!diff.removed.length) return;
+        changed = true;
         row.services = after;
         logEvent(row, {
           at: nowISO(),
@@ -304,7 +306,9 @@ const AccessesPage = (() => {
           removed: diff.removed,
         });
       });
-      await persistOrRollback(before, buildAuditEvent('cleanup', null, { details: 'services_changed' }));
+      if (changed) {
+        await persistOrRollback(beforeRows, buildAuditEvent('cleanup', null, { details: 'services_changed' }));
+      }
       renderServiceFilterChoices();
       renderCards();
       if (state.activeViewId) openViewModal(state.activeViewId);
@@ -407,9 +411,64 @@ const AccessesPage = (() => {
       opt.selected = selected.has(code);
       select.appendChild(opt);
     });
+    select.dataset.hintId = hintId || '';
     enhanceMultiSelectLikeDocs(select);
     bindTagHintLikeDocs(select, hint);
     return select.options.length;
+  }
+
+  function selectedServicesForElement(selectEl) {
+    if (!selectEl) return [];
+    return dedupeServices(Array.from(selectEl.selectedOptions || []).map((o) => o.value));
+  }
+
+  function excludedServicesForSelect(selectId) {
+    if (selectId !== 'accesses-supplement-services') return [];
+    const rowID = cleanText(document.getElementById('accesses-supplement-id')?.value);
+    const row = getRowById(rowID);
+    return row?.services || [];
+  }
+
+  function pickDirectoryServiceCode(rawLabel) {
+    const query = cleanText(rawLabel);
+    if (!query) return '';
+    const q = query.toLowerCase();
+    const byLabel = sortedServiceDirectory().find((item) => item.label.toLowerCase() === q);
+    if (byLabel) return cleanService(byLabel.code);
+    return cleanService(query);
+  }
+
+  function syncSupplementSubmitState() {
+    const submitBtn = document.getElementById('accesses-supplement-submit');
+    const select = document.getElementById('accesses-supplement-services');
+    const hint = document.getElementById('accesses-supplement-services-hint');
+    if (!submitBtn || !select) return;
+    submitBtn.disabled = select.options.length === 0;
+    if (select.options.length === 0 && hint) {
+      hint.textContent = BerkutI18n.t('accesses.supplement.noneLeft') || BerkutI18n.t('common.empty') || '-';
+    }
+  }
+
+  async function addServiceFromSearch(selectEl, searchEl) {
+    if (!selectEl || !searchEl) return false;
+    const raw = cleanText(searchEl.value);
+    if (!raw) return false;
+    const selectedBefore = selectedServicesForElement(selectEl);
+    const existingCode = pickDirectoryServiceCode(raw);
+    const alreadyKnown = sortedServiceDirectory().some((item) => cleanService(item.code) === existingCode);
+    let addedCode = existingCode;
+    if (!alreadyKnown && window.ServiceDirectory?.add) {
+      await ServiceDirectory.add(raw);
+      addedCode = pickDirectoryServiceCode(raw);
+    }
+    const hintId = selectEl.dataset.hintId || '';
+    const nextSelected = dedupeServices([...(selectedBefore || []), addedCode]);
+    const excluded = excludedServicesForSelect(selectEl.id);
+    renderServicesSelect(selectEl.id, hintId, nextSelected, excluded);
+    if (selectEl.id === 'accesses-supplement-services') syncSupplementSubmitState();
+    renderServiceFilterChoices();
+    searchEl.value = '';
+    return true;
   }
 
   function bindCreateForm() {
@@ -546,7 +605,9 @@ const AccessesPage = (() => {
       });
       const ok = await persistOrRollback(before, buildAuditEvent('supplement', row));
       if (!ok) return;
-      await sendAccessesNotification('supplement', row);
+      await sendAccessesNotification('supplement', row, {
+        addedServices: diff.added,
+      });
       closeModal('#accesses-supplement-modal');
       clearAlert();
       renderCards();
@@ -675,15 +736,18 @@ const AccessesPage = (() => {
   async function sendAccessesNotification(eventType, row, extra = {}) {
     if (!hasApiPost()) return false;
     try {
+      const addedServices = dedupeServices(extra.addedServices || []).map(serviceLabel);
       const res = await Api.post('/api/notifications/accesses-event', {
         event_type: eventType,
         user: cleanText(row?.user || ''),
         position: cleanText(row?.position || ''),
         department: cleanText(row?.department || ''),
         services: dedupeServices(row?.services || []).map(serviceLabel),
+        added_services: addedServices,
         actor: cleanText(state.actor || ''),
         occurred_at: nowISO(),
         dismissal_date: normalizeISODate(extra.dismissalDate || ''),
+        lang: currentLang(),
       });
       if (res?.status === 'skipped') {
         const reason = String(res?.reason || 'unknown');
@@ -784,6 +848,9 @@ const AccessesPage = (() => {
       }
       tbody.appendChild(tr);
     });
+    if (window.TableSort?.apply) {
+      window.TableSort.apply('#accesses-page .accesses-table');
+    }
   }
 
   function servicesPills(services) {
@@ -861,6 +928,18 @@ const AccessesPage = (() => {
 
   function enhanceMultiSelectLikeDocs(sel) {
     if (!sel) return;
+    const handleFilterInput = (searchEl) => {
+      const q = String(searchEl.value || '').trim().toLowerCase();
+      let visible = 0;
+      Array.from(sel.options).forEach((opt) => {
+        const label = String(opt.dataset.label || opt.textContent || '').toLowerCase();
+        const code = String(opt.value || '').toLowerCase();
+        const show = !q || label.includes(q) || code.includes(q);
+        opt.hidden = !show;
+        if (show) visible += 1;
+      });
+      sel.size = Math.max(4, Math.min(10, visible || 4));
+    };
     const parent = sel.parentElement;
     if (parent) {
       const selector = `[data-for="${sel.id}"]`;
@@ -872,20 +951,21 @@ const AccessesPage = (() => {
         search.dataset.for = sel.id;
         search.placeholder = BerkutI18n.t('accesses.filters.servicePlaceholder') || '';
         search.addEventListener('input', () => {
-          const q = String(search.value || '').trim().toLowerCase();
-          let visible = 0;
-          Array.from(sel.options).forEach((opt) => {
-            const label = String(opt.dataset.label || opt.textContent || '').toLowerCase();
-            const code = String(opt.value || '').toLowerCase();
-            const show = !q || label.includes(q) || code.includes(q);
-            opt.hidden = !show;
-            if (show) visible += 1;
-          });
-          sel.size = Math.max(4, Math.min(10, visible || 4));
+          handleFilterInput(search);
+        });
+        search.addEventListener('keydown', async (e) => {
+          if (e.key !== 'Enter') return;
+          e.preventDefault();
+          try {
+            await addServiceFromSearch(sel, search);
+          } catch (err) {
+            showAlert(sanitizeError(err) || BerkutI18n.t('accesses.errors.saveFailed'));
+          }
         });
         parent.insertBefore(search, sel);
       } else {
         existingSearch.value = '';
+        handleFilterInput(existingSearch);
       }
     }
     Array.from(sel.options).forEach((opt) => { opt.hidden = false; });

@@ -356,12 +356,44 @@
             </div>
             <div class="card-body">
               <div class="form-grid single-column">
-                <div class="form-field">
+                <div class="form-field settings-dlp-frame">
+                  <h4 data-i18n="settings.hardening.dlp.title">DLP frame</h4>
+                  <p class="muted" data-i18n="settings.hardening.dlp.hint">Настройки предотвращения утечек и сигнатуры поведенческой модели.</p>
                   <label class="checkbox">
                     <input type="checkbox" id="settings-behavior-model-enabled">
                     <span data-i18n="settings.hardening.behaviorModelEnabled">Включить поведенческую модель аномалий</span>
                   </label>
                   <p class="muted" data-i18n="settings.hardening.behaviorModelHint">При аномалиях требуется повторное подтверждение личности (пароль + TOTP/passkey).</p>
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-hardening-copy-protect">
+                    <span data-i18n="settings.hardening.copyProtectEnabled">Запретить копирование защищенного контента</span>
+                  </label>
+                  <p class="muted" data-i18n="settings.hardening.copyProtectHint">Блокирует copy/cut/context menu и сочетания Ctrl/Cmd+C для защищенных документов и отчетов.</p>
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-hardening-screenshot-block">
+                    <span data-i18n="settings.hardening.screenshotBlockEnabled">Пытаться блокировать скриншоты</span>
+                  </label>
+                  <p class="muted" data-i18n="settings.hardening.screenshotBlockHint">Перехватывает клавишу PrintScreen в защищенном режиме и фиксирует попытки в аудит.</p>
+                  <label class="checkbox">
+                    <input type="checkbox" id="settings-hardening-admin-export-bypass">
+                    <span data-i18n="settings.hardening.adminExportBypassEnabled">Разрешить admin экспорт без согласования</span>
+                  </label>
+                  <p class="muted" data-i18n="settings.hardening.adminExportBypassHint">Если включено, роли admin/superadmin могут экспортировать документы без dual-control согласования.</p>
+                  <div class="form-field">
+                    <label for="settings-hardening-apply-mode" data-i18n="settings.hardening.applyMode">Режим применения блокировок</label>
+                    <select id="settings-hardening-apply-mode" class="select">
+                      <option value="protected_only" data-i18n="settings.hardening.applyMode.protectedOnly">Только защищенные (гриф/теги)</option>
+                      <option value="all" data-i18n="settings.hardening.applyMode.all">Ко всем документам/отчетам</option>
+                    </select>
+                  </div>
+                  <div class="form-field">
+                    <label for="settings-hardening-scope" data-i18n="settings.hardening.scope">Область действия</label>
+                    <select id="settings-hardening-scope" class="select" multiple size="2">
+                      <option value="docs" data-i18n="nav.docs">Документы</option>
+                      <option value="reports" data-i18n="nav.reports">Отчеты</option>
+                    </select>
+                    <p class="muted" data-i18n="settings.hardening.scopeHint">Выберите один или несколько модулей, где применяются DLP-блокировки.</p>
+                  </div>
                 </div>
               </div>
               <div class="settings-inline-row settings-runtime-actions">

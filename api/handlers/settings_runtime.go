@@ -13,6 +13,7 @@ import (
 
 type RuntimeSettingsHandler struct {
 	cfg          *config.AppConfig
+	modules      store.AppModuleStateStore
 	runtimeStore store.AppRuntimeStore
 	updateCheck  *appmeta.UpdateChecker
 	audits       store.AuditStore
@@ -25,9 +26,10 @@ func (h *RuntimeSettingsHandler) auditLog(r *http.Request, action, details strin
 	_ = h.audits.Log(r.Context(), currentUsername(r), action, details)
 }
 
-func NewRuntimeSettingsHandler(cfg *config.AppConfig, runtimeStore store.AppRuntimeStore, updateCheck *appmeta.UpdateChecker, audits store.AuditStore) *RuntimeSettingsHandler {
+func NewRuntimeSettingsHandler(cfg *config.AppConfig, modules store.AppModuleStateStore, runtimeStore store.AppRuntimeStore, updateCheck *appmeta.UpdateChecker, audits store.AuditStore) *RuntimeSettingsHandler {
 	return &RuntimeSettingsHandler{
 		cfg:          cfg,
+		modules:      modules,
 		runtimeStore: runtimeStore,
 		updateCheck:  updateCheck,
 		audits:       audits,
@@ -168,6 +170,7 @@ func (h *RuntimeSettingsHandler) loadSettings(r *http.Request) (*store.AppRuntim
 
 func (h *RuntimeSettingsHandler) responsePayload(r *http.Request, settings *store.AppRuntimeSettings, result *appmeta.UpdateCheckResult) map[string]any {
 	mode := effectiveMode(h.cfg, settings)
+	dlp := loadHardeningDLPSettings(r.Context(), h.cfg, h.modules)
 	return map[string]any{
 		"app_version":            appmeta.AppVersion,
 		"repository_url":         appmeta.RepositoryURL,
@@ -176,7 +179,15 @@ func (h *RuntimeSettingsHandler) responsePayload(r *http.Request, settings *stor
 		"effective_https":        isSecureRequest(r, h.cfg),
 		"update_checks_enabled":  settings.UpdateChecksEnabled,
 		"behavior_model_enabled": settings.BehaviorModelEnabled,
-		"update":                 result,
+		"docs": map[string]any{
+			"dlp": map[string]any{
+				"protect_clipboard_and_print": dlp.ProtectClipboardAndPrint,
+				"block_screenshots":           dlp.BlockScreenshots,
+				"apply_mode":                  dlp.ApplyMode,
+				"scope":                       dlp.Scope,
+			},
+		},
+		"update": result,
 	}
 }
 

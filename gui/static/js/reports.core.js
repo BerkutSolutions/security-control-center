@@ -110,6 +110,16 @@ const ReportsPage = (() => {
     panels.forEach(panel => {
       panel.hidden = panel.dataset.tab !== tabId;
     });
+    const content = document.getElementById('content');
+    if (content) {
+      const isReportDocTab = String(tabId || '').startsWith('report-tab-');
+      if (isReportDocTab) content.classList.add('no-page-scroll');
+      else content.classList.remove('no-page-scroll');
+      if (document.body) {
+        if (isReportDocTab) document.body.classList.add('no-page-scroll');
+        else document.body.classList.remove('no-page-scroll');
+      }
+    }
     state.activeTabId = tabId;
     if (!opts.skipRoute) {
       updateReportsPath(null, tabId);
@@ -121,6 +131,15 @@ const ReportsPage = (() => {
     if (reportId) {
       next = modeOrTab === 'edit' ? `/reports/${reportId}/edit` : `/reports/${reportId}`;
     } else {
+      const dynamicTab = String(modeOrTab || state.activeTabId || '');
+      if (dynamicTab.startsWith('report-tab-')) {
+        const parsed = parseInt(dynamicTab.replace('report-tab-', ''), 10);
+        if (Number.isFinite(parsed) && parsed > 0) {
+          const tabBtn = document.querySelector(`#reports-tabs .tab-btn[data-tab="${dynamicTab}"]`);
+          const mode = (tabBtn && tabBtn.dataset && tabBtn.dataset.mode) === 'edit' ? 'edit' : 'view';
+          next = mode === 'edit' ? `/reports/${parsed}/edit` : `/reports/${parsed}`;
+        }
+      } else {
       const tabMap = {
         'reports-tab-templates': 'templates',
         'reports-tab-settings': 'settings',
@@ -128,6 +147,7 @@ const ReportsPage = (() => {
       };
       const slug = tabMap[modeOrTab] ?? tabMap[state.activeTabId] ?? '';
       if (slug) next = `/reports/${slug}`;
+      }
     }
     if (window.location.pathname !== next) {
       window.history.replaceState({}, '', next);

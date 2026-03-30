@@ -11,6 +11,7 @@ import (
 var reportSectionTypes = map[string]struct{}{
 	"summary":     {},
 	"incidents":   {},
+	"accesses":    {},
 	"tasks":       {},
 	"docs":        {},
 	"controls":    {},
@@ -24,6 +25,7 @@ func defaultReportSections() []store.ReportSection {
 	return []store.ReportSection{
 		{SectionType: "summary", Title: "Executive summary", IsEnabled: true},
 		{SectionType: "incidents", Title: "Incidents", IsEnabled: true},
+		{SectionType: "accesses", Title: "Accesses", IsEnabled: true},
 		{SectionType: "tasks", Title: "Tasks", IsEnabled: true},
 		{SectionType: "docs", Title: "Documents", IsEnabled: true},
 		{SectionType: "controls", Title: "Controls", IsEnabled: true},

@@ -18,7 +18,7 @@ const DocEditor = (() => {
   let pendingDocxMode = null;
   let saveInFlight = false;
   let currentDocVersion = 0;
-  let lastSecurityEventAt = 0;
+  const securityEventCooldown = Object.create(null);
 
   function isEditableFormat(format) {
     return EDITABLE_FORMATS.has((format || '').toLowerCase());
@@ -182,6 +182,7 @@ const DocEditor = (() => {
     teardownOnlyOffice();
     onlyOfficeOpenAttempts = 0;
     currentDocId = docId;
+    const openingDocId = docId;
     currentMode = opts.mode === 'edit' ? 'edit' : 'view';
     setDirty(false);
     showAlert('');
@@ -202,12 +203,15 @@ const DocEditor = (() => {
       }
       currentFormat = cont.format || 'md';
       currentDocVersion = Number(cont.version || 0);
+      if (currentDocId !== openingDocId) return null;
       renderMeta(meta);
       await renderContent(cont);
-      await loadLinks();
+      await loadLinks(openingDocId);
+      if (currentDocId !== openingDocId) return null;
       refreshLinkTargets();
       await loadAclOptions();
       await loadAcl();
+      if (currentDocId !== openingDocId) return null;
       els.panel.hidden = false;
       return meta;
     } catch (err) {
@@ -492,11 +496,13 @@ const DocEditor = (() => {
     }
   }
 
-  async function loadLinks() {
+  async function loadLinks(docId = currentDocId) {
     if (!els.links) return;
+    if (!docId) return;
     els.links.innerHTML = '';
     try {
-      const res = await Api.get(`/api/docs/${currentDocId}/links`);
+      const res = await Api.get(`/api/docs/${docId}/links`);
+      if (docId !== currentDocId) return;
       (res.links || []).forEach(l => {
         const row = document.createElement('div');
         row.className = 'link-item';
@@ -866,7 +872,23 @@ const DocEditor = (() => {
     }
   }
 
+  function dlpConfig() {
+    const cfg = (window.__APP_CONFIG__ && window.__APP_CONFIG__.docs && window.__APP_CONFIG__.docs.dlp) || {};
+    return cfg || {};
+  }
+
+  function isDlpScopeEnabled() {
+    const cfg = dlpConfig();
+    const scope = Array.isArray(cfg.scope) && cfg.scope.length ? cfg.scope : ['docs', 'reports'];
+    return scope.includes('docs');
+  }
+
   function isProtectedDoc() {
+    if (!isDlpScopeEnabled()) return false;
+    const cfg = dlpConfig();
+    if ((cfg.apply_mode || 'protected_only') === 'all') {
+      return true;
+    }
     if (!meta) return false;
     const level = Number(meta.classification_level || 0);
     const tags = Array.isArray(meta.classification_tags) ? meta.classification_tags : [];
@@ -874,40 +896,105 @@ const DocEditor = (() => {
   }
 
   function canProtectClipboardAndPrint() {
-    const cfg = (window.__APP_CONFIG__ && window.__APP_CONFIG__.docs && window.__APP_CONFIG__.docs.dlp) || null;
+    const cfg = dlpConfig();
     if (cfg && cfg.protect_clipboard_and_print === false) return false;
     return true;
   }
 
+  function canBlockScreenshots() {
+    const cfg = dlpConfig();
+    if (cfg && cfg.block_screenshots === false) return false;
+    return true;
+  }
+
+  function isGuardTarget(target) {
+    if (!els.panel || els.panel.hidden) return false;
+    if (!target) return true;
+    if (target === els.panel) return true;
+    if (typeof target.closest === 'function') {
+      if (target.closest('#editor-content')) return true;
+      if (target.closest('#editor-md-view')) return true;
+      if (target.closest('#editor-viewer')) return true;
+      if (target.closest('#editor-onlyoffice-wrap')) return true;
+      if (target.closest('#doc-editor')) return true;
+    }
+    return !!(els.panel && els.panel.contains && els.panel.contains(target));
+  }
+
+  function isSelectionInGuardedArea() {
+    if (typeof window.getSelection !== 'function') return false;
+    const sel = window.getSelection();
+    if (!sel || !sel.rangeCount) return false;
+    const node = sel.anchorNode || sel.focusNode;
+    if (!node) return false;
+    const el = node.nodeType === 1 ? node : node.parentElement;
+    return isGuardTarget(el);
+  }
+
   function bindSecurityGuards() {
-    if (!els.panel || els.panel.dataset.securityBound === '1') return;
-    els.panel.dataset.securityBound = '1';
+    if (!els.panel) return;
+    els.panel.classList.toggle('no-copy', canProtectClipboardAndPrint() && isProtectedDoc());
     const blockAndLog = (type, details, eventObj) => {
-      if (!isProtectedDoc() || !canProtectClipboardAndPrint()) return;
+      if (!isProtectedDoc()) return;
       if (eventObj && eventObj.preventDefault) eventObj.preventDefault();
       if (eventObj && eventObj.stopPropagation) eventObj.stopPropagation();
       flashPrivacyShield();
+      if (type === 'screenshot_attempt') {
+        showCaptureMask();
+      }
+      if (canProtectClipboardAndPrint() && type === 'copy_blocked' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        navigator.clipboard.writeText('').catch(() => {});
+      }
       logSecurityEvent(type, details);
     };
-    els.panel.addEventListener('copy', (e) => blockAndLog('copy_blocked', 'copy', e), true);
-    els.panel.addEventListener('cut', (e) => blockAndLog('copy_blocked', 'cut', e), true);
-    els.panel.addEventListener('contextmenu', (e) => {
-      if (!isProtectedDoc() || !canProtectClipboardAndPrint()) return;
-      const target = e.target;
-      if (target && (target.closest('#editor-content') || target.closest('#editor-md-view'))) {
+    if (els.panel.dataset.securityBound !== '1') {
+      els.panel.dataset.securityBound = '1';
+      els.panel.addEventListener('contextmenu', (e) => {
+        if (!canProtectClipboardAndPrint() || !isGuardTarget(e.target)) return;
         blockAndLog('copy_blocked', 'context_menu', e);
-      }
-    }, true);
-    els.panel.addEventListener('keydown', (e) => {
-      if (!isProtectedDoc() || !canProtectClipboardAndPrint()) return;
-      if ((e.ctrlKey || e.metaKey) && String(e.key || '').toLowerCase() === 'c') {
-        blockAndLog('copy_blocked', 'ctrl_c', e);
-        return;
-      }
-      if (String(e.key || '').toLowerCase() === 'printscreen') {
-        blockAndLog('screenshot_attempt', 'print_screen_key', e);
-      }
-    }, true);
+      }, true);
+    }
+    if (typeof document !== 'undefined' && document.documentElement && document.documentElement.dataset.docsSecurityBound !== '1') {
+      document.documentElement.dataset.docsSecurityBound = '1';
+      document.addEventListener('copy', (e) => {
+        if (!canProtectClipboardAndPrint()) return;
+        if (!isGuardTarget(e.target) && !isSelectionInGuardedArea()) return;
+        blockAndLog('copy_blocked', 'copy', e);
+      }, true);
+      document.addEventListener('cut', (e) => {
+        if (!canProtectClipboardAndPrint()) return;
+        if (!isGuardTarget(e.target) && !isSelectionInGuardedArea()) return;
+        blockAndLog('copy_blocked', 'cut', e);
+      }, true);
+      document.addEventListener('keydown', (e) => {
+        if (!isProtectedDoc()) return;
+        const key = String(e.key || '').toLowerCase();
+        const hasMod = !!(e.ctrlKey || e.metaKey);
+        if (hasMod && (key === 'c' || key === 'x' || key === 'a' || key === 'insert')) {
+          if (!canProtectClipboardAndPrint()) return;
+          if (!isGuardTarget(e.target) && !isSelectionInGuardedArea()) return;
+          blockAndLog('copy_blocked', `key_${key}`, e);
+          return;
+        }
+        if (key === 'printscreen') {
+          if (!canBlockScreenshots()) return;
+          blockAndLog('screenshot_attempt', 'print_screen_keydown', e);
+        }
+      }, true);
+      window.addEventListener('keyup', (e) => {
+        if (!isProtectedDoc() || !canBlockScreenshots()) return;
+        const key = String(e.key || '').toLowerCase();
+        if (key !== 'printscreen') return;
+        blockAndLog('screenshot_attempt', 'print_screen_keyup', e);
+      }, true);
+      document.addEventListener('visibilitychange', () => {
+        if (!isProtectedDoc() || !canBlockScreenshots()) return;
+        if (document.visibilityState === 'hidden') {
+          flashPrivacyShield();
+          logSecurityEvent('screenshot_attempt', 'visibility_hidden');
+        }
+      }, true);
+    }
   }
 
   function flashPrivacyShield() {
@@ -916,14 +1003,36 @@ const DocEditor = (() => {
     setTimeout(() => els.panel && els.panel.classList.remove('docs-privacy-shield'), 800);
   }
 
+  function showCaptureMask() {
+    if (typeof document === 'undefined') return;
+    let mask = document.getElementById('privacy-capture-mask');
+    if (!mask) {
+      mask = document.createElement('div');
+      mask.id = 'privacy-capture-mask';
+      mask.className = 'privacy-capture-mask';
+      document.body.appendChild(mask);
+    }
+    document.body.classList.add('privacy-mask-active');
+    const prevTimer = window.__privacyMaskTimer;
+    if (prevTimer) {
+      window.clearTimeout(prevTimer);
+    }
+    window.__privacyMaskTimer = window.setTimeout(() => {
+      document.body.classList.remove('privacy-mask-active');
+      window.__privacyMaskTimer = null;
+    }, 1200);
+  }
+
   async function logSecurityEvent(eventType, details) {
     if (!currentDocId) return;
     const now = Date.now();
-    if (now-lastSecurityEventAt < 1500) return;
-    lastSecurityEventAt = now;
+    const key = String(eventType || 'copy_blocked').trim().toLowerCase() || 'copy_blocked';
+    const last = Number(securityEventCooldown[key] || 0);
+    if (now - last < 1200) return;
+    securityEventCooldown[key] = now;
     try {
       await Api.post(`/api/docs/${currentDocId}/security-events`, {
-        event_type: eventType,
+        event_type: key,
         details: details || ''
       });
     } catch (_) {

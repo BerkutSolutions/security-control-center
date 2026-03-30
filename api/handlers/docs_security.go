@@ -1,8 +1,10 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,8 +14,11 @@ import (
 	"berkut-scc/core/store"
 )
 
-func (h *DocsHandler) requiresDualExportApproval(doc *store.Document) bool {
+func (h *DocsHandler) requiresDualExportApproval(ctx context.Context, user *store.User, roles []string, doc *store.Document) bool {
 	if h == nil || doc == nil || h.cfg == nil || !h.cfg.Docs.DLP.Enabled {
+		return false
+	}
+	if h.adminExportBypassEnabled(ctx) && (hasRole(roles, "admin") || hasRole(roles, "superadmin")) {
 		return false
 	}
 	level := docs.ClassificationLevel(doc.ClassificationLevel)
@@ -22,6 +27,32 @@ func (h *DocsHandler) requiresDualExportApproval(doc *store.Document) bool {
 		return true
 	}
 	return len(doc.ClassificationTags) > 0
+}
+
+func (h *DocsHandler) adminExportBypassEnabled(ctx context.Context) bool {
+	if h == nil {
+		return true
+	}
+	enabled := true
+	if h.modules == nil {
+		return enabled
+	}
+	st, err := h.modules.Get(ctx, hardeningSettingsModuleID)
+	if err != nil || st == nil || strings.TrimSpace(st.LastError) == "" {
+		return enabled
+	}
+	var payload struct {
+		DLP struct {
+			AdminExportWithoutApproval *bool `json:"admin_export_without_approval"`
+		} `json:"dlp"`
+	}
+	if err := json.Unmarshal([]byte(st.LastError), &payload); err != nil {
+		return enabled
+	}
+	if payload.DLP.AdminExportWithoutApproval != nil {
+		enabled = *payload.DLP.AdminExportWithoutApproval
+	}
+	return enabled
 }
 
 func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
@@ -102,7 +133,7 @@ func (h *DocsHandler) ApproveExport(w http.ResponseWriter, r *http.Request) {
 		"requested_by":    requester.Username,
 		"approved_by":     approverUser.Username,
 		"expires_at":      item.ExpiresAt,
-		"approval_needed": h.requiresDualExportApproval(doc),
+		"approval_needed": h.requiresDualExportApproval(r.Context(), requester, requesterRoles, doc),
 	})
 }
 
@@ -219,5 +250,34 @@ func (h *DocsHandler) LogSecurityEvent(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	h.svc.Log(r.Context(), user.Username, "doc.security."+eventType, fmt.Sprintf("%s|%s", doc.RegNumber, strings.TrimSpace(payload.Details)))
+	if h.behavior != nil {
+		evt := "dlp.copy_blocked"
+		if eventType == "screenshot_attempt" {
+			evt = "dlp.screenshot_attempt"
+		}
+		_ = h.behavior.RecordEvent(r.Context(), &store.BehaviorRiskEvent{
+			UserID:     user.ID,
+			EventType:  evt,
+			Path:       "/api/docs/" + strconv.FormatInt(doc.ID, 10) + "/security-events",
+			Method:     http.MethodPost,
+			StatusCode: http.StatusOK,
+			IP:         docsSecurityRemoteIP(r),
+			CreatedAt:  time.Now().UTC(),
+		})
+	}
 	writeJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+}
+
+func docsSecurityRemoteIP(r *http.Request) string {
+	if r == nil {
+		return ""
+	}
+	raw := strings.TrimSpace(r.RemoteAddr)
+	if raw == "" {
+		return ""
+	}
+	if host, _, err := net.SplitHostPort(raw); err == nil {
+		return strings.TrimSpace(host)
+	}
+	return raw
 }

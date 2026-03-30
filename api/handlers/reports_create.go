@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 
 	"berkut-scc/core/docs"
@@ -236,8 +237,102 @@ func (h *ReportsHandler) buildReportFromPayload(r *http.Request, user *store.Use
 	content := h.defaultReportMarkdown(doc.Title)
 	if templateMd != "" {
 		content = applyTemplate(templateMd, h.templateVars(doc.Title, meta, settings))
+		content = h.autoPopulateTemplateContent(r, doc, meta, user, roles, content)
 	}
 	return doc, meta, []byte(content), nil
+}
+
+func (h *ReportsHandler) autoPopulateTemplateContent(r *http.Request, doc *store.Document, meta *store.ReportMeta, user *store.User, roles []string, content string) string {
+	templateSections := sectionsFromTemplateMarkers(content)
+	if len(templateSections) == 0 {
+		return content
+	}
+	lang := preferredLang(r)
+	for i := range templateSections {
+		if templateSections[i].Config == nil {
+			templateSections[i].Config = map[string]any{}
+		}
+		templateSections[i].Config["lang"] = lang
+	}
+	buildUser := user
+	buildRoles := roles
+	var groups []store.Group
+	var eff store.EffectiveAccess
+	if u, rr, gg, ee, err := h.currentUserWithAccess(r); err == nil && u != nil {
+		buildUser = u
+		buildRoles = rr
+		groups = gg
+		eff = ee
+	} else if user != nil {
+		eff.ClearanceLevel = user.ClearanceLevel
+		eff.ClearanceTags = user.ClearanceTags
+		eff.Roles = roles
+	}
+	results, _, _, err := h.buildReportSections(r.Context(), doc, meta, templateSections, buildUser, buildRoles, groups, eff)
+	if err != nil {
+		return content
+	}
+	return applySectionContent("markers", content, results)
+}
+
+var sectionMarkerRegexp = regexp.MustCompile(`(?i)<!--\s*SECTION:\s*([a-z0-9_]+(?:\:[a-z0-9_\-]+)?)\s*-->`)
+
+func sectionsFromTemplateMarkers(content string) []store.ReportSection {
+	matches := sectionMarkerRegexp.FindAllStringSubmatch(content, -1)
+	if len(matches) == 0 {
+		return nil
+	}
+	defaults := map[string]store.ReportSection{}
+	for _, sec := range defaultReportSections() {
+		defaults[sec.SectionType] = sec
+	}
+	hasAccesses := false
+	out := make([]store.ReportSection, 0, len(matches))
+	seen := map[string]struct{}{}
+	for _, m := range matches {
+		if len(m) < 2 {
+			continue
+		}
+		raw := strings.ToLower(strings.TrimSpace(m[1]))
+		typ := raw
+		if idx := strings.Index(raw, ":"); idx >= 0 {
+			typ = strings.TrimSpace(raw[:idx])
+		}
+		if _, exists := reportSectionTypes[typ]; !exists {
+			continue
+		}
+		if _, exists := seen[raw]; exists {
+			continue
+		}
+		seen[raw] = struct{}{}
+		sec := defaults[typ]
+		if sec.SectionType == "" {
+			sec = store.ReportSection{SectionType: typ, Title: strings.Title(typ), IsEnabled: true}
+		}
+		if typ == "custom_md" && strings.Contains(raw, ":") {
+			sec.Config = map[string]any{"key": strings.TrimSpace(raw[strings.Index(raw, ":")+1:])}
+		}
+		if typ == "accesses" {
+			hasAccesses = true
+		}
+		sec.IsEnabled = true
+		out = append(out, sec)
+	}
+	if hasAccesses {
+		for i := range out {
+			if out[i].SectionType != "audit" {
+				continue
+			}
+			if out[i].Config == nil {
+				out[i].Config = map[string]any{}
+			}
+			if strings.TrimSpace(configString(out[i].Config, "related_to")) == "" {
+				out[i].Config["related_to"] = "accesses"
+			}
+			break
+		}
+	}
+	return out
 }
 
 func (h *ReportsHandler) saveReport(r *http.Request, user *store.User, doc *store.Document, meta *store.ReportMeta, content []byte, payload reportCreatePayload) error {

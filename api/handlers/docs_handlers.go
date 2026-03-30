@@ -30,8 +30,10 @@ type DocsHandler struct {
 	assets      store.AssetsStore
 	software    store.SoftwareStore
 	users       store.UsersStore
+	modules     store.AppModuleStateStore
 	policy      *rbac.Policy
 	svc         *docs.Service
+	behavior    store.BehaviorRiskStore
 	audits      store.AuditStore
 	logger      *utils.Logger
 	uploads     map[string]uploadItem
@@ -49,7 +51,7 @@ type uploadItem struct {
 	UploadedAt time.Time
 }
 
-func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.EntityLinksStore, controls store.ControlsStore, assets store.AssetsStore, software store.SoftwareStore, us store.UsersStore, policy *rbac.Policy, svc *docs.Service, audits store.AuditStore, logger *utils.Logger) *DocsHandler {
+func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.EntityLinksStore, controls store.ControlsStore, assets store.AssetsStore, software store.SoftwareStore, us store.UsersStore, modules store.AppModuleStateStore, policy *rbac.Policy, svc *docs.Service, behavior store.BehaviorRiskStore, audits store.AuditStore, logger *utils.Logger) *DocsHandler {
 	return &DocsHandler{
 		cfg:         cfg,
 		store:       ds,
@@ -58,8 +60,10 @@ func NewDocsHandler(cfg *config.AppConfig, ds store.DocsStore, links store.Entit
 		assets:      assets,
 		software:    software,
 		users:       us,
+		modules:     modules,
 		policy:      policy,
 		svc:         svc,
+		behavior:    behavior,
 		audits:      audits,
 		logger:      logger,
 		uploads:     map[string]uploadItem{},
@@ -785,7 +789,7 @@ func (h *DocsHandler) Export(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "not found", http.StatusNotFound)
 		return
 	}
-	if h.requiresDualExportApproval(doc) {
+	if h.requiresDualExportApproval(r.Context(), user, roles, doc) {
 		approval, err := h.store.ConsumeDocExportApproval(r.Context(), doc.ID, user.ID)
 		if err != nil {
 			http.Error(w, "server error", http.StatusInternalServerError)

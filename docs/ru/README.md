@@ -1,8 +1,8 @@
-﻿# Berkut SCC - Документация (RU)
+# Berkut SCC - Документация (RU)
 
 
 
-Актуальная версия документации: `1.2.0`
+Актуальная версия документации: `1.2.1`
 
 
 
@@ -13,6 +13,7 @@
 2. API: `docs/ru/api.md`
 
 3. Безопасность: `docs/ru/security.md`
+3.1 DLP-система: `docs/ru/dlp.md`
 
 4. Совместимость вкладок (Compat): `docs/ru/compatibility.md` (шпаргалка: `docs/ru/compatibility_cheatsheet.md`)
 

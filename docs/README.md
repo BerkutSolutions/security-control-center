@@ -1,6 +1,6 @@
 # Documentation
 
-Version baseline: `1.2.0`
+Version baseline: `1.2.1`
 
 This directory contains detailed technical documentation for the current runtime model.
 
@@ -27,6 +27,8 @@ Primary entry points:
 - HTTPS + OnlyOffice EN: `docs/eng/https_onlyoffice.md`
 - Security baseline (prod) RU: `docs/ru/security_baseline_prod.md`
 - Security baseline (prod) EN: `docs/eng/security_baseline_prod.md`
+- DLP system RU: `docs/ru/dlp.md`
+- DLP system EN: `docs/eng/dlp.md`
 - Reverse-proxy + OnlyOffice compose example: `docs/ru/docker-compose.https.yml`
 - Tabs/UX wiki RU: `docs/ru/wiki/tabs.md`
 - Tabs/UX wiki EN: `docs/eng/wiki/tabs.md`

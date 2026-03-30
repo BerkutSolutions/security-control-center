@@ -59,7 +59,7 @@
                   <th>${t('incidents.table.owner')}</th>
                   <th>${t('incidents.table.createdAt')}</th>
                   <th>${t('incidents.table.updatedAt')}</th>
-                  <th>${t('incidents.table.actions')}</th>
+                  <th data-sort="none">${t('incidents.table.actions')}</th>
                 </tr>
               </thead>
               <tbody></tbody>
@@ -170,6 +170,9 @@
       }
       tbody.appendChild(tr);
     });
+    if (window.TableSort?.apply) {
+      window.TableSort.apply('#incidents-table');
+    }
   }
 
   function bindContextMenu() {

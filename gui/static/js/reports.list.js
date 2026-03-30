@@ -112,13 +112,14 @@
     state.reports.forEach(item => {
       const doc = item.document || {};
       const meta = item.meta || {};
+      const reportStatus = resolveReportStatus(doc, meta);
       const row = document.createElement('tr');
       row.dataset.reportId = `${doc.id || ''}`;
       row.innerHTML = `
         <td>${escapeHtml(doc.title || '')}</td>
         <td>${escapeHtml(doc.reg_number || '')}</td>
         <td>${escapeHtml(ReportsPage.formatPeriod(meta))}</td>
-        <td><span class="badge status-${escapeHtml(meta.report_status || meta.status || 'draft')}">${escapeHtml(statusLabel(meta.report_status || meta.status))}</span></td>
+        <td><span class="badge status-${escapeHtml(reportStatus)}">${escapeHtml(statusLabel(reportStatus))}</span></td>
         <td>${escapeHtml(DocUI.levelName(doc.classification_level))}</td>
         <td>${escapeHtml(ownerLabel(doc.created_by))}</td>
         <td>${escapeHtml(ReportsPage.formatDate(doc.updated_at || doc.created_at))}</td>
@@ -129,8 +130,22 @@
     if (count) count.textContent = `${state.reports.length}`;
   }
 
+  function resolveReportStatus(doc, meta) {
+    const docStatus = String(doc?.status || '').trim().toLowerCase();
+    if (docStatus === 'review' || docStatus === 'approved' || docStatus === 'returned') {
+      return docStatus;
+    }
+    return String(meta?.report_status || meta?.status || docStatus || 'draft').trim().toLowerCase();
+  }
+
   function statusLabel(status) {
-    return BerkutI18n.t(`reports.status.${status}`) || status || '-';
+    const reportKey = `reports.status.${status}`;
+    const reportText = BerkutI18n.t(reportKey);
+    if (reportText && reportText !== reportKey) return reportText;
+    const docKey = `docs.status.${status}`;
+    const docText = BerkutI18n.t(docKey);
+    if (docText && docText !== docKey) return docText;
+    return status || '-';
   }
 
   function ownerLabel(id) {

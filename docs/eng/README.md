@@ -2,7 +2,7 @@
 
 
 
-Documentation version baseline: `1.2.1`
+Documentation version baseline: `1.2.2`
 
 
 

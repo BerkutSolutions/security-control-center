@@ -194,25 +194,31 @@
 
   async function loadReportsCount(list) {
     try {
-      const res = await Api.get('/api/reports?mine=1&status=draft&limit=200', bgOpts);
+      const res = await Api.get('/api/reports?mine=1&limit=200', bgOpts);
       const rows = Array.isArray(res.items) ? res.items : [];
-      const drafts = rows.filter((row) => {
-        const meta = row && row.meta ? row.meta : {};
-        const status = normalizeStatus(meta.report_status || meta.status);
-        return status === 'draft';
-      });
-      counts.reports = drafts.length;
-      drafts.slice(0, MAX_ITEMS_PER_SOURCE).forEach((row) => {
+      const active = rows.filter((row) => {
         const doc = row && row.document ? row.document : {};
+        const meta = row && row.meta ? row.meta : {};
+        const docStatus = normalizeStatus(doc.status);
+        const metaStatus = normalizeStatus(meta.report_status || meta.status);
+        const status = docStatus || metaStatus;
+        return status === 'draft' || status === 'review' || status === 'returned';
+      });
+      counts.reports = active.length;
+      active.slice(0, MAX_ITEMS_PER_SOURCE).forEach((row) => {
+        const doc = row && row.document ? row.document : {};
+        const meta = row && row.meta ? row.meta : {};
         const id = Number(doc.id || 0);
-        const status = normalizeStatus((row && row.meta && (row.meta.report_status || row.meta.status)) || 'draft');
+        const docStatus = normalizeStatus(doc.status);
+        const metaStatus = normalizeStatus(meta.report_status || meta.status);
+        const status = docStatus || metaStatus || 'draft';
         list.push({
           key: `report:${id || 'unknown'}:${status}`,
           section: 'reports',
           path: '/reports',
           target: '/reports',
           title: String(doc.title || `#${id || ''}`).trim(),
-          message: i18n('reports.status.draft'),
+          message: statusText(status),
           ts: new Date(doc.updated_at || doc.created_at || 0).getTime() || 0,
         });
       });

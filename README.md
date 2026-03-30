@@ -18,7 +18,7 @@ Berkut Solutions - Security Control Center (SCC) — self-hosted платфор�
 
 
 
-Актуальная версия: `1.2.1`
+Актуальная версия: `1.2.2`
 
 ## Проверка состояния и совместимость вкладок (1.0.12)
 
@@ -136,13 +136,13 @@ Berkut SCC — единая рабочая среда для ИБ-подразд
 
 
 
-## Observability (1.2.1)
+## Observability (1.2.2)
 
 - Liveness: `GET /healthz`
 - Readiness (DB ping): `GET /readyz`
 - Prometheus метрики: `GET /metrics` (по умолчанию выключено; включение через `BERKUT_METRICS_ENABLED=true`, опционально защищается `BERKUT_METRICS_TOKEN`)
 
-## Auth (1.2.1)
+## Auth (1.2.2)
 
 - 2FA (TOTP) + recovery codes (включается пользователем в Settings).
 - Passkeys (WebAuthn): вход по ключу доступа и подтверждение 2FA через passkey (KeePassXC, Windows Hello и т.д.).

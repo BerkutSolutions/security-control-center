@@ -1007,6 +1007,7 @@ func (h *DocsHandler) ListApprovals(w http.ResponseWriter, r *http.Request) {
 			"approval_type":    "export",
 			"status":           exportStatus,
 			"doc_id":           item.DocID,
+			"doc_type":         item.DocType,
 			"message":          item.Reason,
 			"created_by":       item.RequestedBy,
 			"created_at":       item.CreatedAt,

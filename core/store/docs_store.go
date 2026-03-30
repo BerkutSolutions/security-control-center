@@ -65,6 +65,7 @@ type ACLRule struct {
 type Approval struct {
 	ID           int64     `json:"id"`
 	DocID        int64     `json:"doc_id"`
+	DocType      string    `json:"doc_type,omitempty"`
 	Status       string    `json:"status"`
 	Message      string    `json:"message"`
 	CurrentStage int       `json:"current_stage"`
@@ -115,6 +116,7 @@ type DocTemplate struct {
 type DocExportApproval struct {
 	ID          int64      `json:"id"`
 	DocID       int64      `json:"doc_id"`
+	DocType     string     `json:"doc_type,omitempty"`
 	RequestedBy int64      `json:"requested_by"`
 	ApprovedBy  int64      `json:"approved_by"`
 	Reason      string     `json:"reason"`
@@ -693,9 +695,13 @@ func (s *docsStore) CreateApproval(ctx context.Context, ap *Approval, participan
 }
 
 func (s *docsStore) GetApproval(ctx context.Context, id int64) (*Approval, []ApprovalParticipant, error) {
-	row := s.db.QueryRowContext(ctx, `SELECT id, doc_id, status, message, current_stage, created_by, created_at, updated_at FROM approvals WHERE id=?`, id)
+	row := s.db.QueryRowContext(ctx, `
+		SELECT a.id, a.doc_id, COALESCE(d.doc_type, ''), a.status, a.message, a.current_stage, a.created_by, a.created_at, a.updated_at
+		FROM approvals a
+		LEFT JOIN docs d ON d.id=a.doc_id
+		WHERE a.id=?`, id)
 	var a Approval
-	if err := row.Scan(&a.ID, &a.DocID, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+	if err := row.Scan(&a.ID, &a.DocID, &a.DocType, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, nil, nil
 		}
@@ -738,9 +744,10 @@ func (s *docsStore) GetApproval(ctx context.Context, id int64) (*Approval, []App
 }
 
 func (s *docsStore) ListApprovals(ctx context.Context, filter ApprovalFilter) ([]Approval, error) {
-	query := `SELECT DISTINCT a.id, a.doc_id, a.status, a.message, a.current_stage, a.created_by, a.created_at, a.updated_at FROM approvals a`
+	query := `SELECT DISTINCT a.id, a.doc_id, COALESCE(d.doc_type, ''), a.status, a.message, a.current_stage, a.created_by, a.created_at, a.updated_at FROM approvals a JOIN docs d ON d.id=a.doc_id`
 	var clauses []string
 	var args []any
+	clauses = append(clauses, "d.deleted_at IS NULL")
 	if filter.UserID > 0 {
 		query += ` JOIN approval_participants ap ON ap.approval_id=a.id`
 		clauses = append(clauses, "ap.user_id=?")
@@ -762,7 +769,7 @@ func (s *docsStore) ListApprovals(ctx context.Context, filter ApprovalFilter) ([
 	var res []Approval
 	for rows.Next() {
 		var a Approval
-		if err := rows.Scan(&a.ID, &a.DocID, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.DocID, &a.DocType, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, a)
@@ -778,7 +785,12 @@ func (s *docsStore) ListApprovalsByDocIDs(ctx context.Context, docIDs []int64) (
 	for _, id := range docIDs {
 		args = append(args, id)
 	}
-	query := `SELECT id, doc_id, status, message, current_stage, created_by, created_at, updated_at FROM approvals WHERE doc_id IN (` + placeholders(len(docIDs)) + `) ORDER BY updated_at DESC`
+	query := `
+		SELECT a.id, a.doc_id, COALESCE(d.doc_type, ''), a.status, a.message, a.current_stage, a.created_by, a.created_at, a.updated_at
+		FROM approvals a
+		JOIN docs d ON d.id=a.doc_id
+		WHERE d.deleted_at IS NULL AND a.doc_id IN (` + placeholders(len(docIDs)) + `)
+		ORDER BY a.updated_at DESC`
 	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -787,7 +799,7 @@ func (s *docsStore) ListApprovalsByDocIDs(ctx context.Context, docIDs []int64) (
 	var res []Approval
 	for rows.Next() {
 		var a Approval
-		if err := rows.Scan(&a.ID, &a.DocID, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
+		if err := rows.Scan(&a.ID, &a.DocID, &a.DocType, &a.Status, &a.Message, &a.CurrentStage, &a.CreatedBy, &a.CreatedAt, &a.UpdatedAt); err != nil {
 			return nil, err
 		}
 		res = append(res, a)
@@ -817,18 +829,68 @@ func (s *docsStore) UpdateApprovalStatus(ctx context.Context, approvalID int64, 
 }
 
 func (s *docsStore) CleanupApprovals(ctx context.Context, includeActive bool) (int64, error) {
-	query := "DELETE FROM approvals"
-	args := []any{}
-	if !includeActive {
-		query += " WHERE status <> ?"
-		args = append(args, "review")
-	}
-	res, err := s.db.ExecContext(ctx, query, args...)
+	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return 0, err
 	}
-	affected, _ := res.RowsAffected()
-	return affected, nil
+	defer func() { _ = tx.Rollback() }()
+
+	var removed int64
+	if includeActive {
+		res, err := tx.ExecContext(ctx, `DELETE FROM approvals`)
+		if err != nil {
+			return 0, err
+		}
+		aff, _ := res.RowsAffected()
+		removed += aff
+
+		res, err = tx.ExecContext(ctx, `DELETE FROM doc_export_approvals`)
+		if err != nil {
+			return 0, err
+		}
+		aff, _ = res.RowsAffected()
+		removed += aff
+	} else {
+		res, err := tx.ExecContext(ctx, `
+			DELETE FROM approvals
+			WHERE status <> ?
+			   OR doc_id IN (SELECT id FROM docs WHERE deleted_at IS NOT NULL)`, "review")
+		if err != nil {
+			return 0, err
+		}
+		aff, _ := res.RowsAffected()
+		removed += aff
+
+		now := time.Now().UTC()
+		res, err = tx.ExecContext(ctx, `
+			DELETE FROM doc_export_approvals
+			WHERE doc_id IN (SELECT id FROM docs WHERE deleted_at IS NOT NULL)
+			   OR consumed_at IS NOT NULL
+			   OR expires_at <= ?
+			   OR EXISTS (
+			     SELECT 1 FROM doc_export_approval_decisions d
+			     WHERE d.approval_id = doc_export_approvals.id
+			   )`, now)
+		if err != nil {
+			return 0, err
+		}
+		aff, _ = res.RowsAffected()
+		removed += aff
+	}
+	// Defensive cleanup for legacy DBs without strict cascades.
+	if _, err := tx.ExecContext(ctx, `DELETE FROM approval_participants WHERE approval_id NOT IN (SELECT id FROM approvals)`); err != nil {
+		return 0, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM approval_comments WHERE approval_id NOT IN (SELECT id FROM approvals)`); err != nil {
+		return 0, err
+	}
+	if _, err := tx.ExecContext(ctx, `DELETE FROM doc_export_approval_decisions WHERE approval_id NOT IN (SELECT id FROM doc_export_approvals)`); err != nil {
+		return 0, err
+	}
+	if err := tx.Commit(); err != nil {
+		return 0, err
+	}
+	return removed, nil
 }
 
 func (s *docsStore) SaveApprovalComment(ctx context.Context, c *ApprovalComment) error {

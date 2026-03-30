@@ -179,6 +179,12 @@
       try {
         await Api.post(`/api/docs/${docId}/approval/start`, payload);
         DocsPage.closeModal('#start-approval-modal');
+        if (typeof DocsPage !== 'undefined' && DocsPage.loadDocs) {
+          await DocsPage.loadDocs();
+        }
+        if (typeof ReportsPage !== 'undefined' && ReportsPage.loadReports) {
+          await ReportsPage.loadReports();
+        }
       } catch (err) {
         const msg = err.message || BerkutI18n.t('docs.approvalForbidden');
         DocsPage.showAlert(alertBox, msg);

@@ -84,7 +84,7 @@
         const la = new Date(a.updated_at || a.created_at || 0).getTime();
         return lb - la;
       });
-      await preloadDocs(approvals);
+      await preloadEntities(approvals);
       renderTable();
     } catch (err) {
       console.error('load approvals', err);
@@ -92,12 +92,58 @@
     }
   }
 
-  async function preloadDocs(list) {
-    const ids = Array.from(new Set(list.map(a => a.doc_id))).filter(id => !docsCache[id]);
-    const fetched = await Promise.all(ids.map(id => Api.get(`/api/docs/${id}`).catch(() => null)));
-    fetched.forEach(doc => {
-      if (doc) docsCache[doc.id] = doc;
+  function normalizeEntityType(raw) {
+    const t = String(raw || '').trim().toLowerCase();
+    if (t === 'report') return 'report';
+    if (t === 'document' || t === 'doc') return 'doc';
+    return '';
+  }
+
+  async function preloadEntities(list) {
+    const byId = new Map();
+    list.forEach((item) => {
+      const id = Number(item?.doc_id || 0);
+      if (id <= 0) return;
+      if (!byId.has(id)) byId.set(id, normalizeEntityType(item?.doc_type));
     });
+    await Promise.all(Array.from(byId.entries()).map(([id, type]) => resolveEntityDoc(id, type)));
+  }
+
+  async function resolveEntityDoc(docID, preferredType) {
+    const id = Number(docID || 0);
+    if (id <= 0) return null;
+    if (docsCache[id]) return docsCache[id];
+    const type = normalizeEntityType(preferredType);
+    const loadDoc = async () => {
+      const doc = await Api.get(`/api/docs/${id}`);
+      if (!doc) return null;
+      return { ...doc, _entity_type: 'doc' };
+    };
+    const loadReport = async () => {
+      const reportRes = await Api.get(`/api/reports/${id}`);
+      const reportDoc = reportRes?.doc || null;
+      if (!reportDoc) return null;
+      return { ...reportDoc, _entity_type: 'report', _report_meta: reportRes?.meta || null };
+    };
+    try {
+      const normalized = type === 'report' ? await loadReport() : await loadDoc();
+      if (normalized) {
+        docsCache[id] = normalized;
+        return normalized;
+      }
+    } catch (_) {
+      // try opposite endpoint as fallback
+    }
+    try {
+      const normalized = type === 'report' ? await loadDoc() : await loadReport();
+      if (normalized) {
+        docsCache[id] = normalized;
+        return normalized;
+      }
+    } catch (_) {
+      // keep null
+    }
+    return null;
   }
 
   function renderTable() {
@@ -213,8 +259,7 @@
       const res = await Api.get(`/api/approvals/${id}`);
       current = res.approval;
       const participants = res.participants || [];
-      const doc = docsCache[current.doc_id] || await Api.get(`/api/docs/${current.doc_id}`);
-      docsCache[current.doc_id] = doc;
+      const doc = await resolveEntityDoc(current.doc_id, current.doc_type);
       await renderDetail(doc, current, participants);
       await loadComments();
       openModal('#approval-detail-modal');
@@ -254,13 +299,15 @@
     const reasonEl = document.getElementById('approval-reason');
     const requestEl = document.getElementById('approval-request');
     const updatedEl = document.getElementById('approval-updated');
-    if (titleEl) titleEl.textContent = `${doc.title || ''} (${doc.reg_number || ''})`;
-    if (metaEl) metaEl.textContent = `${DocUI.levelName(doc.classification_level)} • ${formatDate(ap.updated_at || ap.created_at)}`;
+    const safeDoc = doc || {};
+    const reg = safeDoc.reg_number ? ` (${safeDoc.reg_number})` : '';
+    if (titleEl) titleEl.textContent = `${safeDoc.title || ''}${reg}`;
+    if (metaEl) metaEl.textContent = `${DocUI.levelName(safeDoc.classification_level)} • ${formatDate(ap.updated_at || ap.created_at)}`;
     if (statusEl) statusEl.innerHTML = `<span class="badge status-${ap.status}">${DocUI.statusLabel(ap.status)}</span>`;
-    if (levelEl) levelEl.textContent = DocUI.levelName(doc.classification_level);
-    const versionInfo = await loadVersionInfo(doc);
+    if (levelEl) levelEl.textContent = DocUI.levelName(safeDoc.classification_level);
+    const versionInfo = await loadVersionInfo(safeDoc);
     if (versionEl) versionEl.textContent = versionInfo.version ? `v${versionInfo.version}` : '-';
-    const initiatorName = getUserDirectory().name(ap.created_by || doc.created_by);
+    const initiatorName = getUserDirectory().name(ap.created_by || safeDoc.created_by);
     if (initiatorEl) initiatorEl.textContent = initiatorName || '-';
     if (reasonEl) reasonEl.textContent = versionInfo.reason || '-';
     if (requestEl) requestEl.textContent = ap.message || '-';
@@ -272,6 +319,9 @@
 
   async function loadVersionInfo(doc) {
     if (!doc) return { version: '', reason: '' };
+    if ((doc._entity_type || 'doc') === 'report') {
+      return { version: doc.current_version || '', reason: '' };
+    }
     if (versionsCache[doc.id]) return versionsCache[doc.id];
     try {
       const res = await Api.get(`/api/docs/${doc.id}/versions`);
@@ -479,6 +529,9 @@
       await loadApprovals();
       if (typeof DocsPage !== 'undefined' && DocsPage.hasPermission && DocsPage.hasPermission('docs.view')) {
         await DocsPage.loadDocs();
+      }
+      if (typeof ReportsPage !== 'undefined' && ReportsPage.loadReports) {
+        await ReportsPage.loadReports();
       }
       await openApproval(current.id);
     } catch (err) {

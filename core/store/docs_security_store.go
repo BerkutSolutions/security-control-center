@@ -103,10 +103,12 @@ func (s *docsStore) ListDocExportApprovalsForActor(ctx context.Context, actorID 
 		return nil, nil
 	}
 	rows, err := s.db.QueryContext(ctx, `
-		SELECT id, doc_id, requested_by, approved_by, reason, created_at, expires_at, consumed_at
-		FROM doc_export_approvals
+		SELECT dea.id, dea.doc_id, COALESCE(d.doc_type, ''), dea.requested_by, dea.approved_by, dea.reason, dea.created_at, dea.expires_at, dea.consumed_at
+		FROM doc_export_approvals dea
+		JOIN docs d ON d.id=dea.doc_id
 		WHERE (requested_by=? OR approved_by=?)
-		ORDER BY created_at DESC`, actorID, actorID)
+		  AND d.deleted_at IS NULL
+		ORDER BY dea.created_at DESC`, actorID, actorID)
 	if err != nil {
 		return nil, fmt.Errorf("list export approvals for actor: %w", err)
 	}
@@ -115,7 +117,7 @@ func (s *docsStore) ListDocExportApprovalsForActor(ctx context.Context, actorID 
 	for rows.Next() {
 		var item DocExportApproval
 		var consumed sql.NullTime
-		if err := rows.Scan(&item.ID, &item.DocID, &item.RequestedBy, &item.ApprovedBy, &item.Reason, &item.CreatedAt, &item.ExpiresAt, &consumed); err != nil {
+		if err := rows.Scan(&item.ID, &item.DocID, &item.DocType, &item.RequestedBy, &item.ApprovedBy, &item.Reason, &item.CreatedAt, &item.ExpiresAt, &consumed); err != nil {
 			return nil, err
 		}
 		if consumed.Valid {
